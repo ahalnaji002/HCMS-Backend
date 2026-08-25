@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "migrate": "knex migrate:latest --env development",
+    "migrate:rollback": "knex migrate:rollback --env development",
+    "seed": "knex seed:run --env development"
   },
   "repository": {
     "type": "git",
