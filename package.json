@@ -1,0 +1,34 @@
+{
+  "name": "hcms-backend",
+  "version": "1.0.0",
+  "description": "Backend API for the Healthcare Conflict Management System (HCMS)",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "migrate": "knex migrate:latest --env development",
+    "migrate:rollback": "knex migrate:rollback --env development",
+    "seed": "knex seed:run --env development"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ahalnaji002/HCMS-Backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ahalnaji002/HCMS-Backend/issues"
+  },
+  "homepage": "https://github.com/ahalnaji002/HCMS-Backend#readme",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "knex": "^3.3.0",
+    "mysql2": "^3.24.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
