@@ -1,6 +1,13 @@
 const express = require("express");
 const cors = require("cors");
 
+const {
+  apiErrorHandler,
+  apiNotFound,
+} = require("./middleware/apiErrorHandler");
+const adminRoutes = require("./routes/adminRoutes");
+const authRoutes = require("./routes/authRoutes");
+
 const app = express();
 
 app.use(cors());
@@ -11,5 +18,10 @@ app.get("/", (req, res) => {
     message: "HCMS Backend API is running",
   });
 });
+
+app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api", apiNotFound);
+app.use(apiErrorHandler);
 
 module.exports = app;
