@@ -28,6 +28,17 @@ function validatePatientRegistration(req, res, next) {
   if (!isValidDateOnly(input.date_of_birth)) {
     errors.date_of_birth =
       "date_of_birth must be a valid date in YYYY-MM-DD format";
+  } else {
+    const today = new Date();
+    const todayDateOnly = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, "0"),
+      String(today.getDate()).padStart(2, "0"),
+    ].join("-");
+
+    if (input.date_of_birth > todayDateOnly) {
+      errors.date_of_birth = "date_of_birth must not be in the future";
+    }
   }
 
   if (input.gender !== "MALE" && input.gender !== "FEMALE") {
