@@ -11,6 +11,6 @@ db.raw("SELECT 1 AS connected")
   .then(() => {
     console.log("Database connected successfully");
   })
-  .catch((error) => {
-    console.error("Database connection failed:", error.message);
+  .catch(() => {
+    console.error("Database connection failed");
   });

@@ -13,7 +13,10 @@ function apiErrorHandler(error, req, res, next) {
     });
   }
 
-  console.error("Unhandled API error:", error.message);
+  console.error("Unhandled API error", {
+    method: req.method,
+    path: req.originalUrl,
+  });
 
   return res.status(500).json({
     success: false,

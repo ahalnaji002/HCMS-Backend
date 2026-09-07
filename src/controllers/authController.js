@@ -47,7 +47,7 @@ async function registerPatientHandler(req, res) {
       });
     }
 
-    console.error("Patient registration failed:", error.message);
+    console.error("Patient registration failed");
 
     return res.status(500).json({
       success: false,
@@ -79,7 +79,7 @@ async function registerDoctorHandler(req, res) {
       });
     }
 
-    console.error("Doctor registration failed:", error.message);
+    console.error("Doctor registration failed");
 
     return res.status(500).json({
       success: false,
@@ -109,7 +109,7 @@ async function registerNgoHandler(req, res) {
       });
     }
 
-    console.error("NGO registration failed:", error.message);
+    console.error("NGO registration failed");
 
     return res.status(500).json({
       success: false,
