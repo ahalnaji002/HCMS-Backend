@@ -1,6 +1,7 @@
 const {
   ProfileNotFoundError,
   getOwnProfile,
+  updateOwnProfile,
 } = require("../services/profileService");
 const formatDateOnly = require("../utils/formatDateOnly");
 
@@ -34,6 +35,40 @@ async function getOwnProfileHandler(req, res) {
   }
 }
 
+async function updateOwnProfileHandler(req, res) {
+  try {
+    const profile = await updateOwnProfile(
+      req.user,
+      req.validatedProfileUpdate,
+    );
+
+    if (req.user.role === "PATIENT") {
+      profile.date_of_birth = formatDateOnly(profile.date_of_birth);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: { profile },
+    });
+  } catch (error) {
+    if (error instanceof ProfileNotFoundError) {
+      return res.status(404).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    console.error("Profile update failed");
+
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+}
+
 module.exports = {
   getOwnProfile: getOwnProfileHandler,
+  updateOwnProfile: updateOwnProfileHandler,
 };

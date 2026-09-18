@@ -23,7 +23,19 @@ async function create(patient, connection = db) {
   return findByUserId(patient.user_id, connection);
 }
 
+async function updateProfile(userId, updates, connection = db) {
+  await connection("patients")
+    .where({ user_id: userId })
+    .update({
+      ...updates,
+      updated_at: connection.fn.now(),
+    });
+
+  return findByUserId(userId, connection);
+}
+
 module.exports = {
   create,
   findByUserId,
+  updateProfile,
 };
