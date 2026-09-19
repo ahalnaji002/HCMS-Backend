@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "test": "node --test",
+    "test": "cross-env NODE_ENV=test node --test",
     "migrate": "knex migrate:latest --env development",
     "migrate:rollback": "knex migrate:rollback --env development",
     "seed": "knex seed:run --env development"
@@ -32,6 +32,7 @@
     "mysql2": "^3.24.2"
   },
   "devDependencies": {
+    "cross-env": "^10.1.0",
     "nodemon": "^3.1.14",
     "supertest": "^7.2.2"
   }

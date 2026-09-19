@@ -118,7 +118,10 @@ async function updateOwnProfile(user, updates) {
       }
     }
 
-    if (Object.keys(userUpdates).length > 0) {
+    if (
+      Object.keys(userUpdates).length > 0 ||
+      Object.keys(patientUpdates).length > 0
+    ) {
       await userModel.updateProfile(user.id, userUpdates, trx);
     }
 

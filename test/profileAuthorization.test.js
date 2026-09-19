@@ -10,6 +10,41 @@ const TEST_PASSWORD_HASH = "test-password-hash";
 
 let users;
 
+let testDatabaseVerified = false;
+
+async function verifyTestDatabase() {
+  if (process.env.NODE_ENV !== "test") {
+    throw new Error("Authorization tests require NODE_ENV=test");
+  }
+
+  if (!process.env.TEST_DB_NAME) {
+    throw new Error("TEST_DB_NAME is required");
+  }
+
+  if (process.env.TEST_DB_NAME === process.env.DB_NAME) {
+    throw new Error("TEST_DB_NAME must differ from DB_NAME");
+  }
+
+  const result = await db.raw("SELECT DATABASE() AS database_name");
+  const databaseName = result[0][0].database_name;
+
+  if (databaseName !== process.env.TEST_DB_NAME) {
+    throw new Error(
+      `Refusing to run tests against unexpected database: ${databaseName}`,
+    );
+  }
+
+  testDatabaseVerified = true;
+}
+
+function assertTestDatabaseVerified() {
+  if (!testDatabaseVerified) {
+    throw new Error(
+      "Refusing to modify database before test database verification",
+    );
+  }
+}
+
 async function createUser({
   fullName,
   email,
@@ -85,21 +120,12 @@ function tokenFor(user) {
 }
 
 before(async () => {
-  if (process.env.NODE_ENV !== "test") {
-    throw new Error("Authorization tests require NODE_ENV=test");
-  }
-
-  const result = await db.raw("SELECT DATABASE() AS database_name");
-  const databaseName = result[0][0].database_name;
-
-  if (databaseName !== process.env.TEST_DB_NAME) {
-    throw new Error(
-      `Refusing to run tests against unexpected database: ${databaseName}`,
-    );
-  }
+  await verifyTestDatabase();
 });
 
 beforeEach(async () => {
+  assertTestDatabaseVerified();
+
   await db("ngos").del();
   await db("doctors").del();
   await db("patients").del();
@@ -109,11 +135,16 @@ beforeEach(async () => {
 });
 
 after(async () => {
-  await db("ngos").del();
-  await db("doctors").del();
-  await db("patients").del();
-  await db("users").del();
-  await db.destroy();
+  try {
+    if (testDatabaseVerified) {
+      await db("ngos").del();
+      await db("doctors").del();
+      await db("patients").del();
+      await db("users").del();
+    }
+  } finally {
+    await db.destroy();
+  }
 });
 
 test("GET /api/profile rejects unauthenticated requests", async () => {
@@ -274,6 +305,32 @@ test("patient can update approved patient profile fields", async () => {
     "Updated Authorization Patient",
   );
   assert.equal(response.body.data.profile.address, "Updated Gaza Address");
+});
+
+test("patient-only profile updates refresh the returned profile timestamp", async () => {
+  const beforeUpdate = await db("users")
+    .where({ id: users.patient.id })
+    .first();
+
+  await new Promise((resolve) => setTimeout(resolve, 1100));
+
+  const response = await request(app)
+    .patch("/api/profile")
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`)
+    .send({
+      address: "Timestamp Test Address",
+    });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.equal(response.body.data.profile.address, "Timestamp Test Address");
+
+  const afterUpdate = await db("users").where({ id: users.patient.id }).first();
+
+  assert.ok(
+    new Date(afterUpdate.updated_at).getTime() >
+      new Date(beforeUpdate.updated_at).getTime(),
+  );
 });
 
 test("doctor can update approved common profile fields", async () => {
