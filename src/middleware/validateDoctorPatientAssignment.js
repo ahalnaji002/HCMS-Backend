@@ -1,5 +1,6 @@
 const MAX_UNSIGNED_BIGINT = 18446744073709551615n;
 const ASSIGNMENT_REASON_MAX_LENGTH = 255;
+const NOTES_MAX_BYTES = 65535;
 
 const ALLOWED_FIELDS = new Set([
   "doctor_id",
@@ -70,6 +71,8 @@ function validateCreateAssignment(req, res, next) {
   if (input.notes !== undefined && input.notes !== null) {
     if (typeof input.notes !== "string") {
       errors.notes = "notes must be a string or null";
+    } else if (Buffer.byteLength(input.notes, "utf8") > NOTES_MAX_BYTES) {
+      errors.notes = "notes must not exceed 65535 bytes";
     }
   }
 
