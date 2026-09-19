@@ -153,6 +153,7 @@ http://localhost:3000
 - Login with JWT authentication.
 - Current-user authentication middleware.
 - Role-Based Access Control (RBAC).
+- Role-specific current-profile viewing and approved self-service updates.
 - Admin Join Request approval and rejection workflow.
 - Transactional and concurrency-safe Join Request reviews.
 - Admin creation and viewing of current and historical Doctor-Patient Assignments.
@@ -360,6 +361,28 @@ An authenticated user without an allowed role receives:
 
 Resource ownership and other business-specific authorization rules are outside this middleware.
 
+### Current Profile
+
+```http
+GET /api/profile
+PATCH /api/profile
+```
+
+Both endpoints require an `ACTIVE` authenticated account. `GET /api/profile`
+is available to `PATIENT`, `DOCTOR`, `NGO`, and `ADMIN` and returns the
+authenticated user's own base profile plus the fields approved for that role.
+It does not accept another user's ID.
+
+`PATCH /api/profile` is available only to `PATIENT` and `DOCTOR`. Approved
+fields are:
+
+- Patient: `full_name`, `phone`, `date_of_birth`, `gender`, `address`
+- Doctor: `full_name`, `phone`
+
+Protected, unknown, or cross-role fields are rejected with `400`. Missing or
+invalid authentication returns `401`; an inactive account or unauthorized role
+returns `403`; and a missing role-specific profile returns `404`.
+
 ### Admin Join Request Review
 
 All Admin Join Request endpoints require an `ACTIVE ADMIN` Bearer token:
@@ -421,10 +444,24 @@ assignments in deterministic newest-first order. The details endpoint returns
 one assignment by ID. Responses contain only fields from the approved
 `doctor_patient_assignments` schema.
 
+Creating an assignment requires `doctor_id` and `patient_id`; optional fields
+are `assignment_reason` and `notes`. The referenced Doctor and Patient profiles
+must exist and belong to active users with the matching roles. New assignments
+are created as `ACTIVE` and return `201`.
+
 The status endpoint accepts only `ACTIVE` or `INACTIVE`. Deactivation sets
 `ended_at`; reactivation clears it and is rejected when another active
 assignment already exists for the same doctor-patient pair. Requests that do
 not change the current status are rejected.
+
+Multiple historical `INACTIVE` assignments may exist for the same Doctor and
+Patient, but at most one assignment may be `ACTIVE`. Creation and reactivation
+enforce this rule transactionally without deleting historical rows.
+
+Assignment endpoints return `400` for invalid input or IDs, `401` for missing
+or invalid authentication, `403` for non-Admin access, `404` for missing
+assignments or references, and `409` for conflicting status transitions,
+inactive or inconsistent referenced accounts, or a duplicate active pair.
 
 ## Admin Seed
 
