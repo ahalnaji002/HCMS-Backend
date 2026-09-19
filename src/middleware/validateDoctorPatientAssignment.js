@@ -30,6 +30,19 @@ function isPositiveInteger(value) {
   );
 }
 
+function validateAssignmentId(req, res, next) {
+  const id = req.params.id;
+
+  if (!isPositiveInteger(id)) {
+    return validationFailure(res, {
+      id: "id must be a positive integer",
+    });
+  }
+
+  req.validatedAssignmentId = id;
+  return next();
+}
+
 function validateCreateAssignment(req, res, next) {
   const input = req.body;
   const errors = {};
@@ -99,5 +112,6 @@ function validateCreateAssignment(req, res, next) {
 }
 
 module.exports = {
+  validateAssignmentId,
   validateCreateAssignment,
 };

@@ -39,6 +39,27 @@ class ActiveAssignmentExistsError extends Error {
   }
 }
 
+class AssignmentNotFoundError extends Error {
+  constructor() {
+    super("Doctor-patient assignment not found");
+    this.name = "AssignmentNotFoundError";
+  }
+}
+
+function listDoctorPatientAssignments() {
+  return doctorPatientAssignmentModel.listAll();
+}
+
+async function getDoctorPatientAssignment(id) {
+  const assignment = await doctorPatientAssignmentModel.findById(id);
+
+  if (!assignment) {
+    throw new AssignmentNotFoundError();
+  }
+
+  return assignment;
+}
+
 async function createDoctorPatientAssignment(input) {
   return db.transaction(async (trx) => {
     /*
@@ -106,9 +127,12 @@ async function createDoctorPatientAssignment(input) {
 
 module.exports = {
   ActiveAssignmentExistsError,
+  AssignmentNotFoundError,
   DoctorNotActiveError,
   DoctorNotFoundError,
   PatientNotActiveError,
   PatientNotFoundError,
   createDoctorPatientAssignment,
+  getDoctorPatientAssignment,
+  listDoctorPatientAssignments,
 };
