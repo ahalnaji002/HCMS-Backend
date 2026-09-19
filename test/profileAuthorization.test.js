@@ -726,3 +726,53 @@ test("concurrent assignment creation results in only one active assignment", asy
 
   assert.equal(activeAssignments.length, 1);
 });
+
+test("assignment creation rejects notes exceeding the database TEXT limit", async () => {
+  const response = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+      notes: "a".repeat(65536),
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Validation failed");
+  assert.equal(response.body.errors.notes, "notes must not exceed 65535 bytes");
+
+  const assignments = await db("doctor_patient_assignments").where({
+    doctor_id: users.doctorProfile.id,
+    patient_id: users.patientProfile.id,
+  });
+
+  assert.equal(assignments.length, 0);
+});
+
+test("assignment notes limit is enforced by UTF-8 byte length", async () => {
+  const notes = "أ".repeat(32768);
+
+  assert.ok(Buffer.byteLength(notes, "utf8") > 65535);
+
+  const response = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+      notes,
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Validation failed");
+  assert.equal(response.body.errors.notes, "notes must not exceed 65535 bytes");
+
+  const assignments = await db("doctor_patient_assignments").where({
+    doctor_id: users.doctorProfile.id,
+    patient_id: users.patientProfile.id,
+  });
+
+  assert.equal(assignments.length, 0);
+});
