@@ -1,14 +1,18 @@
 const {
   ActiveAssignmentExistsError,
+  AssignmentNotFoundError,
   DoctorNotActiveError,
   DoctorNotFoundError,
   PatientNotActiveError,
   PatientNotFoundError,
   createDoctorPatientAssignment,
+  getDoctorPatientAssignment,
+  listDoctorPatientAssignments,
 } = require("../services/doctorPatientAssignmentService");
 
 function assignmentErrorResponse(error, res) {
   if (
+    error instanceof AssignmentNotFoundError ||
     error instanceof DoctorNotFoundError ||
     error instanceof PatientNotFoundError
   ) {
@@ -30,6 +34,45 @@ function assignmentErrorResponse(error, res) {
   }
 
   return undefined;
+}
+
+async function list(req, res) {
+  try {
+    const assignments = await listDoctorPatientAssignments();
+
+    return res.status(200).json({
+      success: true,
+      message: "Doctor-patient assignments retrieved successfully",
+      data: { assignments },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+}
+
+async function show(req, res) {
+  try {
+    const assignment = await getDoctorPatientAssignment(
+      req.validatedAssignmentId,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Doctor-patient assignment retrieved successfully",
+      data: { assignment },
+    });
+  } catch (error) {
+    return (
+      assignmentErrorResponse(error, res) ||
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      })
+    );
+  }
 }
 
 async function create(req, res) {
@@ -58,4 +101,6 @@ async function create(req, res) {
 
 module.exports = {
   create,
+  list,
+  show,
 };

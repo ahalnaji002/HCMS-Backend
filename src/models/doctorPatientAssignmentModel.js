@@ -1,7 +1,30 @@
 const db = require("../config/database");
 
+const ASSIGNMENT_COLUMNS = [
+  "id",
+  "doctor_id",
+  "patient_id",
+  "status",
+  "assignment_reason",
+  "notes",
+  "assigned_at",
+  "ended_at",
+  "created_at",
+  "updated_at",
+];
+
 function findById(id, connection = db) {
-  return connection("doctor_patient_assignments").where({ id }).first();
+  return connection("doctor_patient_assignments")
+    .select(ASSIGNMENT_COLUMNS)
+    .where({ id })
+    .first();
+}
+
+function listAll(connection = db) {
+  return connection("doctor_patient_assignments")
+    .select(ASSIGNMENT_COLUMNS)
+    .orderBy("assigned_at", "desc")
+    .orderBy("id", "desc");
 }
 
 function findActiveByDoctorAndPatient(doctorId, patientId, connection = db) {
@@ -38,4 +61,5 @@ module.exports = {
   create,
   findActiveByDoctorAndPatient,
   findById,
+  listAll,
 };

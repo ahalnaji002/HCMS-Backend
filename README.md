@@ -155,6 +155,7 @@ http://localhost:3000
 - Role-Based Access Control (RBAC).
 - Admin Join Request approval and rejection workflow.
 - Transactional and concurrency-safe Join Request reviews.
+- Admin creation and viewing of current and historical Doctor-Patient Assignments.
 
 ## API
 
@@ -402,6 +403,21 @@ Expected errors include:
 - `403` unauthorized role
 - `404` Join Request not found
 - `409` already reviewed or inconsistent request state
+
+### Admin Doctor-Patient Assignments
+
+All Doctor-Patient Assignment endpoints require an `ACTIVE ADMIN` Bearer token:
+
+```http
+GET /api/admin/doctor-patient-assignments
+GET /api/admin/doctor-patient-assignments/:id
+POST /api/admin/doctor-patient-assignments
+```
+
+The list endpoint returns current `ACTIVE` and historical `INACTIVE`
+assignments in deterministic newest-first order. The details endpoint returns
+one assignment by ID. Responses contain only fields from the approved
+`doctor_patient_assignments` schema.
 
 ## Admin Seed
 

@@ -9,6 +9,7 @@ const {
   validateRejectionBody,
 } = require("../middleware/validateJoinRequestReview");
 const {
+  validateAssignmentId,
   validateCreateAssignment,
 } = require("../middleware/validateDoctorPatientAssignment");
 
@@ -43,6 +44,12 @@ router.patch(
 // Doctor-Patient Assignments
 // ==============================
 
+router.get("/doctor-patient-assignments", assignmentController.list);
+router.get(
+  "/doctor-patient-assignments/:id",
+  validateAssignmentId,
+  assignmentController.show,
+);
 router.post(
   "/doctor-patient-assignments",
   validateCreateAssignment,
