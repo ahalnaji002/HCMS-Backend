@@ -14,6 +14,14 @@ function buildCreatePayload(patient) {
   return payload;
 }
 
+function findById(id, connection = db) {
+  return connection("patients").where({ id }).first();
+}
+
+function findByIdForUpdate(id, connection) {
+  return connection("patients").where({ id }).forUpdate().first();
+}
+
 function findByUserId(userId, connection = db) {
   return connection("patients").where({ user_id: userId }).first();
 }
@@ -36,6 +44,8 @@ async function updateProfile(userId, updates, connection = db) {
 
 module.exports = {
   create,
+  findById,
+  findByIdForUpdate,
   findByUserId,
   updateProfile,
 };
