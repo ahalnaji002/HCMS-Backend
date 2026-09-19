@@ -43,6 +43,34 @@ function validateAssignmentId(req, res, next) {
   return next();
 }
 
+function validateAssignmentStatusUpdate(req, res, next) {
+  const input = req.body;
+  const errors = {};
+
+  if (input === null || typeof input !== "object" || Array.isArray(input)) {
+    return validationFailure(res, {
+      body: "request body must be a JSON object",
+    });
+  }
+
+  for (const field of Object.keys(input)) {
+    if (field !== "status") {
+      errors[field] = `${field} is not allowed`;
+    }
+  }
+
+  if (input.status !== "ACTIVE" && input.status !== "INACTIVE") {
+    errors.status = "status must be exactly ACTIVE or INACTIVE";
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return validationFailure(res, errors);
+  }
+
+  req.validatedAssignmentStatus = input.status;
+  return next();
+}
+
 function validateCreateAssignment(req, res, next) {
   const input = req.body;
   const errors = {};
@@ -113,5 +141,6 @@ function validateCreateAssignment(req, res, next) {
 
 module.exports = {
   validateAssignmentId,
+  validateAssignmentStatusUpdate,
   validateCreateAssignment,
 };

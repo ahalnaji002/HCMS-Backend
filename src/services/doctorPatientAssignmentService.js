@@ -46,6 +46,13 @@ class AssignmentNotFoundError extends Error {
   }
 }
 
+class AssignmentStatusConflictError extends Error {
+  constructor(status) {
+    super(`Doctor-patient assignment is already ${status}`);
+    this.name = "AssignmentStatusConflictError";
+  }
+}
+
 function listDoctorPatientAssignments() {
   return doctorPatientAssignmentModel.listAll();
 }
@@ -58,6 +65,52 @@ async function getDoctorPatientAssignment(id) {
   }
 
   return assignment;
+}
+
+async function updateDoctorPatientAssignmentStatus(id, status) {
+  const existingAssignment = await doctorPatientAssignmentModel.findById(id);
+
+  if (!existingAssignment) {
+    throw new AssignmentNotFoundError();
+  }
+
+  return db.transaction(async (trx) => {
+    // Match the create workflow's doctor -> patient lock order so all
+    // operations for the same pair serialize before checking ACTIVE state.
+    await doctorModel.findByIdForUpdate(existingAssignment.doctor_id, trx);
+    await patientModel.findByIdForUpdate(existingAssignment.patient_id, trx);
+
+    const assignment =
+      await doctorPatientAssignmentModel.findByIdForUpdate(id, trx);
+
+    if (!assignment) {
+      throw new AssignmentNotFoundError();
+    }
+
+    if (assignment.status === status) {
+      throw new AssignmentStatusConflictError(status);
+    }
+
+    if (status === "ACTIVE") {
+      const activeAssignment =
+        await doctorPatientAssignmentModel.findActiveByDoctorAndPatient(
+          assignment.doctor_id,
+          assignment.patient_id,
+          trx,
+        );
+
+      if (activeAssignment) {
+        throw new ActiveAssignmentExistsError();
+      }
+    }
+
+    return doctorPatientAssignmentModel.updateStatus(
+      assignment.id,
+      status,
+      status === "INACTIVE" ? trx.fn.now() : null,
+      trx,
+    );
+  });
 }
 
 async function createDoctorPatientAssignment(input) {
@@ -128,6 +181,7 @@ async function createDoctorPatientAssignment(input) {
 module.exports = {
   ActiveAssignmentExistsError,
   AssignmentNotFoundError,
+  AssignmentStatusConflictError,
   DoctorNotActiveError,
   DoctorNotFoundError,
   PatientNotActiveError,
@@ -135,4 +189,5 @@ module.exports = {
   createDoctorPatientAssignment,
   getDoctorPatientAssignment,
   listDoctorPatientAssignments,
+  updateDoctorPatientAssignmentStatus,
 };
