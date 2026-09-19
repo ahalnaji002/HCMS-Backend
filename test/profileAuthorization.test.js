@@ -626,6 +626,54 @@ test("assignment creation rejects an inactive patient account", async () => {
   assert.equal(assignments.length, 0);
 });
 
+test("assignment creation rejects a doctor profile with a non-doctor user role", async () => {
+  await db("users")
+    .where({ id: users.doctor.id })
+    .update({ role: "PATIENT" });
+
+  const response = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+    });
+
+  assert.equal(response.status, 409);
+  assert.deepEqual(response.body, {
+    success: false,
+    message: "Doctor account is not active",
+  });
+
+  const assignments = await db("doctor_patient_assignments");
+
+  assert.equal(assignments.length, 0);
+});
+
+test("assignment creation rejects a patient profile with a non-patient user role", async () => {
+  await db("users")
+    .where({ id: users.patient.id })
+    .update({ role: "DOCTOR" });
+
+  const response = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+    });
+
+  assert.equal(response.status, 409);
+  assert.deepEqual(response.body, {
+    success: false,
+    message: "Patient account is not active",
+  });
+
+  const assignments = await db("doctor_patient_assignments");
+
+  assert.equal(assignments.length, 0);
+});
+
 test("assignment creation rejects a duplicate active assignment", async () => {
   await db("doctor_patient_assignments").insert({
     doctor_id: users.doctorProfile.id,
