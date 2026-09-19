@@ -20,6 +20,14 @@ function findById(id, connection = db) {
     .first();
 }
 
+function findByIdForUpdate(id, connection) {
+  return connection("doctor_patient_assignments")
+    .select(ASSIGNMENT_COLUMNS)
+    .where({ id })
+    .forUpdate()
+    .first();
+}
+
 function listAll(connection = db) {
   return connection("doctor_patient_assignments")
     .select(ASSIGNMENT_COLUMNS)
@@ -57,9 +65,21 @@ async function create(assignment, connection = db) {
   return findById(id, connection);
 }
 
+async function updateStatus(id, status, endedAt, connection = db) {
+  await connection("doctor_patient_assignments").where({ id }).update({
+    status,
+    ended_at: endedAt,
+    updated_at: connection.fn.now(),
+  });
+
+  return findById(id, connection);
+}
+
 module.exports = {
   create,
   findActiveByDoctorAndPatient,
   findById,
+  findByIdForUpdate,
   listAll,
+  updateStatus,
 };

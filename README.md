@@ -156,6 +156,7 @@ http://localhost:3000
 - Admin Join Request approval and rejection workflow.
 - Transactional and concurrency-safe Join Request reviews.
 - Admin creation and viewing of current and historical Doctor-Patient Assignments.
+- Transactional Doctor-Patient Assignment status transitions.
 
 ## API
 
@@ -412,12 +413,18 @@ All Doctor-Patient Assignment endpoints require an `ACTIVE ADMIN` Bearer token:
 GET /api/admin/doctor-patient-assignments
 GET /api/admin/doctor-patient-assignments/:id
 POST /api/admin/doctor-patient-assignments
+PATCH /api/admin/doctor-patient-assignments/:id/status
 ```
 
 The list endpoint returns current `ACTIVE` and historical `INACTIVE`
 assignments in deterministic newest-first order. The details endpoint returns
 one assignment by ID. Responses contain only fields from the approved
 `doctor_patient_assignments` schema.
+
+The status endpoint accepts only `ACTIVE` or `INACTIVE`. Deactivation sets
+`ended_at`; reactivation clears it and is rejected when another active
+assignment already exists for the same doctor-patient pair. Requests that do
+not change the current status are rejected.
 
 ## Admin Seed
 

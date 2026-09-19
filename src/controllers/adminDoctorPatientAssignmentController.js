@@ -1,6 +1,7 @@
 const {
   ActiveAssignmentExistsError,
   AssignmentNotFoundError,
+  AssignmentStatusConflictError,
   DoctorNotActiveError,
   DoctorNotFoundError,
   PatientNotActiveError,
@@ -8,6 +9,7 @@ const {
   createDoctorPatientAssignment,
   getDoctorPatientAssignment,
   listDoctorPatientAssignments,
+  updateDoctorPatientAssignmentStatus,
 } = require("../services/doctorPatientAssignmentService");
 
 function assignmentErrorResponse(error, res) {
@@ -25,7 +27,8 @@ function assignmentErrorResponse(error, res) {
   if (
     error instanceof DoctorNotActiveError ||
     error instanceof PatientNotActiveError ||
-    error instanceof ActiveAssignmentExistsError
+    error instanceof ActiveAssignmentExistsError ||
+    error instanceof AssignmentStatusConflictError
   ) {
     return res.status(409).json({
       success: false,
@@ -34,6 +37,29 @@ function assignmentErrorResponse(error, res) {
   }
 
   return undefined;
+}
+
+async function updateStatus(req, res) {
+  try {
+    const assignment = await updateDoctorPatientAssignmentStatus(
+      req.validatedAssignmentId,
+      req.validatedAssignmentStatus,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Doctor-patient assignment status updated successfully",
+      data: { assignment },
+    });
+  } catch (error) {
+    return (
+      assignmentErrorResponse(error, res) ||
+      res.status(500).json({
+        success: false,
+        message: "Internal server error",
+      })
+    );
+  }
 }
 
 async function list(req, res) {
@@ -103,4 +129,5 @@ module.exports = {
   create,
   list,
   show,
+  updateStatus,
 };
