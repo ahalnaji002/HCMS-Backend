@@ -112,7 +112,22 @@ async function createFixtures() {
     role: "ADMIN",
   });
 
-  return { patient, doctor, ngo, admin };
+  const patientProfile = await db("patients")
+    .where({ user_id: patient.id })
+    .first();
+
+  const doctorProfile = await db("doctors")
+    .where({ user_id: doctor.id })
+    .first();
+
+  return {
+    patient,
+    doctor,
+    ngo,
+    admin,
+    patientProfile,
+    doctorProfile,
+  };
 }
 
 function tokenFor(user) {
@@ -126,6 +141,7 @@ before(async () => {
 beforeEach(async () => {
   assertTestDatabaseVerified();
 
+  await db("doctor_patient_assignments").del();
   await db("ngos").del();
   await db("doctors").del();
   await db("patients").del();
@@ -137,6 +153,7 @@ beforeEach(async () => {
 after(async () => {
   try {
     if (testDatabaseVerified) {
+      await db("doctor_patient_assignments").del();
       await db("ngos").del();
       await db("doctors").del();
       await db("patients").del();
@@ -413,4 +430,299 @@ test("admin cannot update profile through the self-update endpoint", async () =>
   assert.equal(response.status, 403);
   assert.equal(response.body.success, false);
   assert.equal(response.body.message, "Forbidden");
+});
+
+// ==============================
+// Doctor-Patient Assignment Creation
+// ==============================
+
+test("POST /api/admin/doctor-patient-assignments rejects unauthenticated requests", async () => {
+  const response = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+    });
+
+  assert.equal(response.status, 401);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Authentication required");
+});
+
+test("POST /api/admin/doctor-patient-assignments rejects non-admin users", async () => {
+  const response = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+    });
+
+  assert.equal(response.status, 403);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Forbidden");
+});
+
+test("admin can create an active doctor-patient assignment", async () => {
+  const response = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+      assignment_reason: "Primary care follow-up",
+      notes: "Sprint 6 assignment test",
+    });
+
+  assert.equal(response.status, 201);
+  assert.equal(response.body.success, true);
+  assert.equal(
+    response.body.message,
+    "Doctor-patient assignment created successfully",
+  );
+
+  const assignment = response.body.data.assignment;
+
+  assert.equal(Number(assignment.doctor_id), users.doctorProfile.id);
+  assert.equal(Number(assignment.patient_id), users.patientProfile.id);
+  assert.equal(assignment.status, "ACTIVE");
+  assert.equal(assignment.assignment_reason, "Primary care follow-up");
+  assert.equal(assignment.notes, "Sprint 6 assignment test");
+
+  const storedAssignment = await db("doctor_patient_assignments")
+    .where({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+      status: "ACTIVE",
+    })
+    .first();
+
+  assert.ok(storedAssignment);
+});
+
+test("assignment_reason and notes are optional", async () => {
+  const response = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+    });
+
+  assert.equal(response.status, 201);
+  assert.equal(response.body.success, true);
+  assert.equal(response.body.data.assignment.status, "ACTIVE");
+  assert.equal(response.body.data.assignment.assignment_reason, null);
+  assert.equal(response.body.data.assignment.notes, null);
+});
+
+test("assignment creation rejects invalid doctor and patient ids", async () => {
+  const response = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: 0,
+      patient_id: "invalid",
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Validation failed");
+  assert.ok(response.body.errors.doctor_id);
+  assert.ok(response.body.errors.patient_id);
+});
+
+test("assignment creation rejects protected or unknown fields", async () => {
+  const response = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+      status: "INACTIVE",
+      ended_at: "2026-09-19 12:00:00",
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Validation failed");
+  assert.ok(response.body.errors.status);
+  assert.ok(response.body.errors.ended_at);
+
+  const assignments = await db("doctor_patient_assignments");
+
+  assert.equal(assignments.length, 0);
+});
+
+test("assignment creation returns 404 when doctor does not exist", async () => {
+  const response = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: "999999999",
+      patient_id: users.patientProfile.id,
+    });
+
+  assert.equal(response.status, 404);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Doctor not found");
+});
+
+test("assignment creation returns 404 when patient does not exist", async () => {
+  const response = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: "999999999",
+    });
+
+  assert.equal(response.status, 404);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Patient not found");
+});
+
+test("assignment creation rejects an inactive doctor account", async () => {
+  await db("users")
+    .where({ id: users.doctor.id })
+    .update({ account_status: "INACTIVE" });
+
+  const response = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+    });
+
+  assert.equal(response.status, 409);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Doctor account is not active");
+
+  const assignments = await db("doctor_patient_assignments");
+
+  assert.equal(assignments.length, 0);
+});
+
+test("assignment creation rejects an inactive patient account", async () => {
+  await db("users")
+    .where({ id: users.patient.id })
+    .update({ account_status: "INACTIVE" });
+
+  const response = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+    });
+
+  assert.equal(response.status, 409);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Patient account is not active");
+
+  const assignments = await db("doctor_patient_assignments");
+
+  assert.equal(assignments.length, 0);
+});
+
+test("assignment creation rejects a duplicate active assignment", async () => {
+  await db("doctor_patient_assignments").insert({
+    doctor_id: users.doctorProfile.id,
+    patient_id: users.patientProfile.id,
+    status: "ACTIVE",
+    assignment_reason: "Existing active assignment",
+  });
+
+  const response = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+    });
+
+  assert.equal(response.status, 409);
+  assert.equal(response.body.success, false);
+  assert.equal(
+    response.body.message,
+    "An active assignment already exists for this doctor and patient",
+  );
+
+  const activeAssignments = await db("doctor_patient_assignments").where({
+    doctor_id: users.doctorProfile.id,
+    patient_id: users.patientProfile.id,
+    status: "ACTIVE",
+  });
+
+  assert.equal(activeAssignments.length, 1);
+});
+
+test("historical inactive assignment does not prevent a new active assignment", async () => {
+  await db("doctor_patient_assignments").insert({
+    doctor_id: users.doctorProfile.id,
+    patient_id: users.patientProfile.id,
+    status: "INACTIVE",
+    assignment_reason: "Previous assignment",
+    ended_at: db.fn.now(),
+  });
+
+  const response = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+      assignment_reason: "New assignment",
+    });
+
+  assert.equal(response.status, 201);
+  assert.equal(response.body.success, true);
+
+  const assignments = await db("doctor_patient_assignments")
+    .where({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+    })
+    .orderBy("id", "asc");
+
+  assert.equal(assignments.length, 2);
+  assert.equal(assignments[0].status, "INACTIVE");
+  assert.equal(assignments[1].status, "ACTIVE");
+});
+
+test("concurrent assignment creation results in only one active assignment", async () => {
+  const payload = {
+    doctor_id: users.doctorProfile.id,
+    patient_id: users.patientProfile.id,
+    assignment_reason: "Concurrent assignment test",
+  };
+
+  const token = tokenFor(users.admin);
+
+  const [firstResponse, secondResponse] = await Promise.all([
+    request(app)
+      .post("/api/admin/doctor-patient-assignments")
+      .set("Authorization", `Bearer ${token}`)
+      .send(payload),
+
+    request(app)
+      .post("/api/admin/doctor-patient-assignments")
+      .set("Authorization", `Bearer ${token}`)
+      .send(payload),
+  ]);
+
+  const statuses = [firstResponse.status, secondResponse.status].sort(
+    (a, b) => a - b,
+  );
+
+  assert.deepEqual(statuses, [201, 409]);
+
+  const activeAssignments = await db("doctor_patient_assignments").where({
+    doctor_id: users.doctorProfile.id,
+    patient_id: users.patientProfile.id,
+    status: "ACTIVE",
+  });
+
+  assert.equal(activeAssignments.length, 1);
 });
