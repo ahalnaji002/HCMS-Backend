@@ -1,5 +1,7 @@
 const express = require("express");
 const cors = require("cors");
+const doctorRoutes = require("./routes/doctorRoutes");
+const patientRoutes = require("./routes/patientRoutes");
 
 const {
   apiErrorHandler,
@@ -23,6 +25,9 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/doctor", doctorRoutes);
+app.use("/api/patient", patientRoutes);
+
 app.use("/api", apiNotFound);
 app.use(apiErrorHandler);
 
