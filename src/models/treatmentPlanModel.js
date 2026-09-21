@@ -36,6 +36,13 @@ function listByPatientId(patientId, connection = db) {
     .orderBy("id", "asc");
 }
 
+function findById(planId, connection = db) {
+  return connection("treatment_plans")
+    .select(TREATMENT_PLAN_COLUMNS)
+    .where({ id: planId })
+    .first();
+}
+
 function findByIdAndPatientId(planId, patientId, connection = db) {
   return connection("treatment_plans")
     .select(TREATMENT_PLAN_COLUMNS)
@@ -67,6 +74,7 @@ async function updateByIdAndPatientId(
 
 module.exports = {
   create,
+  findById,
   listByPatientId,
   findByIdAndPatientId,
   updateByIdAndPatientId,

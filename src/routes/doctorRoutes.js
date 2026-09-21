@@ -4,6 +4,7 @@ const authorizeRoles = require("../middleware/authorizeRoles");
 const medicalRecordController = require("../controllers/medicalRecordController");
 const medicalNoteController = require("../controllers/medicalNoteController");
 const treatmentPlanController = require("../controllers/treatmentPlanController");
+const treatmentMedicationController = require("../controllers/treatmentMedicationController");
 
 const {
   validateCreateMedicalRecord,
@@ -21,6 +22,12 @@ const {
   validateCreateTreatmentPlan,
   validateUpdateTreatmentPlan,
 } = require("../middleware/validateTreatmentPlan");
+const {
+  validateCreateTreatmentMedication,
+  validateMedicationId,
+  validatePlanId: validateMedicationPlanId,
+  validateUpdateTreatmentMedication,
+} = require("../middleware/validateTreatmentMedication");
 
 const router = express.Router();
 
@@ -85,6 +92,41 @@ router.patch(
   validatePlanId,
   validateUpdateTreatmentPlan,
   treatmentPlanController.updateForAssignedPatient,
+);
+
+router.post(
+  "/treatment-plans/:planId/medications",
+  validateMedicationPlanId,
+  validateCreateTreatmentMedication,
+  treatmentMedicationController.create,
+);
+
+router.get(
+  "/treatment-plans/:planId/medications",
+  validateMedicationPlanId,
+  treatmentMedicationController.listForDoctor,
+);
+
+router.get(
+  "/treatment-plans/:planId/medications/:medicationId",
+  validateMedicationPlanId,
+  validateMedicationId,
+  treatmentMedicationController.getForDoctor,
+);
+
+router.patch(
+  "/treatment-plans/:planId/medications/:medicationId",
+  validateMedicationPlanId,
+  validateMedicationId,
+  validateUpdateTreatmentMedication,
+  treatmentMedicationController.updateForDoctor,
+);
+
+router.delete(
+  "/treatment-plans/:planId/medications/:medicationId",
+  validateMedicationPlanId,
+  validateMedicationId,
+  treatmentMedicationController.deleteForDoctor,
 );
 
 module.exports = router;
