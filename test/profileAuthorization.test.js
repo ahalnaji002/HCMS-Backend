@@ -142,6 +142,9 @@ beforeEach(async () => {
   assertTestDatabaseVerified();
 
   await db("medical_notes").del();
+  await db("treatment_medications").del();
+  await db("treatment_appointments").del();
+  await db("treatment_plans").del();
   await db("medical_records").del();
   await db("doctor_patient_assignments").del();
   await db("ngos").del();
@@ -156,6 +159,9 @@ after(async () => {
   try {
     if (testDatabaseVerified) {
       await db("medical_notes").del();
+      await db("treatment_medications").del();
+      await db("treatment_appointments").del();
+      await db("treatment_plans").del();
       await db("medical_records").del();
       await db("doctor_patient_assignments").del();
       await db("ngos").del();
@@ -1467,6 +1473,21 @@ async function createSecondDoctor() {
   };
 }
 
+async function insertTreatmentPlan(overrides = {}) {
+  const [id] = await db("treatment_plans").insert({
+    patient_id: users.patientProfile.id,
+    doctor_id: users.doctorProfile.id,
+    title: "Test Treatment Plan",
+    general_instructions: "Follow the treatment instructions.",
+    status: "ACTIVE",
+    start_date: "2026-09-21",
+    end_date: "2026-10-21",
+    ...overrides,
+  });
+
+  return db("treatment_plans").where({ id }).first();
+}
+
 // ==============================
 // Medical Record Management
 // ==============================
@@ -2127,4 +2148,645 @@ test("doctor can retrieve only medical notes they personally created", async () 
     response.body.data.medical_notes[0].note,
     "First doctor's private medical note",
   );
+});
+
+// ==============================
+// Treatment Plans Management
+// ==============================
+
+test("POST treatment plan rejects unauthenticated requests", async () => {
+  const response = await request(app)
+    .post(`/api/doctor/patients/${users.patientProfile.id}/treatment-plans`)
+    .send({
+      title: "Diabetes Treatment Plan",
+      start_date: "2026-09-21",
+    });
+
+  assert.equal(response.status, 401);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Authentication required");
+});
+
+test("patient cannot use doctor treatment plan endpoints", async () => {
+  const response = await request(app)
+    .get(`/api/doctor/patients/${users.patientProfile.id}/treatment-plans`)
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 403);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Forbidden");
+});
+
+test("doctor cannot create a treatment plan without an active assignment", async () => {
+  const response = await request(app)
+    .post(`/api/doctor/patients/${users.patientProfile.id}/treatment-plans`)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({
+      title: "Diabetes Treatment Plan",
+      start_date: "2026-09-21",
+    });
+
+  assert.equal(response.status, 403);
+  assert.equal(response.body.success, false);
+  assert.equal(
+    response.body.message,
+    "Active Doctor-Patient Assignment required",
+  );
+});
+
+test("assigned doctor can create a treatment plan", async () => {
+  await insertActiveAssignment();
+
+  const response = await request(app)
+    .post(`/api/doctor/patients/${users.patientProfile.id}/treatment-plans`)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({
+      title: "  Diabetes Treatment Plan  ",
+      general_instructions: "  Monitor blood sugar daily.  ",
+      start_date: "2026-09-21",
+      end_date: "2026-10-21",
+    });
+
+  assert.equal(response.status, 201);
+  assert.equal(response.body.success, true);
+  assert.equal(response.body.message, "Treatment Plan created successfully");
+
+  const plan = response.body.data.treatment_plan;
+
+  assert.equal(Number(plan.patient_id), users.patientProfile.id);
+  assert.equal(Number(plan.doctor_id), users.doctorProfile.id);
+  assert.equal(plan.title, "Diabetes Treatment Plan");
+  assert.equal(
+    plan.general_instructions,
+    "  Monitor blood sugar daily.  ",
+  );
+  assert.equal(plan.status, "ACTIVE");
+
+  const stored = await db("treatment_plans").where({ id: plan.id }).first();
+
+  assert.ok(stored);
+  assert.equal(Number(stored.patient_id), users.patientProfile.id);
+  assert.equal(Number(stored.doctor_id), users.doctorProfile.id);
+  assert.equal(stored.status, "ACTIVE");
+});
+
+test("treatment plan creation rejects missing required fields", async () => {
+  await insertActiveAssignment();
+
+  const response = await request(app)
+    .post(`/api/doctor/patients/${users.patientProfile.id}/treatment-plans`)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({});
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Validation failed");
+  assert.ok(response.body.errors.title);
+  assert.ok(response.body.errors.start_date);
+});
+
+test("treatment plan creation rejects protected and unknown fields", async () => {
+  await insertActiveAssignment();
+
+  const response = await request(app)
+    .post(`/api/doctor/patients/${users.patientProfile.id}/treatment-plans`)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({
+      title: "Protected Fields Test",
+      start_date: "2026-09-21",
+      status: "COMPLETED",
+      patient_id: 999,
+      doctor_id: 999,
+      id: 999,
+      created_at: "2026-09-21",
+      updated_at: "2026-09-21",
+      unexpected_field: "not allowed",
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Validation failed");
+  assert.ok(response.body.errors.status);
+  assert.ok(response.body.errors.patient_id);
+  assert.ok(response.body.errors.doctor_id);
+  assert.ok(response.body.errors.id);
+  assert.ok(response.body.errors.created_at);
+  assert.ok(response.body.errors.updated_at);
+  assert.ok(response.body.errors.unexpected_field);
+
+  const plans = await db("treatment_plans");
+  assert.equal(plans.length, 0);
+});
+
+test("treatment plan creation validates strict calendar dates", async () => {
+  await insertActiveAssignment();
+
+  const response = await request(app)
+    .post(`/api/doctor/patients/${users.patientProfile.id}/treatment-plans`)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({
+      title: "Invalid Date Plan",
+      start_date: "2026-02-30",
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Validation failed");
+  assert.ok(response.body.errors.start_date);
+});
+
+test("treatment plan routes reject IDs above unsigned BIGINT range", async () => {
+  const response = await request(app)
+    .get(
+      "/api/doctor/patients/18446744073709551616/treatment-plans",
+    )
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`);
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Validation failed");
+  assert.ok(response.body.errors.patientId);
+});
+
+test("treatment plan creation rejects end_date before start_date", async () => {
+  await insertActiveAssignment();
+
+  const response = await request(app)
+    .post(`/api/doctor/patients/${users.patientProfile.id}/treatment-plans`)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({
+      title: "Invalid Date Range",
+      start_date: "2026-10-21",
+      end_date: "2026-09-21",
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Validation failed");
+  assert.ok(response.body.errors.end_date);
+});
+
+test("treatment plan creation allows end_date equal to start_date", async () => {
+  await insertActiveAssignment();
+
+  const response = await request(app)
+    .post(`/api/doctor/patients/${users.patientProfile.id}/treatment-plans`)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({
+      title: "Single Day Treatment Plan",
+      start_date: "2026-09-21",
+      end_date: "2026-09-21",
+    });
+
+  assert.equal(response.status, 201);
+  assert.equal(response.body.success, true);
+  assert.equal(response.body.data.treatment_plan.status, "ACTIVE");
+});
+
+test("assigned doctor gets an empty treatment plans list when no plans exist", async () => {
+  await insertActiveAssignment();
+
+  const response = await request(app)
+    .get(`/api/doctor/patients/${users.patientProfile.id}/treatment-plans`)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.deepEqual(response.body.data.treatment_plans, []);
+});
+
+test("assigned doctor can list all treatment plans for the patient", async () => {
+  await insertActiveAssignment();
+
+  const firstPlan = await insertTreatmentPlan({
+    title: "First Treatment Plan",
+  });
+
+  const secondPlan = await insertTreatmentPlan({
+    title: "Second Treatment Plan",
+    status: "COMPLETED",
+  });
+
+  const response = await request(app)
+    .get(`/api/doctor/patients/${users.patientProfile.id}/treatment-plans`)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.equal(response.body.data.treatment_plans.length, 2);
+  assert.deepEqual(
+    response.body.data.treatment_plans.map((plan) => Number(plan.id)),
+    [firstPlan.id, secondPlan.id],
+  );
+});
+
+test("assigned doctor can view a treatment plan detail", async () => {
+  await insertActiveAssignment();
+  const plan = await insertTreatmentPlan();
+
+  const response = await request(app)
+    .get(
+      `/api/doctor/patients/${users.patientProfile.id}/treatment-plans/${plan.id}`,
+    )
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.equal(Number(response.body.data.treatment_plan.id), plan.id);
+});
+
+test("assigned doctor can update a treatment plan", async () => {
+  await insertActiveAssignment();
+  const plan = await insertTreatmentPlan();
+
+  const response = await request(app)
+    .patch(
+      `/api/doctor/patients/${users.patientProfile.id}/treatment-plans/${plan.id}`,
+    )
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({
+      title: "Updated Treatment Plan",
+      status: "COMPLETED",
+      general_instructions: "Updated instructions",
+    });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.equal(response.body.message, "Treatment Plan updated successfully");
+  assert.equal(
+    response.body.data.treatment_plan.title,
+    "Updated Treatment Plan",
+  );
+  assert.equal(response.body.data.treatment_plan.status, "COMPLETED");
+  assert.equal(
+    Number(response.body.data.treatment_plan.doctor_id),
+    users.doctorProfile.id,
+  );
+});
+
+test("treatment plan update rejects an empty body", async () => {
+  await insertActiveAssignment();
+  const plan = await insertTreatmentPlan();
+
+  const response = await request(app)
+    .patch(
+      `/api/doctor/patients/${users.patientProfile.id}/treatment-plans/${plan.id}`,
+    )
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({});
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Validation failed");
+  assert.ok(response.body.errors.body);
+});
+
+test("treatment plan update rejects invalid status", async () => {
+  await insertActiveAssignment();
+  const plan = await insertTreatmentPlan();
+
+  const response = await request(app)
+    .patch(
+      `/api/doctor/patients/${users.patientProfile.id}/treatment-plans/${plan.id}`,
+    )
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({
+      status: "INVALID",
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.ok(response.body.errors.status);
+});
+
+test("treatment plan update rejects protected fields", async () => {
+  await insertActiveAssignment();
+  const plan = await insertTreatmentPlan();
+
+  const response = await request(app)
+    .patch(
+      `/api/doctor/patients/${users.patientProfile.id}/treatment-plans/${plan.id}`,
+    )
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({
+      doctor_id: 999,
+      patient_id: 999,
+      created_at: "2026-09-21",
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.ok(response.body.errors.doctor_id);
+  assert.ok(response.body.errors.patient_id);
+  assert.ok(response.body.errors.created_at);
+
+  const stored = await db("treatment_plans").where({ id: plan.id }).first();
+
+  assert.equal(Number(stored.doctor_id), users.doctorProfile.id);
+  assert.equal(Number(stored.patient_id), users.patientProfile.id);
+});
+
+test("treatment plan update validates resulting date range when only start_date changes", async () => {
+  await insertActiveAssignment();
+
+  const plan = await insertTreatmentPlan({
+    start_date: "2026-09-21",
+    end_date: "2026-10-21",
+  });
+
+  const response = await request(app)
+    .patch(
+      `/api/doctor/patients/${users.patientProfile.id}/treatment-plans/${plan.id}`,
+    )
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({
+      start_date: "2026-11-01",
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.equal(
+    response.body.message,
+    "end_date must be greater than or equal to start_date",
+  );
+});
+
+test("treatment plan update validates resulting date range when only end_date changes", async () => {
+  await insertActiveAssignment();
+
+  const plan = await insertTreatmentPlan({
+    start_date: "2026-09-21",
+    end_date: "2026-10-21",
+  });
+
+  const response = await request(app)
+    .patch(
+      `/api/doctor/patients/${users.patientProfile.id}/treatment-plans/${plan.id}`,
+    )
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({
+      end_date: "2026-09-20",
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.equal(
+    response.body.message,
+    "end_date must be greater than or equal to start_date",
+  );
+});
+
+test("treatment plan update can clear end_date", async () => {
+  await insertActiveAssignment();
+
+  const plan = await insertTreatmentPlan({
+    end_date: "2026-10-21",
+  });
+
+  const response = await request(app)
+    .patch(
+      `/api/doctor/patients/${users.patientProfile.id}/treatment-plans/${plan.id}`,
+    )
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({
+      end_date: null,
+    });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.equal(response.body.data.treatment_plan.end_date, null);
+});
+
+test("currently assigned doctor can view a treatment plan created by a previous doctor", async () => {
+  const plan = await insertTreatmentPlan();
+
+  const secondDoctor = await createSecondDoctor();
+
+  await db("doctor_patient_assignments").insert({
+    doctor_id: secondDoctor.profile.id,
+    patient_id: users.patientProfile.id,
+    status: "ACTIVE",
+  });
+
+  const response = await request(app)
+    .get(
+      `/api/doctor/patients/${users.patientProfile.id}/treatment-plans/${plan.id}`,
+    )
+    .set("Authorization", `Bearer ${tokenFor(secondDoctor.user)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.equal(Number(response.body.data.treatment_plan.id), plan.id);
+  assert.equal(
+    Number(response.body.data.treatment_plan.doctor_id),
+    users.doctorProfile.id,
+  );
+});
+
+test("currently assigned doctor can update a previous doctor's treatment plan without changing doctor_id", async () => {
+  const plan = await insertTreatmentPlan();
+
+  const originalDoctorId = Number(plan.doctor_id);
+
+  const secondDoctor = await createSecondDoctor();
+
+  await db("doctor_patient_assignments").insert({
+    doctor_id: secondDoctor.profile.id,
+    patient_id: users.patientProfile.id,
+    status: "ACTIVE",
+  });
+
+  const response = await request(app)
+    .patch(
+      `/api/doctor/patients/${users.patientProfile.id}/treatment-plans/${plan.id}`,
+    )
+    .set("Authorization", `Bearer ${tokenFor(secondDoctor.user)}`)
+    .send({
+      title: "Continued Treatment Plan",
+      status: "COMPLETED",
+    });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.equal(
+    response.body.data.treatment_plan.title,
+    "Continued Treatment Plan",
+  );
+  assert.equal(
+    Number(response.body.data.treatment_plan.doctor_id),
+    originalDoctorId,
+  );
+
+  const stored = await db("treatment_plans").where({ id: plan.id }).first();
+
+  assert.equal(Number(stored.doctor_id), originalDoctorId);
+  assert.notEqual(Number(stored.doctor_id), secondDoctor.profile.id);
+});
+
+test("inactive assignment does not authorize treatment plan access", async () => {
+  const plan = await insertTreatmentPlan();
+
+  await db("doctor_patient_assignments").insert({
+    doctor_id: users.doctorProfile.id,
+    patient_id: users.patientProfile.id,
+    status: "INACTIVE",
+    ended_at: db.fn.now(),
+  });
+
+  const response = await request(app)
+    .get(
+      `/api/doctor/patients/${users.patientProfile.id}/treatment-plans/${plan.id}`,
+    )
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`);
+
+  assert.equal(response.status, 403);
+  assert.equal(
+    response.body.message,
+    "Active Doctor-Patient Assignment required",
+  );
+});
+
+test("doctor treatment plan detail returns 404 when plan does not belong to scoped patient", async () => {
+  await insertActiveAssignment();
+
+  const secondPatientUser = await createUser({
+    fullName: "Second Treatment Patient",
+    email: "treatment.patient2@test.local",
+    role: "PATIENT",
+    phone: "0593333333",
+  });
+
+  const [secondPatientId] = await db("patients").insert({
+    user_id: secondPatientUser.id,
+    date_of_birth: "2001-01-01",
+    gender: "FEMALE",
+    address: "Gaza",
+  });
+
+  const plan = await insertTreatmentPlan({
+    patient_id: secondPatientId,
+  });
+
+  const response = await request(app)
+    .get(
+      `/api/doctor/patients/${users.patientProfile.id}/treatment-plans/${plan.id}`,
+    )
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`);
+
+  assert.equal(response.status, 404);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Treatment Plan not found");
+});
+
+test("patient gets an empty treatment plans list when no plans exist", async () => {
+  const response = await request(app)
+    .get("/api/patient/treatment-plans")
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.deepEqual(response.body.data.treatment_plans, []);
+});
+
+test("patient can list their own treatment plans", async () => {
+  const firstPlan = await insertTreatmentPlan({
+    title: "Patient First Plan",
+  });
+
+  const secondPlan = await insertTreatmentPlan({
+    title: "Patient Second Plan",
+  });
+
+  const response = await request(app)
+    .get("/api/patient/treatment-plans")
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.deepEqual(
+    response.body.data.treatment_plans.map((plan) => Number(plan.id)),
+    [firstPlan.id, secondPlan.id],
+  );
+});
+
+test("patient can view their own treatment plan detail", async () => {
+  const plan = await insertTreatmentPlan();
+
+  const response = await request(app)
+    .get(`/api/patient/treatment-plans/${plan.id}`)
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.equal(Number(response.body.data.treatment_plan.id), plan.id);
+  assert.equal(
+    Number(response.body.data.treatment_plan.patient_id),
+    users.patientProfile.id,
+  );
+});
+
+test("patient cannot view another patient's treatment plan", async () => {
+  const secondPatientUser = await createUser({
+    fullName: "Second Treatment Patient",
+    email: "treatment.patient2@test.local",
+    role: "PATIENT",
+    phone: "0593333333",
+  });
+
+  const [secondPatientId] = await db("patients").insert({
+    user_id: secondPatientUser.id,
+    date_of_birth: "2001-01-01",
+    gender: "FEMALE",
+    address: "Gaza",
+  });
+
+  const plan = await insertTreatmentPlan({
+    patient_id: secondPatientId,
+  });
+
+  const response = await request(app)
+    .get(`/api/patient/treatment-plans/${plan.id}`)
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 404);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Treatment Plan not found");
+});
+
+test("patient treatment plan detail safely rejects invalid plan ID", async () => {
+  const response = await request(app)
+    .get("/api/patient/treatment-plans/not-an-id")
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Validation failed");
+  assert.ok(response.body.errors.planId);
+});
+
+test("patient treatment plan detail returns 404 for missing plan", async () => {
+  const response = await request(app)
+    .get("/api/patient/treatment-plans/999999999")
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 404);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Treatment Plan not found");
+});
+
+test("treatment plan deletion is not exposed", async () => {
+  await insertActiveAssignment();
+  const plan = await insertTreatmentPlan();
+
+  const response = await request(app)
+    .delete(
+      `/api/doctor/patients/${users.patientProfile.id}/treatment-plans/${plan.id}`,
+    )
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`);
+
+  assert.equal(response.status, 404);
+
+  const stored = await db("treatment_plans").where({ id: plan.id }).first();
+
+  assert.ok(stored);
 });
