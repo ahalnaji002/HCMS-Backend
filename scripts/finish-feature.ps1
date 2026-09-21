@@ -91,7 +91,7 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "Merge verified." -ForegroundColor Green
 
-# Delete only the local branch.
+# Delete the local branch safely.
 # -d adds another Git safety check and refuses deletion if Git considers it unmerged.
 Write-Host ""
 Write-Host "Deleting local branch: $FeatureBranch" -ForegroundColor Cyan
@@ -102,11 +102,41 @@ if ($LASTEXITCODE -ne 0) {
     Stop-WithError "Git refused to delete the local branch."
 }
 
+Write-Host "Local branch deleted safely." -ForegroundColor Green
+
+# Check whether the remote branch still exists.
+Write-Host ""
+Write-Host "Checking remote branch..." -ForegroundColor Cyan
+
+git ls-remote --exit-code --heads origin $FeatureBranch *> $null
+$RemoteBranchExists = ($LASTEXITCODE -eq 0)
+
+if ($RemoteBranchExists) {
+    Write-Host "Deleting remote branch: origin/$FeatureBranch" -ForegroundColor Cyan
+
+    git push origin --delete $FeatureBranch
+
+    if ($LASTEXITCODE -ne 0) {
+        Stop-WithError "Local branch was deleted, but the remote branch could not be deleted."
+    }
+
+    Write-Host "Remote branch deleted successfully." -ForegroundColor Green
+}
+else {
+    Write-Host "Remote branch does not exist. Nothing to delete." -ForegroundColor Yellow
+}
+
 Write-Host ""
 Write-Host "FEATURE FINISHED" -ForegroundColor Green
 Write-Host "Local develop is updated." -ForegroundColor Green
 Write-Host "Local branch '$FeatureBranch' was deleted safely." -ForegroundColor Green
-Write-Host "Remote branches were not deleted." -ForegroundColor Green
+
+if ($RemoteBranchExists) {
+    Write-Host "Remote branch 'origin/$FeatureBranch' was deleted." -ForegroundColor Green
+}
+else {
+    Write-Host "No remote branch cleanup was needed." -ForegroundColor Green
+}
 
 Write-Host ""
 git status --short --branch
