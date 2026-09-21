@@ -463,6 +463,34 @@ or invalid authentication, `403` for non-Admin access, `404` for missing
 assignments or references, and `409` for conflicting status transitions,
 inactive or inconsistent referenced accounts, or a duplicate active pair.
 
+### Treatment Medications
+
+Authenticated Doctors can manage medications under a Treatment Plan:
+
+```http
+POST   /api/doctor/treatment-plans/:planId/medications
+GET    /api/doctor/treatment-plans/:planId/medications
+GET    /api/doctor/treatment-plans/:planId/medications/:medicationId
+PATCH  /api/doctor/treatment-plans/:planId/medications/:medicationId
+DELETE /api/doctor/treatment-plans/:planId/medications/:medicationId
+```
+
+The Doctor must have an `ACTIVE` assignment with the Patient who owns the
+Treatment Plan. A currently assigned Doctor may manage medications on a plan
+created by a previous Doctor. Medication detail, update, and deletion are
+scoped to the Treatment Plan in the URL.
+
+Patients have read-only access to medications under their own Treatment Plans:
+
+```http
+GET /api/patient/treatment-plans/:planId/medications
+GET /api/patient/treatment-plans/:planId/medications/:medicationId
+```
+
+Creation requires `medication_name`, `dosage`, and `frequency`. Optional
+`duration` and `instructions` fields may be `null`. Resource IDs and timestamps
+are server-controlled, and the approved schema has no medication status field.
+
 ## Admin Seed
 
 The Admin seed creates an `ACTIVE` Admin account without creating a Patient, Doctor, NGO profile, or Join Request.
