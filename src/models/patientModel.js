@@ -3,6 +3,7 @@ const db = require("../config/database");
 function buildCreatePayload(patient) {
   const payload = {
     user_id: patient.user_id,
+    national_id: patient.national_id,
     date_of_birth: patient.date_of_birth,
     gender: patient.gender,
   };
@@ -65,6 +66,9 @@ module.exports = {
   findById,
   findByIdForUpdate,
   findProfileById,
+  findByNationalId(nationalId, connection = db) {
+    return connection("patients").where({ national_id: nationalId }).first();
+  },
   findByUserId,
   updateProfile,
 };

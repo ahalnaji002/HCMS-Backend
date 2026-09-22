@@ -13,15 +13,29 @@ class DuplicateEmailError extends Error {
   }
 }
 
+class DuplicateNationalIdError extends Error {
+  constructor() {
+    super("A patient with this national ID already exists");
+    this.name = "DuplicateNationalIdError";
+  }
+}
+
 function isDuplicateKeyError(error) {
   return error && (error.code === "ER_DUP_ENTRY" || error.errno === 1062);
 }
 
 async function registerPatient(registration) {
-  const existingUser = await userModel.findByEmail(registration.email);
+  const [existingUser, existingPatient] = await Promise.all([
+    userModel.findByEmail(registration.email),
+    patientModel.findByNationalId(registration.national_id),
+  ]);
 
   if (existingUser) {
     throw new DuplicateEmailError();
+  }
+
+  if (existingPatient) {
+    throw new DuplicateNationalIdError();
   }
 
   const passwordHash = await bcrypt.hash(
@@ -46,6 +60,7 @@ async function registerPatient(registration) {
       const patient = await patientModel.create(
         {
           user_id: user.id,
+          national_id: registration.national_id,
           date_of_birth: registration.date_of_birth,
           gender: registration.gender,
           address: registration.address,
@@ -57,7 +72,18 @@ async function registerPatient(registration) {
     });
   } catch (error) {
     if (isDuplicateKeyError(error)) {
-      throw new DuplicateEmailError();
+      const [conflictingUser, conflictingPatient] = await Promise.all([
+        userModel.findByEmail(registration.email),
+        patientModel.findByNationalId(registration.national_id),
+      ]);
+
+      if (conflictingUser) {
+        throw new DuplicateEmailError();
+      }
+
+      if (conflictingPatient) {
+        throw new DuplicateNationalIdError();
+      }
     }
 
     throw error;
@@ -66,5 +92,6 @@ async function registerPatient(registration) {
 
 module.exports = {
   DuplicateEmailError,
+  DuplicateNationalIdError,
   registerPatient,
 };
