@@ -10,6 +10,11 @@ const {
   validateMedicationId,
   validatePlanId: validateMedicationPlanId,
 } = require("../middleware/validateTreatmentMedication");
+const treatmentAppointmentController = require("../controllers/treatmentAppointmentController");
+const {
+  validateAppointmentId,
+  validatePlanId: validateAppointmentPlanId,
+} = require("../middleware/validateTreatmentAppointment");
 
 const router = express.Router();
 
@@ -36,6 +41,19 @@ router.get(
   validateMedicationPlanId,
   validateMedicationId,
   treatmentMedicationController.getForPatient,
+);
+
+router.get(
+  "/treatment-plans/:planId/appointments",
+  validateAppointmentPlanId,
+  treatmentAppointmentController.listForPatient,
+);
+
+router.get(
+  "/treatment-plans/:planId/appointments/:appointmentId",
+  validateAppointmentPlanId,
+  validateAppointmentId,
+  treatmentAppointmentController.getForPatient,
 );
 
 module.exports = router;

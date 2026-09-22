@@ -491,6 +491,36 @@ Creation requires `medication_name`, `dosage`, and `frequency`. Optional
 `duration` and `instructions` fields may be `null`. Resource IDs and timestamps
 are server-controlled, and the approved schema has no medication status field.
 
+### Treatment Appointments
+
+Authenticated Doctors can manage appointments under an authorized Treatment
+Plan:
+
+```http
+POST   /api/doctor/treatment-plans/:planId/appointments
+GET    /api/doctor/treatment-plans/:planId/appointments
+GET    /api/doctor/treatment-plans/:planId/appointments/:appointmentId
+PATCH  /api/doctor/treatment-plans/:planId/appointments/:appointmentId
+DELETE /api/doctor/treatment-plans/:planId/appointments/:appointmentId
+```
+
+Doctor access requires an `ACTIVE` assignment with the Patient who owns the
+plan. Continuing-care access permits the current assigned Doctor to manage
+appointments on a plan created by a previous Doctor.
+
+Patients can only list and view appointments under their own Treatment Plans:
+
+```http
+GET /api/patient/treatment-plans/:planId/appointments
+GET /api/patient/treatment-plans/:planId/appointments/:appointmentId
+```
+
+Creation requires `appointment_date` in `YYYY-MM-DD HH:mm:ss` format and a
+non-empty `purpose`. The appointment calendar date must fall within the plan's
+inclusive date range; a null plan `end_date` has no upper bound. New
+appointments start as `SCHEDULED`, while updates may use `SCHEDULED`,
+`COMPLETED`, or `CANCELLED` without additional transition restrictions.
+
 ## Admin Seed
 
 The Admin seed creates an `ACTIVE` Admin account without creating a Patient, Doctor, NGO profile, or Join Request.
