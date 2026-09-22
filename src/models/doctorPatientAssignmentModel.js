@@ -35,6 +35,29 @@ function listAll(connection = db) {
     .orderBy("id", "desc");
 }
 
+function listActivePatientsByDoctorId(doctorId, connection = db) {
+  return connection("doctor_patient_assignments as assignments")
+    .join("patients", "patients.id", "assignments.patient_id")
+    .join("users", "users.id", "patients.user_id")
+    .select(
+      "patients.id",
+      "users.full_name",
+      "users.email",
+      "users.phone",
+      "users.role",
+      "users.account_status",
+      "patients.date_of_birth",
+      "patients.gender",
+      "patients.address",
+    )
+    .where({
+      "assignments.doctor_id": doctorId,
+      "assignments.status": "ACTIVE",
+    })
+    .orderBy("users.full_name", "asc")
+    .orderBy("patients.id", "asc");
+}
+
 function findActiveByDoctorAndPatient(doctorId, patientId, connection = db) {
   return connection("doctor_patient_assignments")
     .where({
@@ -80,6 +103,7 @@ module.exports = {
   findActiveByDoctorAndPatient,
   findById,
   findByIdForUpdate,
+  listActivePatientsByDoctorId,
   listAll,
   updateStatus,
 };

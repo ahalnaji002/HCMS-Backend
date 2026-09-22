@@ -26,6 +26,24 @@ function findByUserId(userId, connection = db) {
   return connection("patients").where({ user_id: userId }).first();
 }
 
+function findProfileById(id, connection = db) {
+  return connection("patients")
+    .join("users", "users.id", "patients.user_id")
+    .select(
+      "patients.id",
+      "users.full_name",
+      "users.email",
+      "users.phone",
+      "users.role",
+      "users.account_status",
+      "patients.date_of_birth",
+      "patients.gender",
+      "patients.address",
+    )
+    .where("patients.id", id)
+    .first();
+}
+
 async function create(patient, connection = db) {
   await connection("patients").insert(buildCreatePayload(patient));
   return findByUserId(patient.user_id, connection);
@@ -46,6 +64,7 @@ module.exports = {
   create,
   findById,
   findByIdForUpdate,
+  findProfileById,
   findByUserId,
   updateProfile,
 };

@@ -6,6 +6,7 @@ const medicalNoteController = require("../controllers/medicalNoteController");
 const treatmentPlanController = require("../controllers/treatmentPlanController");
 const treatmentMedicationController = require("../controllers/treatmentMedicationController");
 const treatmentAppointmentController = require("../controllers/treatmentAppointmentController");
+const doctorAssignedPatientController = require("../controllers/doctorAssignedPatientController");
 
 const {
   validateCreateMedicalRecord,
@@ -39,6 +40,14 @@ const {
 const router = express.Router();
 
 router.use(authenticate, authorizeRoles("DOCTOR"));
+
+router.get("/patients", doctorAssignedPatientController.list);
+
+router.get(
+  "/patients/:patientId",
+  validatePatientId,
+  doctorAssignedPatientController.show,
+);
 
 router.post(
   "/patients/:patientId/medical-record",
