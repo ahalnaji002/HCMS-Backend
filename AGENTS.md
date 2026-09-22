@@ -291,6 +291,14 @@ Changes should remain small and focused.
 
 ## Documentation and External Libraries
 
+Detailed backend API documentation must be maintained in:
+
+- `docs/api/README.md`
+
+Update that document as backend endpoints evolve. Document only behavior that
+has been verified against the authoritative project references, approved
+decisions, and current implementation.
+
 When implementation depends on current framework or library behavior,
 prefer current official documentation.
 
@@ -303,16 +311,23 @@ Do not change dependency versions unless required and approved.
 
 ## Source of Truth
 
-For HCMS requirements, use the approved project documentation as the source
-of truth, especially:
+The following files are the authoritative project reference documents for
+HCMS backend requirements and database design:
 
-- Software Requirements Specification (SRS)
-- ERD
-- Data Dictionary
+- `docs/requirements/SRS.pdf`
+- `docs/database/ERD.pdf`
+- `docs/database/Data-Dictionary.pdf`
 - Approved project decisions
 
-If the implementation request conflicts with these documents, stop and
-report the conflict instead of making an architectural decision independently.
+Review the relevant sections of these documents before implementing or
+auditing backend requirements. Do not rely only on memory, README content, API
+documentation, GitHub issue text, or the current implementation when an
+authoritative reference is available.
+
+If the authoritative documents, current code, root README, detailed API
+documentation, or GitHub issues conflict, stop and report the inconsistency.
+Do not silently choose one behavior, change the implementation, or rewrite the
+documentation without explicit resolution.
 
 If requirements are ambiguous, ask for clarification before making
 high-impact changes.
