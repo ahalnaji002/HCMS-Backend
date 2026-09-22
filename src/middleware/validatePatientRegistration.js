@@ -1,5 +1,6 @@
 const {
   isValidDateOnly,
+  isValidNationalId,
   validateCommonRegistrationFields,
 } = require("../utils/registrationValidation");
 
@@ -24,6 +25,11 @@ function validatePatientRegistration(req, res, next) {
   }
 
   validateCommonRegistrationFields(input, errors);
+
+  if (!isValidNationalId(input.national_id)) {
+    errors.national_id =
+      "national_id must be exactly 9 digits and must not start with 0";
+  }
 
   if (!isValidDateOnly(input.date_of_birth)) {
     errors.date_of_birth =
@@ -65,6 +71,7 @@ function validatePatientRegistration(req, res, next) {
     full_name: input.full_name,
     email: input.email,
     password: input.password,
+    national_id: input.national_id,
     date_of_birth: input.date_of_birth,
     gender: input.gender,
   };

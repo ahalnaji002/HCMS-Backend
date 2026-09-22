@@ -153,8 +153,16 @@ http://localhost:3000
 - Login with JWT authentication.
 - Current-user authentication middleware.
 - Role-Based Access Control (RBAC).
+- Role-specific current-profile viewing and approved self-service updates.
 - Admin Join Request approval and rejection workflow.
 - Transactional and concurrency-safe Join Request reviews.
+- Admin creation and viewing of current and historical Doctor-Patient Assignments.
+- Transactional Doctor-Patient Assignment status transitions.
+- Active-assignment authorization for Doctor access to Patient medical care.
+- Doctor management and Patient self-viewing of Medical Records.
+- Doctor-owned Medical Notes for actively assigned Patients.
+- Continuing-care Treatment Plans with Patient read-only access.
+- Treatment Medication and Appointment management scoped to Treatment Plans.
 
 ## API
 
@@ -170,6 +178,7 @@ Required JSON fields:
 - `email`
 - `password`
 - `password_confirmation`
+- `national_id`
 - `date_of_birth`
 - `gender`
 
@@ -186,6 +195,9 @@ The server assigns:
 - account status: `ACTIVE`
 
 Patient accounts do not create Join Requests and registration does not return a token.
+
+`national_id` must be a unique string of exactly 9 digits and must not start
+with `0`.
 
 `date_of_birth` must be a valid `YYYY-MM-DD` date and cannot be in the future.
 
@@ -358,6 +370,30 @@ An authenticated user without an allowed role receives:
 
 Resource ownership and other business-specific authorization rules are outside this middleware.
 
+### Current Profile
+
+```http
+GET /api/profile
+PATCH /api/profile
+```
+
+Both endpoints require an `ACTIVE` authenticated account. `GET /api/profile`
+is available to `PATIENT`, `DOCTOR`, `NGO`, and `ADMIN` and returns the
+authenticated user's own base profile plus the fields approved for that role.
+It does not accept another user's ID.
+
+`PATCH /api/profile` is available only to `PATIENT` and `DOCTOR`. Approved
+fields are:
+
+- Patient: `full_name`, `phone`, `date_of_birth`, `gender`, `address`
+- Doctor: `full_name`, `phone`
+
+Protected, unknown, or cross-role fields are rejected with `400`. Missing or
+invalid authentication returns `401`; an inactive account or unauthorized role
+returns `403`; and a missing role-specific profile returns `404`.
+
+The Patient's own profile response includes the immutable `national_id`.
+
 ### Admin Join Request Review
 
 All Admin Join Request endpoints require an `ACTIVE ADMIN` Bearer token:
@@ -402,6 +438,231 @@ Expected errors include:
 - `403` unauthorized role
 - `404` Join Request not found
 - `409` already reviewed or inconsistent request state
+
+### Admin Doctor-Patient Assignments
+
+All Doctor-Patient Assignment endpoints require an `ACTIVE ADMIN` Bearer token:
+
+```http
+GET /api/admin/doctor-patient-assignments
+GET /api/admin/doctor-patient-assignments/:id
+POST /api/admin/doctor-patient-assignments
+PATCH /api/admin/doctor-patient-assignments/:id/status
+```
+
+The list endpoint returns current `ACTIVE` and historical `INACTIVE`
+assignments in deterministic newest-first order. The details endpoint returns
+one assignment by ID. Responses contain only fields from the approved
+`doctor_patient_assignments` schema.
+
+Creating an assignment requires `doctor_id` and `patient_id`; optional fields
+are `assignment_reason` and `notes`. The referenced Doctor and Patient profiles
+must exist and belong to active users with the matching roles. New assignments
+are created as `ACTIVE` and return `201`.
+
+The status endpoint accepts only `ACTIVE` or `INACTIVE`. Deactivation sets
+`ended_at`; reactivation clears it and is rejected when another active
+assignment already exists for the same doctor-patient pair. Requests that do
+not change the current status are rejected.
+
+Multiple historical `INACTIVE` assignments may exist for the same Doctor and
+Patient, but at most one assignment may be `ACTIVE`. Creation and reactivation
+enforce this rule transactionally without deleting historical rows.
+
+Assignment endpoints return `400` for invalid input or IDs, `401` for missing
+or invalid authentication, `403` for non-Admin access, `404` for missing
+assignments or references, and `409` for conflicting status transitions,
+inactive or inconsistent referenced accounts, or a duplicate active pair.
+
+### Doctor Assigned-Patient Access
+
+Doctor access to Patient-specific medical resources requires an `ACTIVE`
+Doctor-Patient Assignment between the authenticated Doctor and the target
+Patient. A missing or historical `INACTIVE` assignment does not authorize
+access. The Doctor profile is resolved from the authenticated user, and the
+target Patient is resolved from the route rather than trusted from a request
+body.
+
+This authorization rule is enforced by the implemented Doctor Medical Record,
+Medical Note, Treatment Plan, Treatment Medication, and Treatment Appointment
+routes documented below. Treatment Plans and their Medications and
+Appointments support continuing care: a currently assigned Doctor may access
+and manage them even when the Treatment Plan was created by a previous Doctor.
+The original Treatment Plan `doctor_id` remains unchanged.
+
+Authenticated Doctors can list their currently assigned Patients and view an
+assigned Patient's approved profile information:
+
+```http
+GET /api/doctor/patients
+GET /api/doctor/patients/:patientId
+```
+
+Both endpoints require an `ACTIVE` authenticated account with the `DOCTOR`
+role. The list endpoint returns only Patients who have an `ACTIVE` assignment
+to the authenticated Doctor; Patients connected only by historical or
+`INACTIVE` assignments are excluded. An empty result returns `200` with an
+empty `patients` list.
+
+The detail endpoint validates `patientId` as a positive identifier within the
+unsigned `BIGINT` range and requires an `ACTIVE` assignment between the
+authenticated Doctor and the requested Patient. An invalid ID returns `400`,
+a missing Patient returns `404`, and a missing or `INACTIVE` assignment returns
+`403`.
+
+Assigned-Patient responses expose only the approved safe Patient profile
+fields returned by the implementation: `id`, `full_name`, `email`, `phone`,
+`role`, `account_status`, `date_of_birth`, `gender`, and `address`. Internal
+fields such as `user_id` and `password_hash` are not returned.
+
+### Medical Records
+
+Authenticated Doctors can create, view, and update the Medical Record of an
+actively assigned Patient:
+
+```http
+POST  /api/doctor/patients/:patientId/medical-record
+GET   /api/doctor/patients/:patientId/medical-record
+PATCH /api/doctor/patients/:patientId/medical-record
+```
+
+Approved Medical Record fields are `blood_type`, `allergies`,
+`chronic_diseases`, `medical_history`, and `previous_surgeries`. The `id`,
+`patient_id`, `created_at`, and `updated_at` fields are server-controlled.
+Updates are partial and require at least one approved field.
+
+Each Patient can have at most one Medical Record. Creation returns `201`; a
+duplicate returns `409`. Missing Patients or Medical Records return `404`, and
+Doctor access without an active assignment returns `403`. Medical Record
+deletion is not exposed.
+
+Patients have read-only access to their own Medical Record:
+
+```http
+GET /api/patient/medical-record
+```
+
+The Patient identity is derived from the authenticated account. A Patient
+cannot select another Patient ID, and a missing own Medical Record returns
+`404`.
+
+### Medical Notes
+
+Authenticated Doctors can create and list Medical Notes for an actively
+assigned Patient who already has a Medical Record:
+
+```http
+POST /api/doctor/patients/:patientId/medical-notes
+GET  /api/doctor/patients/:patientId/medical-notes
+```
+
+Creation accepts only a required, non-empty `note` string. The
+`medical_record_id` and `doctor_id` are derived by the server; IDs and
+timestamps cannot be client-controlled. A missing Patient or Medical Record
+returns `404`, while a missing active assignment returns `403`.
+
+Medical Notes are Doctor-owned. The list endpoint returns only notes created
+by the authenticated Doctor for the target Patient's Medical Record. Notes
+created by other Doctors are not returned, even if the current Doctor is now
+actively assigned to the same Patient. An empty result is returned as `200`
+with an empty `medical_notes` list. Sprint 6 exposes no Patient Medical Note
+endpoint and no Medical Note update or deletion endpoint.
+
+### Treatment Plans
+
+Authenticated Doctors can create, list, view, and update Treatment Plans for
+an actively assigned Patient:
+
+```http
+POST  /api/doctor/patients/:patientId/treatment-plans
+GET   /api/doctor/patients/:patientId/treatment-plans
+GET   /api/doctor/patients/:patientId/treatment-plans/:planId
+PATCH /api/doctor/patients/:patientId/treatment-plans/:planId
+```
+
+Creation requires `title` and `start_date`. Optional
+`general_instructions` and `end_date` may be `null`. New plans start as
+`ACTIVE`; clients cannot set `status` during creation. Updates may change
+`title`, `general_instructions`, `status`, `start_date`, and `end_date`, with
+status restricted to `ACTIVE`, `COMPLETED`, or `CANCELLED`.
+
+Dates use `YYYY-MM-DD`. When `end_date` is present, it must be on or after
+`start_date`, including after partial updates. The `patient_id`, original
+creator `doctor_id`, IDs, and timestamps are server-controlled. Treatment Plan
+deletion is not exposed.
+
+Treatment Plans are continuing-care resources. Any Doctor who currently has
+an active assignment with the Patient can list, view, and update the Patient's
+plans, including plans created by a previous Doctor, without changing the
+stored original `doctor_id`.
+
+Patients have read-only access to their own Treatment Plans:
+
+```http
+GET /api/patient/treatment-plans
+GET /api/patient/treatment-plans/:planId
+```
+
+An empty list returns `200`. A missing plan, a plan belonging to another
+Patient, or a Patient-scoped resource mismatch returns a safe `404` response.
+
+### Treatment Medications
+
+Authenticated Doctors can manage medications under a Treatment Plan:
+
+```http
+POST   /api/doctor/treatment-plans/:planId/medications
+GET    /api/doctor/treatment-plans/:planId/medications
+GET    /api/doctor/treatment-plans/:planId/medications/:medicationId
+PATCH  /api/doctor/treatment-plans/:planId/medications/:medicationId
+DELETE /api/doctor/treatment-plans/:planId/medications/:medicationId
+```
+
+The Doctor must have an `ACTIVE` assignment with the Patient who owns the
+Treatment Plan. A currently assigned Doctor may manage medications on a plan
+created by a previous Doctor. Medication detail, update, and deletion are
+scoped to the Treatment Plan in the URL.
+
+Patients have read-only access to medications under their own Treatment Plans:
+
+```http
+GET /api/patient/treatment-plans/:planId/medications
+GET /api/patient/treatment-plans/:planId/medications/:medicationId
+```
+
+Creation requires `medication_name`, `dosage`, and `frequency`. Optional
+`duration` and `instructions` fields may be `null`. Resource IDs and timestamps
+are server-controlled, and the approved schema has no medication status field.
+
+### Treatment Appointments
+
+Authenticated Doctors can manage appointments under an authorized Treatment
+Plan:
+
+```http
+POST   /api/doctor/treatment-plans/:planId/appointments
+GET    /api/doctor/treatment-plans/:planId/appointments
+GET    /api/doctor/treatment-plans/:planId/appointments/:appointmentId
+PATCH  /api/doctor/treatment-plans/:planId/appointments/:appointmentId
+DELETE /api/doctor/treatment-plans/:planId/appointments/:appointmentId
+```
+
+Doctor access requires an `ACTIVE` assignment with the Patient who owns the
+plan. Continuing-care access permits the current assigned Doctor to manage
+appointments on a plan created by a previous Doctor.
+
+Patients can only list and view appointments under their own Treatment Plans:
+
+```http
+GET /api/patient/treatment-plans/:planId/appointments
+GET /api/patient/treatment-plans/:planId/appointments/:appointmentId
+```
+
+Creation requires `appointment_date` in `YYYY-MM-DD HH:mm:ss` format and a
+non-empty `purpose`. The appointment calendar date must fall within the plan's
+inclusive date range; a null plan `end_date` has no upper bound. New
+appointments start as `SCHEDULED`, while updates may use `SCHEDULED`,
+`COMPLETED`, or `CANCELLED` without additional transition restrictions.
 
 ## Admin Seed
 

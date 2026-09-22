@@ -37,7 +37,10 @@ function findById(id, connection = db) {
 }
 
 function findByEmail(email, connection = db) {
-  return connection("users").select(PUBLIC_USER_COLUMNS).where({ email }).first();
+  return connection("users")
+    .select(PUBLIC_USER_COLUMNS)
+    .where({ email })
+    .first();
 }
 
 function findByEmailWithPasswordHash(email, connection = db) {
@@ -55,7 +58,10 @@ async function create(user, connection = db) {
 async function updateAccountStatus(id, accountStatus, connection = db) {
   await connection("users")
     .where({ id })
-    .update({ account_status: accountStatus });
+    .update({
+      account_status: accountStatus,
+      updated_at: connection.fn.now(),
+    });
 
   return findById(id, connection);
 }
@@ -67,6 +73,17 @@ function findRoleAndAccountStatus(id, connection = db) {
     .first();
 }
 
+async function updateProfile(id, updates, connection = db) {
+  await connection("users")
+    .where({ id })
+    .update({
+      ...updates,
+      updated_at: connection.fn.now(),
+    });
+
+  return findById(id, connection);
+}
+
 module.exports = {
   findById,
   findByEmail,
@@ -74,4 +91,5 @@ module.exports = {
   create,
   updateAccountStatus,
   findRoleAndAccountStatus,
+  updateProfile,
 };
