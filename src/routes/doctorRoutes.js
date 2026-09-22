@@ -5,6 +5,7 @@ const medicalRecordController = require("../controllers/medicalRecordController"
 const medicalNoteController = require("../controllers/medicalNoteController");
 const treatmentPlanController = require("../controllers/treatmentPlanController");
 const treatmentMedicationController = require("../controllers/treatmentMedicationController");
+const treatmentAppointmentController = require("../controllers/treatmentAppointmentController");
 
 const {
   validateCreateMedicalRecord,
@@ -28,6 +29,12 @@ const {
   validatePlanId: validateMedicationPlanId,
   validateUpdateTreatmentMedication,
 } = require("../middleware/validateTreatmentMedication");
+const {
+  validateAppointmentId,
+  validateCreateTreatmentAppointment,
+  validatePlanId: validateAppointmentPlanId,
+  validateUpdateTreatmentAppointment,
+} = require("../middleware/validateTreatmentAppointment");
 
 const router = express.Router();
 
@@ -127,6 +134,41 @@ router.delete(
   validateMedicationPlanId,
   validateMedicationId,
   treatmentMedicationController.deleteForDoctor,
+);
+
+router.post(
+  "/treatment-plans/:planId/appointments",
+  validateAppointmentPlanId,
+  validateCreateTreatmentAppointment,
+  treatmentAppointmentController.create,
+);
+
+router.get(
+  "/treatment-plans/:planId/appointments",
+  validateAppointmentPlanId,
+  treatmentAppointmentController.listForDoctor,
+);
+
+router.get(
+  "/treatment-plans/:planId/appointments/:appointmentId",
+  validateAppointmentPlanId,
+  validateAppointmentId,
+  treatmentAppointmentController.getForDoctor,
+);
+
+router.patch(
+  "/treatment-plans/:planId/appointments/:appointmentId",
+  validateAppointmentPlanId,
+  validateAppointmentId,
+  validateUpdateTreatmentAppointment,
+  treatmentAppointmentController.updateForDoctor,
+);
+
+router.delete(
+  "/treatment-plans/:planId/appointments/:appointmentId",
+  validateAppointmentPlanId,
+  validateAppointmentId,
+  treatmentAppointmentController.deleteForDoctor,
 );
 
 module.exports = router;
