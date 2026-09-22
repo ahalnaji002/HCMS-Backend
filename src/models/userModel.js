@@ -58,7 +58,10 @@ async function create(user, connection = db) {
 async function updateAccountStatus(id, accountStatus, connection = db) {
   await connection("users")
     .where({ id })
-    .update({ account_status: accountStatus });
+    .update({
+      account_status: accountStatus,
+      updated_at: connection.fn.now(),
+    });
 
   return findById(id, connection);
 }

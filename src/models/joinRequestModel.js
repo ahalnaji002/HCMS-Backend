@@ -77,7 +77,12 @@ async function updateReview(id, review, connection = db) {
   }
 
   if (Object.keys(updates).length > 0) {
-    await connection("join_requests").where({ id }).update(updates);
+    await connection("join_requests")
+      .where({ id })
+      .update({
+        ...updates,
+        updated_at: connection.fn.now(),
+      });
   }
 
   return findById(id, connection);

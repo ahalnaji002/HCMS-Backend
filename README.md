@@ -178,6 +178,7 @@ Required JSON fields:
 - `email`
 - `password`
 - `password_confirmation`
+- `national_id`
 - `date_of_birth`
 - `gender`
 
@@ -194,6 +195,9 @@ The server assigns:
 - account status: `ACTIVE`
 
 Patient accounts do not create Join Requests and registration does not return a token.
+
+`national_id` must be a unique string of exactly 9 digits and must not start
+with `0`.
 
 `date_of_birth` must be a valid `YYYY-MM-DD` date and cannot be in the future.
 
@@ -387,6 +391,8 @@ fields are:
 Protected, unknown, or cross-role fields are rejected with `400`. Missing or
 invalid authentication returns `401`; an inactive account or unauthorized role
 returns `403`; and a missing role-specific profile returns `404`.
+
+The Patient's own profile response includes the immutable `national_id`.
 
 ### Admin Join Request Review
 

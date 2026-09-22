@@ -32,6 +32,7 @@ async function getOwnProfile(user) {
 
     return {
       ...baseProfile,
+      national_id: patient.national_id,
       date_of_birth: patient.date_of_birth,
       gender: patient.gender,
       address: patient.address,

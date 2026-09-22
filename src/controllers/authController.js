@@ -8,6 +8,7 @@ const {
 } = require("../services/ngoRegistrationService");
 const {
   DuplicateEmailError,
+  DuplicateNationalIdError,
   registerPatient,
 } = require("../services/patientRegistrationService");
 const {
@@ -40,7 +41,10 @@ async function registerPatientHandler(req, res) {
       data: responseData,
     });
   } catch (error) {
-    if (error instanceof DuplicateEmailError) {
+    if (
+      error instanceof DuplicateEmailError ||
+      error instanceof DuplicateNationalIdError
+    ) {
       return res.status(409).json({
         success: false,
         message: error.message,
