@@ -189,6 +189,7 @@ before(async () => {
 beforeEach(async () => {
   assertTestDatabaseVerified();
 
+  await db("emergency_alerts").del();
   await db("medical_notes").del();
   await db("treatment_medications").del();
   await db("treatment_appointments").del();
@@ -207,6 +208,7 @@ beforeEach(async () => {
 after(async () => {
   try {
     if (testDatabaseVerified) {
+      await db("emergency_alerts").del();
       await db("medical_notes").del();
       await db("treatment_medications").del();
       await db("treatment_appointments").del();
@@ -4776,4 +4778,393 @@ test("join request review rejects missing and already reviewed requests", async 
   assert.equal(first.status, 200);
   assert.equal(repeated.status, 409);
   assert.equal(repeated.body.message, "Join request has already been reviewed");
+});
+
+test("public visitor can create an Emergency Alert", async () => {
+  const response = await request(app).post("/api/emergency-alerts").send({
+    phone: "0591234567",
+    location: "Gaza",
+    description: "Urgent medical assistance needed",
+  });
+
+  assert.equal(response.status, 201);
+  assert.equal(response.body.success, true);
+
+  const alert = response.body.data.emergency_alert;
+
+  assert.equal(alert.patient_id, null);
+  assert.equal(alert.phone, "0591234567");
+  assert.equal(alert.location, "Gaza");
+  assert.equal(alert.description, "Urgent medical assistance needed");
+  assert.equal(alert.priority, "HIGH");
+  assert.equal(alert.status, "PENDING_ASSIGNMENT");
+});
+
+test("public Emergency Alert requires phone", async () => {
+  const response = await request(app).post("/api/emergency-alerts").send({
+    location: "Gaza",
+    description: "Emergency",
+  });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Validation failed");
+  assert.equal(response.body.errors.phone, "phone is required");
+});
+
+test("public Emergency Alert rejects client-controlled priority and status", async () => {
+  const response = await request(app).post("/api/emergency-alerts").send({
+    phone: "0591234567",
+    priority: "CRITICAL",
+    status: "RESOLVED",
+  });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Validation failed");
+  assert.equal(response.body.errors.priority, "priority is not allowed");
+  assert.equal(response.body.errors.status, "status is not allowed");
+});
+
+test("authenticated Patient can create an Emergency Alert linked to own profile", async () => {
+  const response = await request(app)
+    .post("/api/patient/emergency-alerts")
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`)
+    .send({
+      phone: "0593333333",
+      location: "Gaza",
+      description: "Patient emergency",
+    });
+
+  assert.equal(response.status, 201);
+  assert.equal(response.body.success, true);
+
+  const alert = response.body.data.emergency_alert;
+
+  assert.equal(alert.patient_id, users.patientProfile.id);
+  assert.equal(alert.phone, "0593333333");
+  assert.equal(alert.priority, "HIGH");
+  assert.equal(alert.status, "PENDING_ASSIGNMENT");
+});
+
+test("Patient Emergency Alert does not accept patient_id from request", async () => {
+  const response = await request(app)
+    .post("/api/patient/emergency-alerts")
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`)
+    .send({
+      phone: "0593333333",
+      patient_id: 999999,
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Validation failed");
+  assert.equal(response.body.errors.patient_id, "patient_id is not allowed");
+});
+
+test("Patient can list only own Emergency Alerts", async () => {
+  const otherPatientUser = await createUser({
+    fullName: "Other Emergency Patient",
+    email: "other.emergency.patient@test.local",
+    role: "PATIENT",
+  });
+
+  const [otherPatientId] = await db("patients").insert({
+    user_id: otherPatientUser.id,
+    national_id: "623456789",
+    date_of_birth: "1999-05-10",
+    gender: "FEMALE",
+    address: "Gaza",
+  });
+
+  await db("emergency_alerts").insert([
+    {
+      patient_id: users.patientProfile.id,
+      phone: "0591111111",
+      description: "Own alert",
+      priority: "HIGH",
+      status: "PENDING_ASSIGNMENT",
+    },
+    {
+      patient_id: otherPatientId,
+      phone: "0592222222",
+      description: "Other patient alert",
+      priority: "HIGH",
+      status: "PENDING_ASSIGNMENT",
+    },
+    {
+      patient_id: null,
+      phone: "0593333333",
+      description: "Visitor alert",
+      priority: "HIGH",
+      status: "PENDING_ASSIGNMENT",
+    },
+  ]);
+
+  const response = await request(app)
+    .get("/api/patient/emergency-alerts")
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.equal(response.body.data.emergency_alerts.length, 1);
+  assert.equal(
+    response.body.data.emergency_alerts[0].patient_id,
+    users.patientProfile.id,
+  );
+});
+
+test("Patient can view own Emergency Alert", async () => {
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    description: "Own emergency",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const response = await request(app)
+    .get(`/api/patient/emergency-alerts/${alertId}`)
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.equal(response.body.data.emergency_alert.id, alertId);
+});
+
+test("Patient cannot view another Patient Emergency Alert", async () => {
+  const otherPatientUser = await createUser({
+    fullName: "Other Alert Owner",
+    email: "other.alert.owner@test.local",
+    role: "PATIENT",
+  });
+
+  const [otherPatientId] = await db("patients").insert({
+    user_id: otherPatientUser.id,
+    national_id: "723456789",
+    date_of_birth: "1998-08-12",
+    gender: "MALE",
+    address: "Gaza",
+  });
+
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: otherPatientId,
+    phone: "0592222222",
+    description: "Private emergency",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const response = await request(app)
+    .get(`/api/patient/emergency-alerts/${alertId}`)
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 404);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Emergency Alert not found");
+});
+
+test("Patient can cancel own Emergency Alert while pending assignment", async () => {
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    description: "Cancel this alert",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const response = await request(app)
+    .patch(`/api/patient/emergency-alerts/${alertId}/cancel`)
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.equal(response.body.data.emergency_alert.status, "CANCELLED");
+
+  const storedAlert = await db("emergency_alerts")
+    .where({ id: alertId })
+    .first();
+
+  assert.equal(storedAlert.status, "CANCELLED");
+});
+
+test("Patient cannot cancel Emergency Alert after assignment", async () => {
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    description: "Already assigned",
+    priority: "HIGH",
+    status: "ASSIGNED",
+  });
+
+  const response = await request(app)
+    .patch(`/api/patient/emergency-alerts/${alertId}/cancel`)
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.success, false);
+  assert.equal(
+    response.body.message,
+    "Only Emergency Alerts pending assignment can be cancelled",
+  );
+
+  const storedAlert = await db("emergency_alerts")
+    .where({ id: alertId })
+    .first();
+
+  assert.equal(storedAlert.status, "ASSIGNED");
+});
+
+test("Patient cannot cancel another Patient Emergency Alert", async () => {
+  const otherPatientUser = await createUser({
+    fullName: "Other Cancellation Patient",
+    email: "other.cancellation.patient@test.local",
+    role: "PATIENT",
+  });
+
+  const [otherPatientId] = await db("patients").insert({
+    user_id: otherPatientUser.id,
+    national_id: "823456789",
+    date_of_birth: "1997-03-20",
+    gender: "FEMALE",
+    address: "Gaza",
+  });
+
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: otherPatientId,
+    phone: "0592222222",
+    description: "Other patient emergency",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const response = await request(app)
+    .patch(`/api/patient/emergency-alerts/${alertId}/cancel`)
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 404);
+  assert.equal(response.body.success, false);
+  assert.equal(response.body.message, "Emergency Alert not found");
+
+  const storedAlert = await db("emergency_alerts")
+    .where({ id: alertId })
+    .first();
+
+  assert.equal(storedAlert.status, "PENDING_ASSIGNMENT");
+});
+
+test("Patient Emergency Alert endpoints require Patient authentication", async () => {
+  const response = await request(app).get("/api/patient/emergency-alerts");
+
+  assert.equal(response.status, 401);
+  assert.equal(response.body.success, false);
+});
+
+test("Emergency Alert creation accepts omitted optional fields", async () => {
+  const response = await request(app).post("/api/emergency-alerts").send({
+    phone: "0591234567",
+  });
+
+  assert.equal(response.status, 201);
+  assert.equal(response.body.data.emergency_alert.location, null);
+  assert.equal(response.body.data.emergency_alert.description, null);
+});
+
+test("Emergency Alert creation accepts null optional fields", async () => {
+  const response = await request(app).post("/api/emergency-alerts").send({
+    phone: "0591234567",
+    location: null,
+    description: null,
+  });
+
+  assert.equal(response.status, 201);
+  assert.equal(response.body.data.emergency_alert.location, null);
+  assert.equal(response.body.data.emergency_alert.description, null);
+});
+
+test("Patient Emergency Alert detail rejects invalid alertId", async () => {
+  const response = await request(app)
+    .get("/api/patient/emergency-alerts/0")
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.message, "Validation failed");
+});
+
+test("Patient cannot cancel an Emergency Alert twice", async () => {
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const firstResponse = await request(app)
+    .patch(`/api/patient/emergency-alerts/${alertId}/cancel`)
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(firstResponse.status, 200);
+
+  const secondResponse = await request(app)
+    .patch(`/api/patient/emergency-alerts/${alertId}/cancel`)
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(secondResponse.status, 400);
+});
+
+test("Emergency Alert cancellation rejects request fields", async () => {
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const response = await request(app)
+    .patch(`/api/patient/emergency-alerts/${alertId}/cancel`)
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`)
+    .send({
+      status: "CANCELLED",
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.message, "Validation failed");
+  assert.equal(response.body.errors.status, "status is not allowed");
+});
+
+test("non-Patient role cannot access Patient Emergency Alert endpoints", async () => {
+  const response = await request(app)
+    .get("/api/patient/emergency-alerts")
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`);
+
+  assert.equal(response.status, 403);
+});
+
+test("Patient Emergency Alerts are listed newest first", async () => {
+  await db("emergency_alerts").insert([
+    {
+      patient_id: users.patientProfile.id,
+      phone: "0591111111",
+      description: "Older",
+      priority: "HIGH",
+      status: "PENDING_ASSIGNMENT",
+      sent_at: "2026-09-23 10:00:00",
+    },
+    {
+      patient_id: users.patientProfile.id,
+      phone: "0592222222",
+      description: "Newer",
+      priority: "HIGH",
+      status: "PENDING_ASSIGNMENT",
+      sent_at: "2026-09-23 11:00:00",
+    },
+  ]);
+
+  const response = await request(app)
+    .get("/api/patient/emergency-alerts")
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.emergency_alerts[0].description, "Newer");
+  assert.equal(response.body.data.emergency_alerts[1].description, "Older");
 });

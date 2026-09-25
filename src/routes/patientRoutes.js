@@ -16,9 +16,37 @@ const {
   validatePlanId: validateAppointmentPlanId,
 } = require("../middleware/validateTreatmentAppointment");
 
+const emergencyAlertController = require("../controllers/emergencyAlertController");
+const {
+  validateAlertId,
+  validateCreateEmergencyAlert,
+  validateCancelEmergencyAlert,
+} = require("../middleware/validateEmergencyAlert");
+
 const router = express.Router();
 
 router.use(authenticate, authorizeRoles("PATIENT"));
+
+router.post(
+  "/emergency-alerts",
+  validateCreateEmergencyAlert,
+  emergencyAlertController.createPatientAlert,
+);
+
+router.get("/emergency-alerts", emergencyAlertController.listOwnAlerts);
+
+router.get(
+  "/emergency-alerts/:alertId",
+  validateAlertId,
+  emergencyAlertController.getOwnAlert,
+);
+
+router.patch(
+  "/emergency-alerts/:alertId/cancel",
+  validateAlertId,
+  validateCancelEmergencyAlert,
+  emergencyAlertController.cancelOwnAlert,
+);
 
 router.get("/medical-record", medicalRecordController.getOwnMedicalRecord);
 

@@ -266,3 +266,39 @@ must redirect or reject plain HTTP at the edge. If proxy-derived protocol or
 secure cookies are later used, `trust proxy` must be configured only for the
 known proxy topology. This repository does not yet contain deployment evidence,
 so HTTPS compliance is not claimed as verified.
+
+## Emergency Alerts
+
+```http
+POST  /api/emergency-alerts
+POST  /api/patient/emergency-alerts
+GET   /api/patient/emergency-alerts
+GET   /api/patient/emergency-alerts/:alertId
+PATCH /api/patient/emergency-alerts/:alertId/cancel
+```
+
+`POST /api/emergency-alerts` is public and does not require authentication.
+It creates a Visitor Emergency Alert with `patient_id = NULL`. The public
+endpoint provides creation only; no public list, detail, tracking, update, or
+cancellation endpoint is exposed.
+
+The Patient routes require an authenticated `PATIENT`. Patient-created alerts
+derive `patient_id` from the authenticated Patient profile, and Patients may
+list, view, and cancel only their own alerts. Lists are returned newest first
+by `sent_at`, with `id` as the deterministic tie-breaker.
+
+Creation requires `phone`; `location` and `description` are optional.
+`patient_id`, `priority`, `status`, assignment fields, and other unknown fields
+are not accepted from the client. Every new alert is created by the server
+with `priority = HIGH` and `status = PENDING_ASSIGNMENT`.
+
+A Patient may cancel only their own alert while its status is
+`PENDING_ASSIGNMENT`. Cancellation changes the status to `CANCELLED` and
+updates `updated_at`. Cancellation does not accept request-body fields. The
+state transition is conditionally enforced against the current alert status
+to prevent cancellation after assignment or another state change.
+
+Successful creation returns `201`; successful list, detail, and cancellation
+return `200`. Validation failures return `400`, missing or non-owned Patient
+alerts return `404`, missing authentication returns `401`, and an authenticated
+non-Patient role attempting to use Patient routes returns `403`.
