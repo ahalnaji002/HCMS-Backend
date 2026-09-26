@@ -23,9 +23,13 @@ const {
   validateCancelEmergencyAlert,
 } = require("../middleware/validateEmergencyAlert");
 const assistanceRequestController = require("../controllers/assistanceRequestController");
+const resourceAllocationController = require("../controllers/resourceAllocationController");
 const {
   validateRequestId,
 } = require("../middleware/validateAssistanceRequest");
+const {
+  validateRequestId: validateResourceRequestId,
+} = require("../middleware/validateResourceAllocation");
 
 const router = express.Router();
 
@@ -61,6 +65,12 @@ router.get(
   "/assistance-requests/:requestId",
   validateRequestId,
   assistanceRequestController.getOwnRequest,
+);
+
+router.get(
+  "/assistance-requests/:requestId/resources",
+  validateResourceRequestId,
+  resourceAllocationController.listForPatient,
 );
 
 router.get("/medical-record", medicalRecordController.getOwnMedicalRecord);

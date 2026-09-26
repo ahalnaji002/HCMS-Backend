@@ -6428,3 +6428,588 @@ test("Concurrent NGO status transitions allow only one transition", async () => 
   assert.ok(["APPROVED", "REJECTED"].includes(stored.status));
   assert.ok(stored.reviewed_at);
 });
+
+async function insertResourceAllocation(requestId, overrides = {}) {
+  const [id] = await db("resource_allocations").insert({
+    assistance_request_id: requestId,
+    resource_name: "Medical supplies",
+    quantity: 2,
+    ...overrides,
+  });
+
+  return db("resource_allocations").where({ id }).first();
+}
+
+test("assigned NGO creates and persists a Resource Allocation for an approved request", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest({
+    ngo_id: ngo.id,
+    status: "APPROVED",
+  });
+
+  const response = await request(app)
+    .post(`/api/ngo/assistance-requests/${assistanceRequest.id}/resources`)
+    .set("Authorization", `Bearer ${tokenFor(users.ngo)}`)
+    .send({
+      resource_name: "Medical Supplies",
+      quantity: 3,
+      delivery_date: "2026-09-25",
+      notes: "Delivered to the patient.",
+    });
+
+  assert.equal(response.status, 201);
+  const allocation = response.body.data.resource_allocation;
+  assert.equal(allocation.assistance_request_id, assistanceRequest.id);
+  assert.equal(allocation.resource_name, "Medical Supplies");
+  assert.equal(allocation.quantity, 3);
+  assert.equal(String(allocation.delivery_date).slice(0, 10), "2026-09-25");
+  assert.equal(allocation.notes, "Delivered to the patient.");
+  assert.ok(await db("resource_allocations").where({ id: allocation.id }).first());
+});
+
+test("Resource Allocation creation requires an approved request", async () => {
+  const ngo = await getPrimaryNgoProfile();
+
+  for (const status of ["PENDING", "UNDER_REVIEW", "REJECTED", "COMPLETED"]) {
+    const assistanceRequest = await insertAssistanceRequest({
+      ngo_id: ngo.id,
+      status,
+    });
+    const response = await request(app)
+      .post(`/api/ngo/assistance-requests/${assistanceRequest.id}/resources`)
+      .set("Authorization", `Bearer ${tokenFor(users.ngo)}`)
+      .send({ resource_name: "Food parcel", quantity: 1 });
+
+    assert.equal(response.status, 409);
+  }
+});
+
+test("Resource Allocation creation enforces NGO ownership and request existence", async () => {
+  const otherNgo = await createAssistanceNgo({
+    email: "resource.other.ngo@test.local",
+    registrationNumber: "RESOURCE-OTHER-NGO",
+  });
+  const otherRequest = await insertAssistanceRequest({
+    ngo_id: otherNgo.profile.id,
+    status: "APPROVED",
+  });
+  const authorization = `Bearer ${tokenFor(users.ngo)}`;
+
+  const forbidden = await request(app)
+    .post(`/api/ngo/assistance-requests/${otherRequest.id}/resources`)
+    .set("Authorization", authorization)
+    .send({ resource_name: "Food", quantity: 1 });
+  const missing = await request(app)
+    .post("/api/ngo/assistance-requests/999999999/resources")
+    .set("Authorization", authorization)
+    .send({ resource_name: "Food", quantity: 1 });
+
+  assert.equal(forbidden.status, 403);
+  assert.equal(missing.status, 404);
+});
+
+test("Resource Allocation creation validates required names and quantities", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest({
+    ngo_id: ngo.id,
+    status: "APPROVED",
+  });
+  const path = `/api/ngo/assistance-requests/${assistanceRequest.id}/resources`;
+  const authorization = `Bearer ${tokenFor(users.ngo)}`;
+  const bodies = [
+    { quantity: 1 },
+    { resource_name: "  ", quantity: 1 },
+    { resource_name: "x".repeat(151), quantity: 1 },
+    { resource_name: "Food" },
+    { resource_name: "Food", quantity: 0 },
+    { resource_name: "Food", quantity: -1 },
+    { resource_name: "Food", quantity: 1.5 },
+    { resource_name: "Food", quantity: 4294967296 },
+  ];
+
+  for (const body of bodies) {
+    const response = await request(app)
+      .post(path)
+      .set("Authorization", authorization)
+      .send(body);
+    assert.equal(response.status, 400);
+  }
+});
+
+test("Resource Allocation creation validates dates and rejects protected fields", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest({
+    ngo_id: ngo.id,
+    status: "APPROVED",
+  });
+  const path = `/api/ngo/assistance-requests/${assistanceRequest.id}/resources`;
+  const authorization = `Bearer ${tokenFor(users.ngo)}`;
+
+  const invalidDate = await request(app)
+    .post(path)
+    .set("Authorization", authorization)
+    .send({ resource_name: "Food", quantity: 1, delivery_date: "2026-02-30" });
+  const protectedFields = await request(app)
+    .post(path)
+    .set("Authorization", authorization)
+    .send({
+      resource_name: "Food",
+      quantity: 1,
+      id: 5,
+      assistance_request_id: assistanceRequest.id,
+      created_at: "2026-09-25",
+      updated_at: "2026-09-25",
+    });
+
+  assert.equal(invalidDate.status, 400);
+  assert.equal(protectedFields.status, 400);
+  for (const field of ["id", "assistance_request_id", "created_at", "updated_at"]) {
+    assert.equal(protectedFields.body.errors[field], `${field} is not allowed`);
+  }
+});
+
+test("NGO lists only allocations for its requested Assistance Request in deterministic order", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const firstRequest = await insertAssistanceRequest({ ngo_id: ngo.id });
+  const secondRequest = await insertAssistanceRequest({ ngo_id: ngo.id });
+  const first = await insertResourceAllocation(firstRequest.id, {
+    resource_name: "First",
+    created_at: "2026-09-25 10:00:00",
+  });
+  const second = await insertResourceAllocation(firstRequest.id, {
+    resource_name: "Second",
+    created_at: "2026-09-25 10:00:00",
+  });
+  await insertResourceAllocation(secondRequest.id);
+
+  const response = await request(app)
+    .get(`/api/ngo/assistance-requests/${firstRequest.id}/resources`)
+    .set("Authorization", `Bearer ${tokenFor(users.ngo)}`);
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    response.body.data.resource_allocations.map((item) => item.id),
+    [first.id, second.id],
+  );
+});
+
+test("NGO Resource Allocation list rejects another NGO", async () => {
+  const otherNgo = await createAssistanceNgo({
+    email: "resource.list.other@test.local",
+    registrationNumber: "RESOURCE-LIST-OTHER",
+  });
+  const assistanceRequest = await insertAssistanceRequest({
+    ngo_id: otherNgo.profile.id,
+  });
+
+  const response = await request(app)
+    .get(`/api/ngo/assistance-requests/${assistanceRequest.id}/resources`)
+    .set("Authorization", `Bearer ${tokenFor(users.ngo)}`);
+
+  assert.equal(response.status, 403);
+});
+
+test("NGO can partially update every Resource Allocation field and clear nullable fields", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest({
+    ngo_id: ngo.id,
+    status: "APPROVED",
+  });
+  const allocation = await insertResourceAllocation(assistanceRequest.id, {
+    delivery_date: "2026-09-25",
+    notes: "Original",
+  });
+  const path = `/api/ngo/assistance-requests/${assistanceRequest.id}/resources/${allocation.id}`;
+  const authorization = `Bearer ${tokenFor(users.ngo)}`;
+
+  const nameResponse = await request(app)
+    .patch(path)
+    .set("Authorization", authorization)
+    .send({ resource_name: "Updated supplies" });
+  const valuesResponse = await request(app)
+    .patch(path)
+    .set("Authorization", authorization)
+    .send({ quantity: 5, delivery_date: null, notes: null });
+
+  assert.equal(nameResponse.status, 200);
+  assert.equal(nameResponse.body.data.resource_allocation.resource_name, "Updated supplies");
+  assert.equal(valuesResponse.status, 200);
+  assert.equal(valuesResponse.body.data.resource_allocation.quantity, 5);
+  assert.equal(valuesResponse.body.data.resource_allocation.delivery_date, null);
+  assert.equal(valuesResponse.body.data.resource_allocation.notes, null);
+});
+
+test("Resource Allocation update rejects invalid bodies", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest({
+    ngo_id: ngo.id,
+    status: "APPROVED",
+  });
+  const allocation = await insertResourceAllocation(assistanceRequest.id);
+  const path = `/api/ngo/assistance-requests/${assistanceRequest.id}/resources/${allocation.id}`;
+  const authorization = `Bearer ${tokenFor(users.ngo)}`;
+
+  for (const body of [{}, { quantity: 0 }, { resource_name: null }, { status: "COMPLETED" }]) {
+    const response = await request(app)
+      .patch(path)
+      .set("Authorization", authorization)
+      .send(body);
+    assert.equal(response.status, 400);
+  }
+});
+
+test("Resource Allocation update enforces relationship existence completion and NGO ownership", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const requestOne = await insertAssistanceRequest({ ngo_id: ngo.id, status: "APPROVED" });
+  const requestTwo = await insertAssistanceRequest({ ngo_id: ngo.id, status: "APPROVED" });
+  const allocation = await insertResourceAllocation(requestTwo.id);
+  const completed = await insertAssistanceRequest({ ngo_id: ngo.id, status: "COMPLETED" });
+  const completedAllocation = await insertResourceAllocation(completed.id);
+  const otherNgo = await createAssistanceNgo({
+    email: "resource.update.other@test.local",
+    registrationNumber: "RESOURCE-UPDATE-OTHER",
+  });
+  const otherRequest = await insertAssistanceRequest({ ngo_id: otherNgo.profile.id, status: "APPROVED" });
+  const otherAllocation = await insertResourceAllocation(otherRequest.id);
+  const authorization = `Bearer ${tokenFor(users.ngo)}`;
+
+  const crossRequest = await request(app)
+    .patch(`/api/ngo/assistance-requests/${requestOne.id}/resources/${allocation.id}`)
+    .set("Authorization", authorization)
+    .send({ quantity: 3 });
+  const missing = await request(app)
+    .patch(`/api/ngo/assistance-requests/${requestOne.id}/resources/999999999`)
+    .set("Authorization", authorization)
+    .send({ quantity: 3 });
+  const afterCompletion = await request(app)
+    .patch(`/api/ngo/assistance-requests/${completed.id}/resources/${completedAllocation.id}`)
+    .set("Authorization", authorization)
+    .send({ quantity: 3 });
+  const forbidden = await request(app)
+    .patch(`/api/ngo/assistance-requests/${otherRequest.id}/resources/${otherAllocation.id}`)
+    .set("Authorization", authorization)
+    .send({ quantity: 3 });
+
+  assert.equal(crossRequest.status, 404);
+  assert.equal(missing.status, 404);
+  assert.equal(afterCompletion.status, 409);
+  assert.equal(forbidden.status, 403);
+});
+
+test("NGO can delete a Resource Allocation before completion", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest({ ngo_id: ngo.id, status: "APPROVED" });
+  const allocation = await insertResourceAllocation(assistanceRequest.id);
+
+  const response = await request(app)
+    .delete(`/api/ngo/assistance-requests/${assistanceRequest.id}/resources/${allocation.id}`)
+    .set("Authorization", `Bearer ${tokenFor(users.ngo)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.resource_allocation.id, allocation.id);
+  assert.equal(await db("resource_allocations").where({ id: allocation.id }).first(), undefined);
+});
+
+test("Resource Allocation deletion enforces relationship existence completion and NGO ownership", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const requestOne = await insertAssistanceRequest({ ngo_id: ngo.id, status: "APPROVED" });
+  const requestTwo = await insertAssistanceRequest({ ngo_id: ngo.id, status: "APPROVED" });
+  const allocation = await insertResourceAllocation(requestTwo.id);
+  const completed = await insertAssistanceRequest({ ngo_id: ngo.id, status: "COMPLETED" });
+  const completedAllocation = await insertResourceAllocation(completed.id);
+  const otherNgo = await createAssistanceNgo({
+    email: "resource.delete.other@test.local",
+    registrationNumber: "RESOURCE-DELETE-OTHER",
+  });
+  const otherRequest = await insertAssistanceRequest({ ngo_id: otherNgo.profile.id, status: "APPROVED" });
+  const otherAllocation = await insertResourceAllocation(otherRequest.id);
+  const authorization = `Bearer ${tokenFor(users.ngo)}`;
+
+  const paths = [
+    [`/api/ngo/assistance-requests/${requestOne.id}/resources/${allocation.id}`, 404],
+    [`/api/ngo/assistance-requests/${requestOne.id}/resources/999999999`, 404],
+    [`/api/ngo/assistance-requests/${completed.id}/resources/${completedAllocation.id}`, 409],
+    [`/api/ngo/assistance-requests/${otherRequest.id}/resources/${otherAllocation.id}`, 403],
+  ];
+
+  for (const [path, expectedStatus] of paths) {
+    const response = await request(app)
+      .delete(path)
+      .set("Authorization", authorization);
+    assert.equal(response.status, expectedStatus);
+  }
+});
+
+test("Patient reads resources only for own Assistance Request", async () => {
+  const ownRequest = await insertAssistanceRequest();
+  const ownAllocation = await insertResourceAllocation(ownRequest.id);
+  const { patientProfile } = await createSecondPatientForAssistanceRequests();
+  const otherRequest = await insertAssistanceRequest({ patient_id: patientProfile.id });
+  await insertResourceAllocation(otherRequest.id);
+  const authorization = `Bearer ${tokenFor(users.patient)}`;
+
+  const own = await request(app)
+    .get(`/api/patient/assistance-requests/${ownRequest.id}/resources`)
+    .set("Authorization", authorization);
+  const other = await request(app)
+    .get(`/api/patient/assistance-requests/${otherRequest.id}/resources`)
+    .set("Authorization", authorization);
+  const missing = await request(app)
+    .get("/api/patient/assistance-requests/999999999/resources")
+    .set("Authorization", authorization);
+
+  assert.equal(own.status, 200);
+  assert.deepEqual(own.body.data.resource_allocations.map((item) => item.id), [ownAllocation.id]);
+  assert.equal(other.status, 404);
+  assert.equal(missing.status, 404);
+});
+
+test("Doctor reads resources only for Assistance Requests they created", async () => {
+  const ownRequest = await insertAssistanceRequest();
+  const allocation = await insertResourceAllocation(ownRequest.id);
+  const otherDoctorUser = await createUser({
+    fullName: "Other Resource Doctor",
+    email: "other.resource.doctor@test.local",
+    role: "DOCTOR",
+  });
+  const [otherDoctorId] = await db("doctors").insert({
+    user_id: otherDoctorUser.id,
+    specialization: "General Medicine",
+    license_number: "RESOURCE-DOCTOR-OTHER",
+  });
+  const otherRequest = await insertAssistanceRequest({ doctor_id: otherDoctorId });
+  const authorization = `Bearer ${tokenFor(users.doctor)}`;
+
+  const own = await request(app)
+    .get(`/api/doctor/assistance-requests/${ownRequest.id}/resources`)
+    .set("Authorization", authorization);
+  const other = await request(app)
+    .get(`/api/doctor/assistance-requests/${otherRequest.id}/resources`)
+    .set("Authorization", authorization);
+  const missing = await request(app)
+    .get("/api/doctor/assistance-requests/999999999/resources")
+    .set("Authorization", authorization);
+
+  assert.equal(own.status, 200);
+  assert.deepEqual(own.body.data.resource_allocations.map((item) => item.id), [allocation.id]);
+  assert.equal(other.status, 403);
+  assert.equal(missing.status, 404);
+});
+
+test("Admin reads Resource Allocations for any request and missing request returns 404", async () => {
+  const assistanceRequest = await insertAssistanceRequest();
+  const allocation = await insertResourceAllocation(assistanceRequest.id);
+  const authorization = `Bearer ${tokenFor(users.admin)}`;
+
+  const found = await request(app)
+    .get(`/api/admin/assistance-requests/${assistanceRequest.id}/resources`)
+    .set("Authorization", authorization);
+  const missing = await request(app)
+    .get("/api/admin/assistance-requests/999999999/resources")
+    .set("Authorization", authorization);
+
+  assert.equal(found.status, 200);
+  assert.deepEqual(found.body.data.resource_allocations.map((item) => item.id), [allocation.id]);
+  assert.equal(missing.status, 404);
+});
+
+test("Resource Allocation routes enforce authentication role and identifier validation", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest({ ngo_id: ngo.id, status: "APPROVED" });
+  const allocation = await insertResourceAllocation(assistanceRequest.id);
+
+  const unauthenticated = await request(app).get(
+    `/api/ngo/assistance-requests/${assistanceRequest.id}/resources`,
+  );
+  const wrongRole = await request(app)
+    .get(`/api/ngo/assistance-requests/${assistanceRequest.id}/resources`)
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+  const invalidRequest = await request(app)
+    .get("/api/ngo/assistance-requests/not-an-id/resources")
+    .set("Authorization", `Bearer ${tokenFor(users.ngo)}`);
+  const invalidResource = await request(app)
+    .delete(`/api/ngo/assistance-requests/${assistanceRequest.id}/resources/not-an-id`)
+    .set("Authorization", `Bearer ${tokenFor(users.ngo)}`);
+  const outOfRange = await request(app)
+    .delete(`/api/ngo/assistance-requests/${assistanceRequest.id}/resources/18446744073709551616`)
+    .set("Authorization", `Bearer ${tokenFor(users.ngo)}`);
+
+  assert.equal(unauthenticated.status, 401);
+  assert.equal(wrongRole.status, 403);
+  assert.equal(invalidRequest.status, 400);
+  assert.equal(invalidResource.status, 400);
+  assert.equal(outOfRange.status, 400);
+  assert.ok(allocation);
+});
+
+test("NGO can read Resource Allocations after Assistance Request completion", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest({
+    ngo_id: ngo.id,
+    status: "COMPLETED",
+  });
+  const allocation = await insertResourceAllocation(assistanceRequest.id, {
+    resource_name: "Completed request supplies",
+    quantity: 4,
+    delivery_date: "2026-09-27",
+    notes: "Delivered before completion",
+  });
+
+  const response = await request(app)
+    .get(`/api/ngo/assistance-requests/${assistanceRequest.id}/resources`)
+    .set("Authorization", `Bearer ${tokenFor(users.ngo)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.resource_allocations.length, 1);
+  assert.deepEqual(response.body.data.resource_allocations[0], {
+    id: allocation.id,
+    assistance_request_id: assistanceRequest.id,
+    resource_name: "Completed request supplies",
+    quantity: 4,
+    delivery_date: "2026-09-27",
+    notes: "Delivered before completion",
+    created_at: response.body.data.resource_allocations[0].created_at,
+    updated_at: response.body.data.resource_allocations[0].updated_at,
+  });
+});
+
+test("deleting the last allocation racing with completion preserves the completion guard", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest({ ngo_id: ngo.id, status: "APPROVED" });
+  const allocation = await insertResourceAllocation(assistanceRequest.id);
+  const authorization = `Bearer ${tokenFor(users.ngo)}`;
+
+  const [deleteResponse, completeResponse] = await Promise.all([
+    request(app)
+      .delete(`/api/ngo/assistance-requests/${assistanceRequest.id}/resources/${allocation.id}`)
+      .set("Authorization", authorization),
+    request(app)
+      .patch(`/api/ngo/assistance-requests/${assistanceRequest.id}/status`)
+      .set("Authorization", authorization)
+      .send({ status: "COMPLETED" }),
+  ]);
+
+  assert.deepEqual([deleteResponse.status, completeResponse.status].sort((a, b) => a - b), [200, 409]);
+  const storedRequest = await db("assistance_requests").where({ id: assistanceRequest.id }).first();
+  const count = Number((await db("resource_allocations").where({ assistance_request_id: assistanceRequest.id }).count({ count: "*" }).first()).count);
+  assert.ok(storedRequest.status !== "COMPLETED" || count > 0);
+});
+
+test("Resource Allocation update racing with completion cannot mutate after completion", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest({ ngo_id: ngo.id, status: "APPROVED" });
+  const allocation = await insertResourceAllocation(assistanceRequest.id);
+  const authorization = `Bearer ${tokenFor(users.ngo)}`;
+
+  const [updateResponse, completeResponse] = await Promise.all([
+    request(app)
+      .patch(`/api/ngo/assistance-requests/${assistanceRequest.id}/resources/${allocation.id}`)
+      .set("Authorization", authorization)
+      .send({ quantity: 7 }),
+    request(app)
+      .patch(`/api/ngo/assistance-requests/${assistanceRequest.id}/status`)
+      .set("Authorization", authorization)
+      .send({ status: "COMPLETED" }),
+  ]);
+
+  assert.equal(completeResponse.status, 200);
+  assert.ok([200, 409].includes(updateResponse.status));
+  const storedRequest = await db("assistance_requests").where({ id: assistanceRequest.id }).first();
+  const storedAllocation = await db("resource_allocations")
+    .where({ id: allocation.id })
+    .first();
+  assert.equal(storedRequest.status, "COMPLETED");
+
+  if (updateResponse.status === 200) {
+    assert.equal(storedAllocation.quantity, 7);
+  } else {
+    assert.equal(updateResponse.status, 409);
+    assert.equal(storedAllocation.quantity, 2);
+  }
+});
+
+test("concurrent partial Resource Allocation updates preserve unrelated fields", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest({
+    ngo_id: ngo.id,
+    status: "APPROVED",
+  });
+  const allocation = await insertResourceAllocation(assistanceRequest.id, {
+    quantity: 2,
+    notes: "Original notes",
+  });
+  const path = `/api/ngo/assistance-requests/${assistanceRequest.id}/resources/${allocation.id}`;
+  const authorization = `Bearer ${tokenFor(users.ngo)}`;
+
+  const [quantityResponse, notesResponse] = await Promise.all([
+    request(app)
+      .patch(path)
+      .set("Authorization", authorization)
+      .send({ quantity: 9 }),
+    request(app)
+      .patch(path)
+      .set("Authorization", authorization)
+      .send({ notes: "Concurrent notes update" }),
+  ]);
+
+  assert.equal(quantityResponse.status, 200);
+  assert.equal(notesResponse.status, 200);
+
+  const storedAllocation = await db("resource_allocations")
+    .where({ id: allocation.id })
+    .first();
+  assert.equal(storedAllocation.quantity, 9);
+  assert.equal(storedAllocation.notes, "Concurrent notes update");
+});
+
+test("concurrent Resource Allocation update and delete never recreate a deleted row", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest({
+    ngo_id: ngo.id,
+    status: "APPROVED",
+  });
+  const allocation = await insertResourceAllocation(assistanceRequest.id);
+  const path = `/api/ngo/assistance-requests/${assistanceRequest.id}/resources/${allocation.id}`;
+  const authorization = `Bearer ${tokenFor(users.ngo)}`;
+
+  const [updateResponse, deleteResponse] = await Promise.all([
+    request(app)
+      .patch(path)
+      .set("Authorization", authorization)
+      .send({ quantity: 11 }),
+    request(app).delete(path).set("Authorization", authorization),
+  ]);
+
+  assert.ok(
+    (updateResponse.status === 200 && deleteResponse.status === 200) ||
+      (updateResponse.status === 404 && deleteResponse.status === 200),
+  );
+
+  const storedAllocation = await db("resource_allocations")
+    .where({ id: allocation.id })
+    .first();
+  assert.equal(storedAllocation, undefined);
+});
+
+test("Resource Allocation creation racing with completion preserves a consistent final state", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest({ ngo_id: ngo.id, status: "APPROVED" });
+  const authorization = `Bearer ${tokenFor(users.ngo)}`;
+
+  const [createResponse, completeResponse] = await Promise.all([
+    request(app)
+      .post(`/api/ngo/assistance-requests/${assistanceRequest.id}/resources`)
+      .set("Authorization", authorization)
+      .send({ resource_name: "Concurrent support", quantity: 1 }),
+    request(app)
+      .patch(`/api/ngo/assistance-requests/${assistanceRequest.id}/status`)
+      .set("Authorization", authorization)
+      .send({ status: "COMPLETED" }),
+  ]);
+
+  assert.equal(createResponse.status, 201);
+  assert.ok([200, 409].includes(completeResponse.status));
+  const storedRequest = await db("assistance_requests").where({ id: assistanceRequest.id }).first();
+  const count = Number((await db("resource_allocations").where({ assistance_request_id: assistanceRequest.id }).count({ count: "*" }).first()).count);
+  assert.ok(storedRequest.status !== "COMPLETED" || count > 0);
+});

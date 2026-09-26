@@ -268,6 +268,13 @@ PATCH /api/admin/assistance-requests/:requestId/assign
 GET  /api/ngo/assistance-requests
 GET  /api/ngo/assistance-requests/:requestId
 PATCH /api/ngo/assistance-requests/:requestId/status
+POST   /api/ngo/assistance-requests/:requestId/resources
+GET    /api/ngo/assistance-requests/:requestId/resources
+PATCH  /api/ngo/assistance-requests/:requestId/resources/:resourceId
+DELETE /api/ngo/assistance-requests/:requestId/resources/:resourceId
+GET    /api/patient/assistance-requests/:requestId/resources
+GET    /api/doctor/assistance-requests/:requestId/resources
+GET    /api/admin/assistance-requests/:requestId/resources
 ```
 
 The creation route requires an authenticated `DOCTOR` with an `ACTIVE`
@@ -312,6 +319,36 @@ transitions return `409`. `reviewed_at` is set when a request becomes
 one existing Resource Allocation for the request; otherwise it returns `409`.
 Assignment and status changes are transactionally protected against concurrent
 state changes.
+
+### Resource Allocations
+
+Resource Allocation creation and management routes require the authenticated
+`NGO` to own the Assistance Request. Creation is allowed only while the request
+is `APPROVED`. It accepts exactly `resource_name`, `quantity`, optional
+`delivery_date`, and optional `notes`; the request relationship is derived from
+the URL. `resource_name` is a required non-empty string of at most 150
+characters. `quantity` is a required positive integer within the MySQL
+unsigned `INT` range. `delivery_date`, when supplied, must be a valid
+`YYYY-MM-DD` date. Nullable `delivery_date` and `notes` may be cleared with
+`null`.
+
+Updates are partial but require at least one editable field. An allocation must
+belong to the request identified in the URL. NGO allocation lists are ordered
+by `created_at ASC, id ASC`. Once an Assistance Request becomes `COMPLETED`,
+its allocations remain readable but cannot be updated or deleted. Allocation
+creation, updates, and deletion never change the Assistance Request status.
+
+Patients may read allocations only for their own Assistance Requests. Doctors
+may read allocations only for requests they originally submitted; this access
+does not depend on a current Doctor-Patient Assignment. Admins may read
+allocations for any existing Assistance Request. These roles have no Resource
+Allocation write endpoints.
+
+Malformed IDs or bodies return `400`; missing requests or relationship-scoped
+allocations return `404`; wrong-role and ownership violations return `403`;
+invalid request-state operations and stale conflicts return `409`. Resource
+mutations lock the Assistance Request before allocation rows, preserving the
+same lock order as Assistance Request completion.
 
 ## HTTPS deployment requirement
 
