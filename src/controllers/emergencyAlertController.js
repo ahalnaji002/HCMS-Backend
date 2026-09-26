@@ -8,6 +8,31 @@ function handleEmergencyAlertError(error, res) {
     });
   }
 
+  if (error instanceof emergencyAlertService.EmergencyAlertConflictError) {
+    return res.status(409).json({
+      success: false,
+      message: error.message,
+    });
+  }
+
+  if (
+    error instanceof emergencyAlertService.EmergencyAlertDoctorNotFoundError
+  ) {
+    return res.status(404).json({
+      success: false,
+      message: error.message,
+    });
+  }
+
+  if (
+    error instanceof emergencyAlertService.EmergencyAlertDoctorNotEligibleError
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+
   if (error instanceof emergencyAlertService.EmergencyAlertNotFoundError) {
     return res.status(404).json({
       success: false,
@@ -114,10 +139,67 @@ async function cancelOwnAlert(req, res) {
   }
 }
 
+async function listForAdmin(req, res) {
+  try {
+    const emergencyAlerts = await emergencyAlertService.listAlertsForAdmin();
+
+    return res.status(200).json({
+      success: true,
+      message: "Emergency Alerts retrieved successfully",
+      data: {
+        emergency_alerts: emergencyAlerts,
+      },
+    });
+  } catch (error) {
+    return handleEmergencyAlertError(error, res);
+  }
+}
+
+async function getForAdmin(req, res) {
+  try {
+    const emergencyAlert = await emergencyAlertService.getAlertForAdmin(
+      req.params.alertId,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Emergency Alert retrieved successfully",
+      data: {
+        emergency_alert: emergencyAlert,
+      },
+    });
+  } catch (error) {
+    return handleEmergencyAlertError(error, res);
+  }
+}
+
+async function assignDoctor(req, res) {
+  try {
+    const emergencyAlert = await emergencyAlertService.assignDoctorToAlert(
+      req.user,
+      req.params.alertId,
+      req.validatedEmergencyAlertAssignment.doctor_id,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Emergency Alert assigned successfully",
+      data: {
+        emergency_alert: emergencyAlert,
+      },
+    });
+  } catch (error) {
+    return handleEmergencyAlertError(error, res);
+  }
+}
+
 module.exports = {
   createPublicAlert,
   createPatientAlert,
   listOwnAlerts,
   getOwnAlert,
   cancelOwnAlert,
+  listForAdmin,
+  getForAdmin,
+  assignDoctor,
 };

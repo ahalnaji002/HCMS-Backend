@@ -15,14 +15,16 @@ function validationFailure(res, errors) {
 }
 
 function isValidPositiveId(value) {
-  const stringValue = String(value);
+  if (typeof value === "number") {
+    return Number.isSafeInteger(value) && value > 0;
+  }
 
-  if (!/^[1-9]\d*$/.test(stringValue)) {
+  if (typeof value !== "string" || !/^[1-9]\d*$/.test(value)) {
     return false;
   }
 
   try {
-    return BigInt(stringValue) <= UNSIGNED_BIGINT_MAX;
+    return BigInt(value) <= UNSIGNED_BIGINT_MAX;
   } catch {
     return false;
   }
@@ -168,8 +170,42 @@ function validateCancelEmergencyAlert(req, res, next) {
   return next();
 }
 
+function validateAssignEmergencyAlert(req, res, next) {
+  const input = req.body;
+
+  if (!validateBodyObject(input, res)) {
+    return;
+  }
+
+  const errors = {};
+  const allowedFields = new Set(["doctor_id"]);
+
+  for (const field of Object.keys(input)) {
+    if (!allowedFields.has(field)) {
+      errors[field] = `${field} is not allowed`;
+    }
+  }
+
+  if (input.doctor_id === undefined) {
+    errors.doctor_id = "doctor_id is required";
+  } else if (!isValidPositiveId(input.doctor_id)) {
+    errors.doctor_id = "doctor_id must be a positive integer";
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return validationFailure(res, errors);
+  }
+
+  req.validatedEmergencyAlertAssignment = {
+    doctor_id: String(input.doctor_id),
+  };
+
+  return next();
+}
+
 module.exports = {
   validateAlertId,
   validateCreateEmergencyAlert,
   validateCancelEmergencyAlert,
+  validateAssignEmergencyAlert,
 };
