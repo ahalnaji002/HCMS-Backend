@@ -4,6 +4,7 @@ const doctorRoutes = require("./routes/doctorRoutes");
 const patientRoutes = require("./routes/patientRoutes");
 const emergencyAlertRoutes = require("./routes/emergencyAlertRoutes");
 const ngoRoutes = require("./routes/ngoRoutes");
+const messageRoutes = require("./routes/messageRoutes");
 
 const {
   apiErrorHandler,
@@ -26,6 +27,7 @@ app.get("/", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/emergency-alerts", emergencyAlertRoutes);
+app.use("/api/messages", messageRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/doctor", doctorRoutes);

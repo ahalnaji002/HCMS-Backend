@@ -350,6 +350,56 @@ invalid request-state operations and stale conflicts return `409`. Resource
 mutations lock the Assistance Request before allocation rows, preserving the
 same lock order as Assistance Request completion.
 
+## Patient-Doctor Messaging
+
+```http
+POST  /api/messages
+GET   /api/messages/conversations
+GET   /api/messages/conversations/:userId
+PATCH /api/messages/:messageId/read
+```
+
+All Messaging routes require authentication and allow only `PATIENT` and
+`DOCTOR` accounts. NGO and Admin accounts receive `403`. The send endpoint
+accepts exactly:
+
+```json
+{
+  "receiver_id": 25,
+  "message_text": "How are you feeling today?"
+}
+```
+
+`receiver_id` is a MySQL unsigned-BIGINT user ID, and `message_text` is a
+required non-empty string that must fit the database `TEXT` capacity of 65535
+bytes. Unknown fields and client-controlled message IDs, sender IDs, read
+state, or timestamps are rejected. The server derives `sender_id` from the
+authenticated user and initializes `is_read = false` and `read_at = NULL`.
+
+Sending is permitted only between one Patient and one Doctor whose exact
+profiles have a current `ACTIVE` Doctor-Patient Assignment. Patient-to-Patient,
+Doctor-to-Doctor, self, NGO, and Admin messaging are not allowed. A missing or
+inactive assignment returns `403`.
+
+Conversation lists contain only conversations in which the authenticated user
+has sent or received a message. They are ordered by the latest message using
+`sent_at DESC, id DESC` and expose only the other participant's `id`,
+`full_name`, and `role`, plus the latest message. Conversation history uses the
+other participant's user ID, is ordered chronologically by
+`sent_at ASC, id ASC`, and returns only message-table fields.
+
+Ending an assignment blocks new messages in both directions but does not hide
+existing history from either participant. An unrelated authenticated user
+receives `403` and cannot discover or read the conversation. Missing users or
+messages return `404`, malformed IDs and bodies return `400`, and missing
+authentication returns `401`. No pagination, message editing/deletion,
+attachments, realtime transport, notifications, or read receipts beyond the
+database read status are included.
+
+The read endpoint accepts an empty JSON object and is receiver-only. It sets
+`is_read = true` and `read_at` on the first successful request; repeated calls
+are idempotent and preserve the original `read_at` value.
+
 ## HTTPS deployment requirement
 
 The Express process currently listens for HTTP and has no TLS certificate or
