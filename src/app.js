@@ -3,6 +3,7 @@ const cors = require("cors");
 const doctorRoutes = require("./routes/doctorRoutes");
 const patientRoutes = require("./routes/patientRoutes");
 const emergencyAlertRoutes = require("./routes/emergencyAlertRoutes");
+const ngoRoutes = require("./routes/ngoRoutes");
 
 const {
   apiErrorHandler,
@@ -28,6 +29,7 @@ app.use("/api/emergency-alerts", emergencyAlertRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/doctor", doctorRoutes);
+app.use("/api/ngo", ngoRoutes);
 app.use("/api/patient", patientRoutes);
 
 app.use("/api", apiNotFound);

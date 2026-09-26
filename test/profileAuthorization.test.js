@@ -5962,3 +5962,469 @@ test("Patient Assistance Requests use deterministic newest-first ordering", asyn
     [newerSecond.id, newerFirst.id, older.id],
   );
 });
+
+async function getPrimaryNgoProfile() {
+  return db("ngos").where({ user_id: users.ngo.id }).first();
+}
+
+async function createAssistanceNgo({
+  email,
+  registrationNumber,
+  role = "NGO",
+  accountStatus = "ACTIVE",
+}) {
+  const user = await createUser({
+    fullName: `Assistance ${registrationNumber}`,
+    email,
+    role,
+    accountStatus,
+  });
+  const [id] = await db("ngos").insert({
+    user_id: user.id,
+    organization_name: `Organization ${registrationNumber}`,
+    registration_number: registrationNumber,
+  });
+
+  return {
+    user,
+    profile: await db("ngos").where({ id }).first(),
+  };
+}
+
+test("Admin can list all Assistance Requests in deterministic newest-first order", async () => {
+  const older = await insertAssistanceRequest({
+    description: "Older admin request",
+    submitted_at: "2026-09-25 09:00:00",
+  });
+  const newerFirst = await insertAssistanceRequest({
+    description: "Newer first admin request",
+    submitted_at: "2026-09-26 09:00:00",
+  });
+  const newerSecond = await insertAssistanceRequest({
+    description: "Newer second admin request",
+    submitted_at: "2026-09-26 09:00:00",
+  });
+
+  const response = await request(app)
+    .get("/api/admin/assistance-requests")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`);
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    response.body.data.assistance_requests.map((item) => item.id),
+    [newerSecond.id, newerFirst.id, older.id],
+  );
+});
+
+test("Admin can view an Assistance Request and missing detail returns 404", async () => {
+  const assistanceRequest = await insertAssistanceRequest();
+
+  const found = await request(app)
+    .get(`/api/admin/assistance-requests/${assistanceRequest.id}`)
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`);
+  const missing = await request(app)
+    .get("/api/admin/assistance-requests/999999999")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`);
+
+  assert.equal(found.status, 200);
+  assert.equal(found.body.data.assistance_request.id, assistanceRequest.id);
+  assert.equal(missing.status, 404);
+});
+
+test("Admin can assign a pending Assistance Request to an active NGO", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest();
+
+  const response = await request(app)
+    .patch(`/api/admin/assistance-requests/${assistanceRequest.id}/assign`)
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({ ngo_id: ngo.id });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.assistance_request.ngo_id, ngo.id);
+  assert.equal(response.body.data.assistance_request.status, "PENDING");
+
+  const stored = await db("assistance_requests")
+    .where({ id: assistanceRequest.id })
+    .first();
+  assert.equal(stored.ngo_id, ngo.id);
+  assert.equal(stored.status, "PENDING");
+});
+
+test("Assistance Request assignment rejects missing, invalid, unsafe, and out-of-range NGO IDs", async () => {
+  const assistanceRequest = await insertAssistanceRequest();
+  const path = `/api/admin/assistance-requests/${assistanceRequest.id}/assign`;
+  const authorization = `Bearer ${tokenFor(users.admin)}`;
+
+  const responses = await Promise.all([
+    request(app).patch(path).set("Authorization", authorization).send({}),
+    request(app).patch(path).set("Authorization", authorization).send({ ngo_id: 0 }),
+    request(app)
+      .patch(path)
+      .set("Authorization", authorization)
+      .send({ ngo_id: Number.MAX_SAFE_INTEGER + 1 }),
+    request(app)
+      .patch(path)
+      .set("Authorization", authorization)
+      .send({ ngo_id: "18446744073709551616" }),
+  ]);
+
+  for (const response of responses) {
+    assert.equal(response.status, 400);
+  }
+});
+
+test("Assistance Request assignment rejects unknown fields and invalid request IDs", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest();
+
+  const unknown = await request(app)
+    .patch(`/api/admin/assistance-requests/${assistanceRequest.id}/assign`)
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({ ngo_id: ngo.id, status: "UNDER_REVIEW" });
+  const invalidId = await request(app)
+    .patch("/api/admin/assistance-requests/not-an-id/assign")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({ ngo_id: ngo.id });
+
+  assert.equal(unknown.status, 400);
+  assert.equal(unknown.body.errors.status, "status is not allowed");
+  assert.equal(invalidId.status, 400);
+});
+
+test("Admin cannot assign to a missing, inactive, or wrong-role NGO", async () => {
+  const inactive = await createAssistanceNgo({
+    email: "inactive.assistance.ngo@test.local",
+    registrationNumber: "ASSIST-NGO-INACTIVE",
+    accountStatus: "INACTIVE",
+  });
+  const wrongRole = await createAssistanceNgo({
+    email: "wrong.role.assistance.ngo@test.local",
+    registrationNumber: "ASSIST-NGO-WRONG-ROLE",
+    role: "PATIENT",
+  });
+
+  for (const [ngoId, expectedStatus] of [
+    ["999999999", 404],
+    [inactive.profile.id, 400],
+    [wrongRole.profile.id, 400],
+  ]) {
+    const assistanceRequest = await insertAssistanceRequest();
+    const response = await request(app)
+      .patch(`/api/admin/assistance-requests/${assistanceRequest.id}/assign`)
+      .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+      .send({ ngo_id: ngoId });
+
+    assert.equal(response.status, expectedStatus);
+  }
+});
+
+test("Admin cannot assign a non-pending or already assigned Assistance Request", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const nonPending = await insertAssistanceRequest({ status: "UNDER_REVIEW" });
+  const alreadyAssigned = await insertAssistanceRequest({ ngo_id: ngo.id });
+
+  for (const assistanceRequest of [nonPending, alreadyAssigned]) {
+    const response = await request(app)
+      .patch(`/api/admin/assistance-requests/${assistanceRequest.id}/assign`)
+      .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+      .send({ ngo_id: ngo.id });
+
+    assert.equal(response.status, 409);
+  }
+});
+
+test("Concurrent Assistance Request assignments allow only one NGO", async () => {
+  const firstNgo = await getPrimaryNgoProfile();
+  const secondNgo = await createAssistanceNgo({
+    email: "concurrent.assistance.ngo@test.local",
+    registrationNumber: "ASSIST-NGO-CONCURRENT",
+  });
+  const assistanceRequest = await insertAssistanceRequest();
+  const path = `/api/admin/assistance-requests/${assistanceRequest.id}/assign`;
+  const authorization = `Bearer ${tokenFor(users.admin)}`;
+
+  const responses = await Promise.all([
+    request(app)
+      .patch(path)
+      .set("Authorization", authorization)
+      .send({ ngo_id: firstNgo.id }),
+    request(app)
+      .patch(path)
+      .set("Authorization", authorization)
+      .send({ ngo_id: secondNgo.profile.id }),
+  ]);
+
+  assert.deepEqual(
+    responses.map((response) => response.status).sort((a, b) => a - b),
+    [200, 409],
+  );
+  const stored = await db("assistance_requests")
+    .where({ id: assistanceRequest.id })
+    .first();
+  assert.ok([firstNgo.id, secondNgo.profile.id].includes(Number(stored.ngo_id)));
+});
+
+test("Admin Assistance Request routes enforce authentication and ADMIN role", async () => {
+  const unauthenticated = await request(app).get(
+    "/api/admin/assistance-requests",
+  );
+  const wrongRole = await request(app)
+    .get("/api/admin/assistance-requests")
+    .set("Authorization", `Bearer ${tokenFor(users.ngo)}`);
+
+  assert.equal(unauthenticated.status, 401);
+  assert.equal(wrongRole.status, 403);
+});
+
+test("NGO can list only assigned Assistance Requests in newest-first order", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const otherNgo = await createAssistanceNgo({
+    email: "other.list.assistance.ngo@test.local",
+    registrationNumber: "ASSIST-NGO-OTHER-LIST",
+  });
+  const older = await insertAssistanceRequest({
+    ngo_id: ngo.id,
+    submitted_at: "2026-09-25 09:00:00",
+  });
+  const newerFirst = await insertAssistanceRequest({
+    ngo_id: ngo.id,
+    submitted_at: "2026-09-26 09:00:00",
+  });
+  const newerSecond = await insertAssistanceRequest({
+    ngo_id: ngo.id,
+    submitted_at: "2026-09-26 09:00:00",
+  });
+  await insertAssistanceRequest({ ngo_id: otherNgo.profile.id });
+
+  const response = await request(app)
+    .get("/api/ngo/assistance-requests")
+    .set("Authorization", `Bearer ${tokenFor(users.ngo)}`);
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    response.body.data.assistance_requests.map((item) => item.id),
+    [newerSecond.id, newerFirst.id, older.id],
+  );
+});
+
+test("NGO can view its assigned Assistance Request", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest({ ngo_id: ngo.id });
+
+  const response = await request(app)
+    .get(`/api/ngo/assistance-requests/${assistanceRequest.id}`)
+    .set("Authorization", `Bearer ${tokenFor(users.ngo)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.assistance_request.id, assistanceRequest.id);
+});
+
+test("NGO detail distinguishes another NGO's request from a missing request", async () => {
+  const otherNgo = await createAssistanceNgo({
+    email: "other.detail.assistance.ngo@test.local",
+    registrationNumber: "ASSIST-NGO-OTHER-DETAIL",
+  });
+  const assistanceRequest = await insertAssistanceRequest({
+    ngo_id: otherNgo.profile.id,
+  });
+  const authorization = `Bearer ${tokenFor(users.ngo)}`;
+
+  const forbidden = await request(app)
+    .get(`/api/ngo/assistance-requests/${assistanceRequest.id}`)
+    .set("Authorization", authorization);
+  const missing = await request(app)
+    .get("/api/ngo/assistance-requests/999999999")
+    .set("Authorization", authorization);
+
+  assert.equal(forbidden.status, 403);
+  assert.equal(missing.status, 404);
+});
+
+test("NGO Assistance Request routes validate IDs and enforce access", async () => {
+  const invalid = await request(app)
+    .get("/api/ngo/assistance-requests/not-an-id")
+    .set("Authorization", `Bearer ${tokenFor(users.ngo)}`);
+  const outOfRange = await request(app)
+    .get("/api/ngo/assistance-requests/18446744073709551616")
+    .set("Authorization", `Bearer ${tokenFor(users.ngo)}`);
+  const unauthenticated = await request(app).get(
+    "/api/ngo/assistance-requests",
+  );
+  const wrongRole = await request(app)
+    .get("/api/ngo/assistance-requests")
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(invalid.status, 400);
+  assert.equal(outOfRange.status, 400);
+  assert.equal(unauthenticated.status, 401);
+  assert.equal(wrongRole.status, 403);
+});
+
+test("NGO can move an assigned request from PENDING to UNDER_REVIEW", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest({ ngo_id: ngo.id });
+
+  const response = await request(app)
+    .patch(`/api/ngo/assistance-requests/${assistanceRequest.id}/status`)
+    .set("Authorization", `Bearer ${tokenFor(users.ngo)}`)
+    .send({ status: "UNDER_REVIEW" });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.assistance_request.status, "UNDER_REVIEW");
+  assert.equal(response.body.data.assistance_request.reviewed_at, null);
+});
+
+test("NGO can approve or reject an under-review request and reviewed_at is set", async () => {
+  const ngo = await getPrimaryNgoProfile();
+
+  for (const status of ["APPROVED", "REJECTED"]) {
+    const assistanceRequest = await insertAssistanceRequest({
+      ngo_id: ngo.id,
+      status: "UNDER_REVIEW",
+    });
+    const response = await request(app)
+      .patch(`/api/ngo/assistance-requests/${assistanceRequest.id}/status`)
+      .set("Authorization", `Bearer ${tokenFor(users.ngo)}`)
+      .send({ status });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.data.assistance_request.status, status);
+    assert.ok(response.body.data.assistance_request.reviewed_at);
+  }
+});
+
+test("NGO cannot complete an approved request without a Resource Allocation", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest({
+    ngo_id: ngo.id,
+    status: "APPROVED",
+  });
+
+  const response = await request(app)
+    .patch(`/api/ngo/assistance-requests/${assistanceRequest.id}/status`)
+    .set("Authorization", `Bearer ${tokenFor(users.ngo)}`)
+    .send({ status: "COMPLETED" });
+
+  assert.equal(response.status, 409);
+  assert.equal(
+    response.body.message,
+    "At least one resource allocation is required before completing the assistance request.",
+  );
+});
+
+test("NGO can complete an approved request with a Resource Allocation", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest({
+    ngo_id: ngo.id,
+    status: "APPROVED",
+  });
+  await db("resource_allocations").insert({
+    assistance_request_id: assistanceRequest.id,
+    resource_name: "Medical kit",
+    quantity: 1,
+  });
+
+  const response = await request(app)
+    .patch(`/api/ngo/assistance-requests/${assistanceRequest.id}/status`)
+    .set("Authorization", `Bearer ${tokenFor(users.ngo)}`)
+    .send({ status: "COMPLETED" });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.assistance_request.status, "COMPLETED");
+});
+
+test("NGO status update rejects invalid transitions and same-status updates", async () => {
+  const ngo = await getPrimaryNgoProfile();
+
+  for (const [currentStatus, nextStatus] of [
+    ["PENDING", "APPROVED"],
+    ["PENDING", "PENDING"],
+    ["REJECTED", "COMPLETED"],
+    ["COMPLETED", "UNDER_REVIEW"],
+  ]) {
+    const assistanceRequest = await insertAssistanceRequest({
+      ngo_id: ngo.id,
+      status: currentStatus,
+    });
+    const response = await request(app)
+      .patch(`/api/ngo/assistance-requests/${assistanceRequest.id}/status`)
+      .set("Authorization", `Bearer ${tokenFor(users.ngo)}`)
+      .send({ status: nextStatus });
+
+    assert.equal(response.status, 409);
+  }
+});
+
+test("NGO status update accepts exactly one supported status field", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest({ ngo_id: ngo.id });
+  const path = `/api/ngo/assistance-requests/${assistanceRequest.id}/status`;
+  const authorization = `Bearer ${tokenFor(users.ngo)}`;
+
+  const missing = await request(app)
+    .patch(path)
+    .set("Authorization", authorization)
+    .send({});
+  const invalid = await request(app)
+    .patch(path)
+    .set("Authorization", authorization)
+    .send({ status: "ASSIGNED" });
+  const unknown = await request(app)
+    .patch(path)
+    .set("Authorization", authorization)
+    .send({ status: "UNDER_REVIEW", ngo_id: ngo.id });
+
+  assert.equal(missing.status, 400);
+  assert.equal(invalid.status, 400);
+  assert.equal(unknown.status, 400);
+  assert.equal(unknown.body.errors.ngo_id, "ngo_id is not allowed");
+});
+
+test("NGO cannot update another NGO's Assistance Request", async () => {
+  const otherNgo = await createAssistanceNgo({
+    email: "other.status.assistance.ngo@test.local",
+    registrationNumber: "ASSIST-NGO-OTHER-STATUS",
+  });
+  const assistanceRequest = await insertAssistanceRequest({
+    ngo_id: otherNgo.profile.id,
+  });
+
+  const response = await request(app)
+    .patch(`/api/ngo/assistance-requests/${assistanceRequest.id}/status`)
+    .set("Authorization", `Bearer ${tokenFor(users.ngo)}`)
+    .send({ status: "UNDER_REVIEW" });
+
+  assert.equal(response.status, 403);
+});
+
+test("Concurrent NGO status transitions allow only one transition", async () => {
+  const ngo = await getPrimaryNgoProfile();
+  const assistanceRequest = await insertAssistanceRequest({
+    ngo_id: ngo.id,
+    status: "UNDER_REVIEW",
+  });
+  const path = `/api/ngo/assistance-requests/${assistanceRequest.id}/status`;
+  const authorization = `Bearer ${tokenFor(users.ngo)}`;
+
+  const responses = await Promise.all([
+    request(app)
+      .patch(path)
+      .set("Authorization", authorization)
+      .send({ status: "APPROVED" }),
+    request(app)
+      .patch(path)
+      .set("Authorization", authorization)
+      .send({ status: "REJECTED" }),
+  ]);
+
+  assert.deepEqual(
+    responses.map((response) => response.status).sort((a, b) => a - b),
+    [200, 409],
+  );
+  const stored = await db("assistance_requests")
+    .where({ id: assistanceRequest.id })
+    .first();
+  assert.ok(["APPROVED", "REJECTED"].includes(stored.status));
+  assert.ok(stored.reviewed_at);
+});

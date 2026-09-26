@@ -2,6 +2,7 @@ const express = require("express");
 const joinRequestController = require("../controllers/adminJoinRequestController");
 const assignmentController = require("../controllers/adminDoctorPatientAssignmentController");
 const emergencyAlertController = require("../controllers/emergencyAlertController");
+const assistanceRequestController = require("../controllers/assistanceRequestController");
 const authenticate = require("../middleware/authenticate");
 const authorizeRoles = require("../middleware/authorizeRoles");
 
@@ -19,6 +20,10 @@ const {
   validateAssignmentStatusUpdate,
   validateCreateAssignment,
 } = require("../middleware/validateDoctorPatientAssignment");
+const {
+  validateAssignNgo,
+  validateRequestId,
+} = require("../middleware/validateAssistanceRequest");
 
 const router = express.Router();
 
@@ -86,6 +91,28 @@ router.patch(
   validateAlertId,
   validateAssignEmergencyAlert,
   emergencyAlertController.assignDoctor,
+);
+
+// ==============================
+// Assistance Requests
+// ==============================
+
+router.get(
+  "/assistance-requests",
+  assistanceRequestController.listForAdmin,
+);
+
+router.get(
+  "/assistance-requests/:requestId",
+  validateRequestId,
+  assistanceRequestController.getForAdmin,
+);
+
+router.patch(
+  "/assistance-requests/:requestId/assign",
+  validateRequestId,
+  validateAssignNgo,
+  assistanceRequestController.assignNgo,
 );
 
 module.exports = router;

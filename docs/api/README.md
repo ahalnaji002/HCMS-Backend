@@ -262,6 +262,12 @@ a null plan end date has no upper bound. Status is `SCHEDULED`, `COMPLETED`, or
 POST /api/doctor/patients/:patientId/assistance-requests
 GET  /api/patient/assistance-requests
 GET  /api/patient/assistance-requests/:requestId
+GET  /api/admin/assistance-requests
+GET  /api/admin/assistance-requests/:requestId
+PATCH /api/admin/assistance-requests/:requestId/assign
+GET  /api/ngo/assistance-requests
+GET  /api/ngo/assistance-requests/:requestId
+PATCH /api/ngo/assistance-requests/:requestId/status
 ```
 
 The creation route requires an authenticated `DOCTOR` with an `ACTIVE`
@@ -284,6 +290,28 @@ Successful creation returns `201`, and successful list or detail requests
 return `200`. Validation failures return `400`, missing resources return `404`,
 missing authentication returns `401`, wrong-role access returns `403`, and a
 Doctor without an active assignment receives `403`.
+
+Admin Assistance Request routes require an authenticated `ADMIN`. Admins may
+list all requests, retrieve one request, and assign a request by sending exactly
+`ngo_id`. The selected NGO must exist and its linked user must have the `NGO`
+role and an `ACTIVE` account. Only an unassigned request whose status is
+`PENDING` may be assigned. Assignment sets `ngo_id` without changing the
+request status. Admin lists are ordered by `submitted_at DESC, id DESC`.
+
+NGO Assistance Request routes require an authenticated `NGO` and derive the
+NGO identity from its authenticated profile. NGOs may list and retrieve only
+requests assigned to them. Accessing a request assigned to another NGO returns
+`403`; a missing request returns `404`. NGO lists are ordered by
+`submitted_at DESC, id DESC`.
+
+The NGO status endpoint accepts exactly `status` and supports only these
+transitions: `PENDING -> UNDER_REVIEW`, `UNDER_REVIEW -> APPROVED`,
+`UNDER_REVIEW -> REJECTED`, and `APPROVED -> COMPLETED`. Invalid or stale
+transitions return `409`. `reviewed_at` is set when a request becomes
+`APPROVED` or `REJECTED`, not when review begins. Completion requires at least
+one existing Resource Allocation for the request; otherwise it returns `409`.
+Assignment and status changes are transactionally protected against concurrent
+state changes.
 
 ## HTTPS deployment requirement
 
