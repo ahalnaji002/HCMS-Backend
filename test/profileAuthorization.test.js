@@ -189,6 +189,8 @@ before(async () => {
 beforeEach(async () => {
   assertTestDatabaseVerified();
 
+  await db("resource_allocations").del();
+  await db("assistance_requests").del();
   await db("emergency_alerts").del();
   await db("medical_notes").del();
   await db("treatment_medications").del();
@@ -208,6 +210,8 @@ beforeEach(async () => {
 after(async () => {
   try {
     if (testDatabaseVerified) {
+      await db("resource_allocations").del();
+      await db("assistance_requests").del();
       await db("emergency_alerts").del();
       await db("medical_notes").del();
       await db("treatment_medications").del();
@@ -5585,4 +5589,376 @@ test("Concurrent Emergency Alert assignments allow only one assignment", async (
   );
   assert.equal(Number(alert.assigned_by_admin_id), users.admin.id);
   assert.ok(alert.assigned_at);
+});
+
+// ==============================
+// Assistance Requests
+// ==============================
+
+async function insertAssistanceRequest(overrides = {}) {
+  const [id] = await db("assistance_requests").insert({
+    patient_id: users.patientProfile.id,
+    doctor_id: users.doctorProfile.id,
+    request_type: "Medical supplies",
+    description: "Patient requires medical supplies",
+    ...overrides,
+  });
+
+  return db("assistance_requests").where({ id }).first();
+}
+
+async function createSecondPatientForAssistanceRequests() {
+  const patientUser = await createUser({
+    fullName: "Second Assistance Patient",
+    email: "second.assistance.patient@test.local",
+    role: "PATIENT",
+    phone: "0593333333",
+  });
+
+  const [patientId] = await db("patients").insert({
+    user_id: patientUser.id,
+    national_id: "923456781",
+    date_of_birth: "1998-06-20",
+    gender: "FEMALE",
+    address: "Gaza",
+  });
+
+  const patientProfile = await db("patients").where({ id: patientId }).first();
+
+  return { patientUser, patientProfile };
+}
+
+test("Doctor can create an Assistance Request for an actively assigned Patient", async () => {
+  await insertActiveAssignment();
+
+  const response = await request(app)
+    .post(
+      `/api/doctor/patients/${users.patientProfile.id}/assistance-requests`,
+    )
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({
+      request_type: "Medical supplies",
+      description: "Patient requires a wheelchair",
+    });
+
+  assert.equal(response.status, 201);
+  assert.equal(response.body.success, true);
+
+  const assistanceRequest = response.body.data.assistance_request;
+
+  assert.equal(assistanceRequest.patient_id, users.patientProfile.id);
+  assert.equal(assistanceRequest.doctor_id, users.doctorProfile.id);
+  assert.equal(assistanceRequest.ngo_id, null);
+  assert.equal(assistanceRequest.status, "PENDING");
+  assert.ok(assistanceRequest.submitted_at);
+
+  const storedRequest = await db("assistance_requests")
+    .where({ id: assistanceRequest.id })
+    .first();
+
+  assert.equal(storedRequest.patient_id, users.patientProfile.id);
+  assert.equal(storedRequest.doctor_id, users.doctorProfile.id);
+  assert.equal(storedRequest.ngo_id, null);
+  assert.equal(storedRequest.status, "PENDING");
+});
+
+test("Doctor without an active assignment cannot create an Assistance Request", async () => {
+  const response = await request(app)
+    .post(
+      `/api/doctor/patients/${users.patientProfile.id}/assistance-requests`,
+    )
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({
+      request_type: "Food support",
+      description: "Patient requires food support",
+    });
+
+  assert.equal(response.status, 403);
+  assert.equal(response.body.message, "Active Doctor-Patient Assignment required");
+  assert.equal(await db("assistance_requests").count({ count: "*" }).first().then((row) => Number(row.count)), 0);
+});
+
+test("Doctor cannot create an Assistance Request for another Patient", async () => {
+  await insertActiveAssignment();
+  const { patientProfile } = await createSecondPatientForAssistanceRequests();
+
+  const response = await request(app)
+    .post(`/api/doctor/patients/${patientProfile.id}/assistance-requests`)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({
+      request_type: "Shelter",
+      description: "Patient requires shelter",
+    });
+
+  assert.equal(response.status, 403);
+  assert.equal(await db("assistance_requests").where({ patient_id: patientProfile.id }).first(), undefined);
+});
+
+test("Assistance Request creation requires request_type and description", async () => {
+  await insertActiveAssignment();
+  const path = `/api/doctor/patients/${users.patientProfile.id}/assistance-requests`;
+
+  const missingRequestType = await request(app)
+    .post(path)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({ description: "Required description" });
+
+  const missingDescription = await request(app)
+    .post(path)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({ request_type: "Medical supplies" });
+
+  assert.equal(missingRequestType.status, 400);
+  assert.equal(
+    missingRequestType.body.errors.request_type,
+    "request_type is required",
+  );
+  assert.equal(missingDescription.status, 400);
+  assert.equal(
+    missingDescription.body.errors.description,
+    "description is required",
+  );
+});
+
+test("Assistance Request creation rejects empty and invalid values", async () => {
+  await insertActiveAssignment();
+  const path = `/api/doctor/patients/${users.patientProfile.id}/assistance-requests`;
+
+  const emptyResponse = await request(app)
+    .post(path)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({ request_type: "   ", description: "   " });
+
+  const invalidResponse = await request(app)
+    .post(path)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({ request_type: 7, description: false });
+
+  assert.equal(emptyResponse.status, 400);
+  assert.equal(
+    emptyResponse.body.errors.request_type,
+    "request_type must not be empty",
+  );
+  assert.equal(
+    emptyResponse.body.errors.description,
+    "description must not be empty",
+  );
+  assert.equal(invalidResponse.status, 400);
+  assert.equal(
+    invalidResponse.body.errors.request_type,
+    "request_type must be a string",
+  );
+  assert.equal(
+    invalidResponse.body.errors.description,
+    "description must be a string",
+  );
+});
+
+test("Assistance Request creation enforces database text limits", async () => {
+  await insertActiveAssignment();
+  const path = `/api/doctor/patients/${users.patientProfile.id}/assistance-requests`;
+
+  const response = await request(app)
+    .post(path)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({
+      request_type: "x".repeat(101),
+      description: "ع".repeat(32768),
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(
+    response.body.errors.request_type,
+    "request_type must not exceed 100 characters",
+  );
+  assert.equal(
+    response.body.errors.description,
+    "description must not exceed 65535 bytes",
+  );
+});
+
+test("Assistance Request creation rejects protected and unknown fields", async () => {
+  await insertActiveAssignment();
+
+  const response = await request(app)
+    .post(
+      `/api/doctor/patients/${users.patientProfile.id}/assistance-requests`,
+    )
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({
+      request_type: "Medical supplies",
+      description: "Patient requires support",
+      patient_id: users.patientProfile.id,
+      doctor_id: users.doctorProfile.id,
+      ngo_id: 1,
+      status: "APPROVED",
+      submitted_at: "2026-09-26 10:00:00",
+      reviewed_at: "2026-09-26 11:00:00",
+      created_at: "2026-09-26 10:00:00",
+      updated_at: "2026-09-26 10:00:00",
+      unknown_field: true,
+    });
+
+  assert.equal(response.status, 400);
+
+  for (const field of [
+    "patient_id",
+    "doctor_id",
+    "ngo_id",
+    "status",
+    "submitted_at",
+    "reviewed_at",
+    "created_at",
+    "updated_at",
+    "unknown_field",
+  ]) {
+    assert.equal(response.body.errors[field], `${field} is not allowed`);
+  }
+});
+
+test("Assistance Request creation rejects invalid Patient IDs", async () => {
+  const invalidResponse = await request(app)
+    .post("/api/doctor/patients/not-an-id/assistance-requests")
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({ request_type: "Shelter", description: "Shelter required" });
+
+  const outOfRangeResponse = await request(app)
+    .post(
+      "/api/doctor/patients/18446744073709551616/assistance-requests",
+    )
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({ request_type: "Shelter", description: "Shelter required" });
+
+  assert.equal(invalidResponse.status, 400);
+  assert.equal(outOfRangeResponse.status, 400);
+});
+
+test("Patient can list only own Assistance Requests", async () => {
+  const { patientProfile } = await createSecondPatientForAssistanceRequests();
+  await insertAssistanceRequest({ description: "Own request" });
+  await insertAssistanceRequest({
+    patient_id: patientProfile.id,
+    description: "Another Patient request",
+  });
+
+  const response = await request(app)
+    .get("/api/patient/assistance-requests")
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.assistance_requests.length, 1);
+  assert.equal(
+    response.body.data.assistance_requests[0].patient_id,
+    users.patientProfile.id,
+  );
+});
+
+test("Patient can view own Assistance Request", async () => {
+  const assistanceRequest = await insertAssistanceRequest();
+
+  const response = await request(app)
+    .get(`/api/patient/assistance-requests/${assistanceRequest.id}`)
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(
+    response.body.data.assistance_request.id,
+    assistanceRequest.id,
+  );
+});
+
+test("Patient cannot view another Patient's Assistance Request", async () => {
+  const { patientProfile } = await createSecondPatientForAssistanceRequests();
+  const assistanceRequest = await insertAssistanceRequest({
+    patient_id: patientProfile.id,
+  });
+
+  const response = await request(app)
+    .get(`/api/patient/assistance-requests/${assistanceRequest.id}`)
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 404);
+  assert.equal(response.body.message, "Assistance Request not found");
+});
+
+test("Patient Assistance Request detail returns 404 for a missing request", async () => {
+  const response = await request(app)
+    .get("/api/patient/assistance-requests/999999999")
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 404);
+  assert.equal(response.body.message, "Assistance Request not found");
+});
+
+test("Patient Assistance Request detail rejects invalid requestId", async () => {
+  const invalidResponse = await request(app)
+    .get("/api/patient/assistance-requests/not-an-id")
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  const outOfRangeResponse = await request(app)
+    .get("/api/patient/assistance-requests/18446744073709551616")
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(invalidResponse.status, 400);
+  assert.equal(outOfRangeResponse.status, 400);
+});
+
+test("Assistance Request endpoints reject wrong roles", async () => {
+  const doctorResponse = await request(app)
+    .post(
+      `/api/doctor/patients/${users.patientProfile.id}/assistance-requests`,
+    )
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`)
+    .send({ request_type: "Shelter", description: "Shelter required" });
+
+  const patientResponse = await request(app)
+    .get("/api/patient/assistance-requests")
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`);
+
+  assert.equal(doctorResponse.status, 403);
+  assert.equal(patientResponse.status, 403);
+});
+
+test("Assistance Request endpoints require authentication", async () => {
+  const createResponse = await request(app)
+    .post(
+      `/api/doctor/patients/${users.patientProfile.id}/assistance-requests`,
+    )
+    .send({ request_type: "Shelter", description: "Shelter required" });
+
+  const listResponse = await request(app).get(
+    "/api/patient/assistance-requests",
+  );
+  const detailResponse = await request(app).get(
+    "/api/patient/assistance-requests/1",
+  );
+
+  assert.equal(createResponse.status, 401);
+  assert.equal(listResponse.status, 401);
+  assert.equal(detailResponse.status, 401);
+});
+
+test("Patient Assistance Requests use deterministic newest-first ordering", async () => {
+  const older = await insertAssistanceRequest({
+    description: "Older request",
+    submitted_at: "2026-09-25 09:00:00",
+  });
+  const newerFirst = await insertAssistanceRequest({
+    description: "Newer first request",
+    submitted_at: "2026-09-26 09:00:00",
+  });
+  const newerSecond = await insertAssistanceRequest({
+    description: "Newer second request",
+    submitted_at: "2026-09-26 09:00:00",
+  });
+
+  const response = await request(app)
+    .get("/api/patient/assistance-requests")
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(
+    response.body.data.assistance_requests.map((item) => item.id),
+    [newerSecond.id, newerFirst.id, older.id],
+  );
 });
