@@ -120,6 +120,41 @@ async function assignPendingToDoctor(
   return findById(alertId, connection);
 }
 
+async function transitionAssignedDoctorStatus(
+  alertId,
+  doctorId,
+  currentStatus,
+  nextStatus,
+  connection = db,
+) {
+  const updates = {
+    status: nextStatus,
+    updated_at: connection.fn.now(),
+  };
+
+  if (nextStatus === "IN_PROGRESS") {
+    updates.responded_at = connection.fn.now();
+  }
+
+  if (nextStatus === "RESOLVED") {
+    updates.resolved_at = connection.fn.now();
+  }
+
+  const affectedRows = await connection("emergency_alerts")
+    .where({
+      id: alertId,
+      assigned_doctor_id: doctorId,
+      status: currentStatus,
+    })
+    .update(updates);
+
+  if (affectedRows === 0) {
+    return null;
+  }
+
+  return findById(alertId, connection);
+}
+
 module.exports = {
   create,
   findById,
@@ -129,4 +164,5 @@ module.exports = {
   listByPatientId,
   cancelPendingByIdAndPatientId,
   assignPendingToDoctor,
+  transitionAssignedDoctorStatus,
 };

@@ -203,9 +203,45 @@ function validateAssignEmergencyAlert(req, res, next) {
   return next();
 }
 
+function validateEmergencyAlertStatusUpdate(req, res, next) {
+  const input = req.body;
+
+  if (!validateBodyObject(input, res)) {
+    return;
+  }
+
+  const errors = {};
+
+  for (const field of Object.keys(input)) {
+    if (field !== "status") {
+      errors[field] = `${field} is not allowed`;
+    }
+  }
+
+  if (input.status === undefined) {
+    errors.status = "status is required";
+  } else if (
+    typeof input.status !== "string" ||
+    !["IN_PROGRESS", "RESOLVED"].includes(input.status)
+  ) {
+    errors.status = "status must be IN_PROGRESS or RESOLVED";
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return validationFailure(res, errors);
+  }
+
+  req.validatedEmergencyAlertStatus = {
+    status: input.status,
+  };
+
+  return next();
+}
+
 module.exports = {
   validateAlertId,
   validateCreateEmergencyAlert,
   validateCancelEmergencyAlert,
   validateAssignEmergencyAlert,
+  validateEmergencyAlertStatusUpdate,
 };

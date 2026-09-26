@@ -193,6 +193,27 @@ async function assignDoctor(req, res) {
   }
 }
 
+async function updateStatusForDoctor(req, res) {
+  try {
+    const emergencyAlert =
+      await emergencyAlertService.updateStatusForAssignedDoctor(
+        req.user,
+        req.params.alertId,
+        req.validatedEmergencyAlertStatus.status,
+      );
+
+    return res.status(200).json({
+      success: true,
+      message: "Emergency Alert status updated successfully",
+      data: {
+        emergency_alert: emergencyAlert,
+      },
+    });
+  } catch (error) {
+    return handleEmergencyAlertError(error, res);
+  }
+}
+
 module.exports = {
   createPublicAlert,
   createPatientAlert,
@@ -202,4 +223,5 @@ module.exports = {
   listForAdmin,
   getForAdmin,
   assignDoctor,
+  updateStatusForDoctor,
 };

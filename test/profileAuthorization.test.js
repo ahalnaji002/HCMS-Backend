@@ -4786,6 +4786,21 @@ test("join request review rejects missing and already reviewed requests", async 
   assert.equal(repeated.body.message, "Join request has already been reviewed");
 });
 
+async function insertDoctorEmergencyAlert(overrides = {}) {
+  const [id] = await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    assigned_doctor_id: users.doctorProfile.id,
+    assigned_by_admin_id: users.admin.id,
+    priority: "HIGH",
+    status: "ASSIGNED",
+    assigned_at: db.fn.now(),
+    ...overrides,
+  });
+
+  return db("emergency_alerts").where({ id }).first();
+}
+
 test("public visitor can create an Emergency Alert", async () => {
   const response = await request(app).post("/api/emergency-alerts").send({
     phone: "0591234567",
@@ -5591,6 +5606,205 @@ test("Concurrent Emergency Alert assignments allow only one assignment", async (
   );
   assert.equal(Number(alert.assigned_by_admin_id), users.admin.id);
   assert.ok(alert.assigned_at);
+});
+
+test("assigned Doctor starts Emergency Alert progress and persists response timestamps", async () => {
+  const alert = await insertDoctorEmergencyAlert({
+    patient_id: null,
+    updated_at: "2026-01-01 00:00:00",
+  });
+
+  const response = await request(app)
+    .patch(`/api/doctor/emergency-alerts/${alert.id}/status`)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({ status: "IN_PROGRESS" });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.equal(response.body.data.emergency_alert.status, "IN_PROGRESS");
+  assert.ok(response.body.data.emergency_alert.responded_at);
+  assert.equal(response.body.data.emergency_alert.resolved_at, null);
+
+  const stored = await db("emergency_alerts").where({ id: alert.id }).first();
+  assert.equal(stored.status, "IN_PROGRESS");
+  assert.ok(stored.responded_at);
+  assert.equal(stored.resolved_at, null);
+  assert.ok(stored.updated_at.getTime() > alert.updated_at.getTime());
+});
+
+test("assigned Doctor resolves an in-progress Emergency Alert without overwriting responded_at", async () => {
+  const alert = await insertDoctorEmergencyAlert({
+    status: "IN_PROGRESS",
+    responded_at: "2026-09-25 10:00:00",
+    updated_at: "2026-01-01 00:00:00",
+  });
+
+  const response = await request(app)
+    .patch(`/api/doctor/emergency-alerts/${alert.id}/status`)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({ status: "RESOLVED" });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.emergency_alert.status, "RESOLVED");
+
+  const stored = await db("emergency_alerts").where({ id: alert.id }).first();
+  assert.equal(stored.status, "RESOLVED");
+  assert.equal(stored.responded_at.getTime(), alert.responded_at.getTime());
+  assert.ok(stored.resolved_at);
+  assert.ok(stored.updated_at.getTime() > alert.updated_at.getTime());
+});
+
+test("Doctor Emergency Alert status endpoint hides alerts assigned to another Doctor", async () => {
+  const otherDoctor = await createSecondDoctor();
+  const alert = await insertDoctorEmergencyAlert();
+
+  const response = await request(app)
+    .patch(`/api/doctor/emergency-alerts/${alert.id}/status`)
+    .set("Authorization", `Bearer ${tokenFor(otherDoctor.user)}`)
+    .send({ status: "IN_PROGRESS" });
+
+  assert.equal(response.status, 404);
+  assert.equal(response.body.message, "Emergency Alert not found");
+
+  const stored = await db("emergency_alerts").where({ id: alert.id }).first();
+  assert.equal(stored.status, "ASSIGNED");
+  assert.equal(stored.responded_at, null);
+});
+
+test("Doctor Emergency Alert status endpoint enforces authentication and DOCTOR role", async () => {
+  const alert = await insertDoctorEmergencyAlert();
+  const path = `/api/doctor/emergency-alerts/${alert.id}/status`;
+
+  const responses = await Promise.all([
+    request(app).patch(path).send({ status: "IN_PROGRESS" }),
+    request(app)
+      .patch(path)
+      .set("Authorization", `Bearer ${tokenFor(users.patient)}`)
+      .send({ status: "IN_PROGRESS" }),
+    request(app)
+      .patch(path)
+      .set("Authorization", `Bearer ${tokenFor(users.ngo)}`)
+      .send({ status: "IN_PROGRESS" }),
+    request(app)
+      .patch(path)
+      .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+      .send({ status: "IN_PROGRESS" }),
+  ]);
+
+  assert.deepEqual(
+    responses.map((response) => response.status),
+    [401, 403, 403, 403],
+  );
+});
+
+test("Doctor Emergency Alert status endpoint validates alertId as BIGINT UNSIGNED", async () => {
+  const authorization = `Bearer ${tokenFor(users.doctor)}`;
+
+  for (const alertId of [
+    "not-an-id",
+    "0",
+    "-1",
+    "18446744073709551616",
+  ]) {
+    const response = await request(app)
+      .patch(`/api/doctor/emergency-alerts/${alertId}/status`)
+      .set("Authorization", authorization)
+      .send({ status: "IN_PROGRESS" });
+
+    assert.equal(response.status, 400);
+    assert.equal(response.body.message, "Validation failed");
+  }
+});
+
+test("Doctor Emergency Alert status endpoint accepts exactly one supported status field", async () => {
+  const alert = await insertDoctorEmergencyAlert();
+  const path = `/api/doctor/emergency-alerts/${alert.id}/status`;
+  const authorization = `Bearer ${tokenFor(users.doctor)}`;
+
+  const responses = await Promise.all([
+    request(app).patch(path).set("Authorization", authorization).send({}),
+    request(app)
+      .patch(path)
+      .set("Authorization", authorization)
+      .send({ status: "ASSIGNED" }),
+    request(app)
+      .patch(path)
+      .set("Authorization", authorization)
+      .send({ status: "IN_PROGRESS", doctor_id: users.doctorProfile.id }),
+  ]);
+
+  for (const response of responses) {
+    assert.equal(response.status, 400);
+    assert.equal(response.body.message, "Validation failed");
+  }
+});
+
+test("Doctor Emergency Alert status endpoint returns 404 for a missing alert", async () => {
+  const response = await request(app)
+    .patch("/api/doctor/emergency-alerts/999999999/status")
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({ status: "IN_PROGRESS" });
+
+  assert.equal(response.status, 404);
+  assert.equal(response.body.message, "Emergency Alert not found");
+});
+
+test("Doctor Emergency Alert workflow rejects unsupported transitions without mutation", async () => {
+  for (const [currentStatus, nextStatus] of [
+    ["ASSIGNED", "RESOLVED"],
+    ["IN_PROGRESS", "IN_PROGRESS"],
+    ["RESOLVED", "RESOLVED"],
+    ["CANCELLED", "IN_PROGRESS"],
+  ]) {
+    const alert = await insertDoctorEmergencyAlert({
+      status: currentStatus,
+      responded_at:
+        currentStatus === "IN_PROGRESS" || currentStatus === "RESOLVED"
+          ? "2026-09-25 10:00:00"
+          : null,
+      resolved_at:
+        currentStatus === "RESOLVED" ? "2026-09-25 11:00:00" : null,
+    });
+
+    const response = await request(app)
+      .patch(`/api/doctor/emergency-alerts/${alert.id}/status`)
+      .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+      .send({ status: nextStatus });
+
+    assert.equal(response.status, 409);
+
+    const stored = await db("emergency_alerts")
+      .where({ id: alert.id })
+      .first();
+    assert.equal(stored.status, currentStatus);
+  }
+});
+
+test("concurrent Doctor Emergency Alert transitions allow only one stale-state winner", async () => {
+  const alert = await insertDoctorEmergencyAlert();
+  const path = `/api/doctor/emergency-alerts/${alert.id}/status`;
+  const authorization = `Bearer ${tokenFor(users.doctor)}`;
+
+  const responses = await Promise.all([
+    request(app)
+      .patch(path)
+      .set("Authorization", authorization)
+      .send({ status: "IN_PROGRESS" }),
+    request(app)
+      .patch(path)
+      .set("Authorization", authorization)
+      .send({ status: "IN_PROGRESS" }),
+  ]);
+
+  assert.deepEqual(
+    responses.map((response) => response.status).sort((a, b) => a - b),
+    [200, 409],
+  );
+
+  const stored = await db("emergency_alerts").where({ id: alert.id }).first();
+  assert.equal(stored.status, "IN_PROGRESS");
+  assert.ok(stored.responded_at);
+  assert.equal(stored.resolved_at, null);
 });
 
 // ==============================
