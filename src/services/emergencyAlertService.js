@@ -201,6 +201,53 @@ async function assignDoctorToAlert(user, alertId, doctorId) {
   });
 }
 
+const DOCTOR_STATUS_TRANSITIONS = {
+  ASSIGNED: "IN_PROGRESS",
+  IN_PROGRESS: "RESOLVED",
+};
+
+async function updateStatusForAssignedDoctor(user, alertId, nextStatus) {
+  return db.transaction(async (trx) => {
+    const doctor = await doctorModel.findByUserId(user.id, trx);
+
+    if (!doctor) {
+      throw new EmergencyAlertNotFoundError("Doctor profile not found");
+    }
+
+    const alert = await emergencyAlertModel.findByIdForUpdate(alertId, trx);
+
+    if (
+      !alert ||
+      String(alert.assigned_doctor_id) !== String(doctor.id)
+    ) {
+      throw new EmergencyAlertNotFoundError("Emergency Alert not found");
+    }
+
+    if (DOCTOR_STATUS_TRANSITIONS[alert.status] !== nextStatus) {
+      throw new EmergencyAlertConflictError(
+        "Invalid Emergency Alert status transition",
+      );
+    }
+
+    const updatedAlert =
+      await emergencyAlertModel.transitionAssignedDoctorStatus(
+        alert.id,
+        doctor.id,
+        alert.status,
+        nextStatus,
+        trx,
+      );
+
+    if (!updatedAlert) {
+      throw new EmergencyAlertConflictError(
+        "Emergency Alert status changed concurrently",
+      );
+    }
+
+    return updatedAlert;
+  });
+}
+
 module.exports = {
   EmergencyAlertNotFoundError,
   EmergencyAlertValidationError,
@@ -215,4 +262,5 @@ module.exports = {
   listAlertsForAdmin,
   getAlertForAdmin,
   assignDoctorToAlert,
+  updateStatusForAssignedDoctor,
 };

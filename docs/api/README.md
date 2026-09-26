@@ -471,3 +471,36 @@ a transaction and prevents reassignment after the alert state changes.
 Successful list, detail, and assignment requests return `200`. Validation
 failures return `400`, missing alerts or Doctors return `404`, and assignment
 state conflicts return `409`.
+
+### Doctor Emergency Alert Status Workflow
+
+```http
+PATCH /api/doctor/emergency-alerts/:alertId/status
+```
+
+This route requires an authenticated `DOCTOR`, and only the Doctor assigned to
+the Emergency Alert may update it. The Doctor identity is derived from the
+authenticated account; `doctor_id` is not accepted from the client. Missing
+alerts and alerts assigned to another Doctor both return `404` to avoid leaking
+alert existence.
+
+The request body accepts exactly one field:
+
+```json
+{
+  "status": "IN_PROGRESS"
+}
+```
+
+The only allowed transitions are `ASSIGNED -> IN_PROGRESS` and
+`IN_PROGRESS -> RESOLVED`. Starting progress sets `responded_at`, leaves
+`resolved_at` unchanged, and refreshes `updated_at`. Resolving preserves the
+existing `responded_at`, sets `resolved_at`, and refreshes `updated_at`.
+
+The transition runs in a transaction that locks the Emergency Alert and
+conditionally updates its current status. Successful updates return `200`.
+Malformed identifiers, invalid bodies, unknown fields, and unsupported status
+values return `400`; missing authentication returns `401`; authenticated
+non-Doctor roles return `403`; missing or non-owned alerts return `404`; and
+invalid or stale workflow transitions return `409`. No Doctor Emergency Alert
+list or detail route is exposed.
