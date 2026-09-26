@@ -3,6 +3,7 @@ const joinRequestController = require("../controllers/adminJoinRequestController
 const assignmentController = require("../controllers/adminDoctorPatientAssignmentController");
 const emergencyAlertController = require("../controllers/emergencyAlertController");
 const assistanceRequestController = require("../controllers/assistanceRequestController");
+const resourceAllocationController = require("../controllers/resourceAllocationController");
 const authenticate = require("../middleware/authenticate");
 const authorizeRoles = require("../middleware/authorizeRoles");
 
@@ -24,6 +25,9 @@ const {
   validateAssignNgo,
   validateRequestId,
 } = require("../middleware/validateAssistanceRequest");
+const {
+  validateRequestId: validateResourceRequestId,
+} = require("../middleware/validateResourceAllocation");
 
 const router = express.Router();
 
@@ -113,6 +117,12 @@ router.patch(
   validateRequestId,
   validateAssignNgo,
   assistanceRequestController.assignNgo,
+);
+
+router.get(
+  "/assistance-requests/:requestId/resources",
+  validateResourceRequestId,
+  resourceAllocationController.listForAdmin,
 );
 
 module.exports = router;

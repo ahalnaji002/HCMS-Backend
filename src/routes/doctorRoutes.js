@@ -8,11 +8,15 @@ const treatmentMedicationController = require("../controllers/treatmentMedicatio
 const treatmentAppointmentController = require("../controllers/treatmentAppointmentController");
 const doctorAssignedPatientController = require("../controllers/doctorAssignedPatientController");
 const assistanceRequestController = require("../controllers/assistanceRequestController");
+const resourceAllocationController = require("../controllers/resourceAllocationController");
 
 const {
   validateCreateAssistanceRequest,
   validatePatientId: validateAssistanceRequestPatientId,
 } = require("../middleware/validateAssistanceRequest");
+const {
+  validateRequestId: validateResourceRequestId,
+} = require("../middleware/validateResourceAllocation");
 
 const {
   validateCreateMedicalRecord,
@@ -60,6 +64,12 @@ router.post(
   validateAssistanceRequestPatientId,
   validateCreateAssistanceRequest,
   assistanceRequestController.createForAssignedPatient,
+);
+
+router.get(
+  "/assistance-requests/:requestId/resources",
+  validateResourceRequestId,
+  resourceAllocationController.listForDoctor,
 );
 
 router.post(
