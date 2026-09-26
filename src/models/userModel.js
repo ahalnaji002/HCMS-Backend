@@ -84,6 +84,14 @@ async function updateProfile(id, updates, connection = db) {
   return findById(id, connection);
 }
 
+function findByIdForUpdate(id, connection) {
+  return connection("users")
+    .select(PUBLIC_USER_COLUMNS)
+    .where({ id })
+    .forUpdate()
+    .first();
+}
+
 module.exports = {
   findById,
   findByEmail,
@@ -92,4 +100,5 @@ module.exports = {
   updateAccountStatus,
   findRoleAndAccountStatus,
   updateProfile,
+  findByIdForUpdate,
 };

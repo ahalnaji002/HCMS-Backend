@@ -1,8 +1,14 @@
 const express = require("express");
 const joinRequestController = require("../controllers/adminJoinRequestController");
 const assignmentController = require("../controllers/adminDoctorPatientAssignmentController");
+const emergencyAlertController = require("../controllers/emergencyAlertController");
 const authenticate = require("../middleware/authenticate");
 const authorizeRoles = require("../middleware/authorizeRoles");
+
+const {
+  validateAlertId,
+  validateAssignEmergencyAlert,
+} = require("../middleware/validateEmergencyAlert");
 const {
   validateApprovalBody,
   validateJoinRequestId,
@@ -61,6 +67,25 @@ router.post(
   "/doctor-patient-assignments",
   validateCreateAssignment,
   assignmentController.create,
+);
+
+// ==============================
+// Emergency Alerts
+// ==============================
+
+router.get("/emergency-alerts", emergencyAlertController.listForAdmin);
+
+router.get(
+  "/emergency-alerts/:alertId",
+  validateAlertId,
+  emergencyAlertController.getForAdmin,
+);
+
+router.patch(
+  "/emergency-alerts/:alertId/assign",
+  validateAlertId,
+  validateAssignEmergencyAlert,
+  emergencyAlertController.assignDoctor,
 );
 
 module.exports = router;

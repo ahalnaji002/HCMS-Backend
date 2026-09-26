@@ -5168,3 +5168,421 @@ test("Patient Emergency Alerts are listed newest first", async () => {
   assert.equal(response.body.data.emergency_alerts[0].description, "Newer");
   assert.equal(response.body.data.emergency_alerts[1].description, "Older");
 });
+
+test("Admin can list all Emergency Alerts", async () => {
+  await db("emergency_alerts").insert([
+    {
+      patient_id: users.patientProfile.id,
+      phone: "0591111111",
+      description: "Patient alert",
+      priority: "HIGH",
+      status: "PENDING_ASSIGNMENT",
+    },
+    {
+      patient_id: null,
+      phone: "0592222222",
+      description: "Visitor alert",
+      priority: "HIGH",
+      status: "PENDING_ASSIGNMENT",
+    },
+  ]);
+
+  const response = await request(app)
+    .get("/api/admin/emergency-alerts")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.equal(response.body.data.emergency_alerts.length, 2);
+});
+
+test("Admin can view an Emergency Alert by ID", async () => {
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    description: "Admin detail alert",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const response = await request(app)
+    .get(`/api/admin/emergency-alerts/${alertId}`)
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  assert.equal(response.body.data.emergency_alert.id, alertId);
+});
+
+test("Admin Emergency Alert detail returns 404 for missing alert", async () => {
+  const response = await request(app)
+    .get("/api/admin/emergency-alerts/999999999")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`);
+
+  assert.equal(response.status, 404);
+});
+
+test("non-Admin role cannot access Admin Emergency Alert endpoints", async () => {
+  const response = await request(app)
+    .get("/api/admin/emergency-alerts")
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  assert.equal(response.status, 403);
+});
+
+test("Admin can assign pending Emergency Alert to active General Medicine Doctor", async () => {
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const response = await request(app)
+    .patch(`/api/admin/emergency-alerts/${alertId}/assign`)
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+    });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+
+  const alert = response.body.data.emergency_alert;
+
+  assert.equal(alert.status, "ASSIGNED");
+  assert.equal(alert.assigned_doctor_id, users.doctorProfile.id);
+  assert.equal(alert.assigned_by_admin_id, users.admin.id);
+  assert.ok(alert.assigned_at);
+});
+
+test("Admin can assign pending Emergency Alert to active Emergency Medicine Doctor", async () => {
+  const doctorUser = await createUser({
+    fullName: "Emergency Medicine Doctor",
+    email: "emergency.medicine@test.local",
+    role: "DOCTOR",
+    accountStatus: "ACTIVE",
+  });
+
+  const [doctorId] = await db("doctors").insert({
+    user_id: doctorUser.id,
+    specialization: "Emergency Medicine",
+    license_number: "EMERGENCY-DOC-001",
+  });
+
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: null,
+    phone: "0592222222",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const response = await request(app)
+    .patch(`/api/admin/emergency-alerts/${alertId}/assign`)
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: doctorId,
+    });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.emergency_alert.status, "ASSIGNED");
+  assert.equal(response.body.data.emergency_alert.assigned_doctor_id, doctorId);
+});
+
+test("Admin cannot assign Emergency Alert to Doctor with ineligible specialization", async () => {
+  const doctorUser = await createUser({
+    fullName: "Specialist Doctor",
+    email: "specialist.doctor@test.local",
+    role: "DOCTOR",
+    accountStatus: "ACTIVE",
+  });
+
+  const [doctorId] = await db("doctors").insert({
+    user_id: doctorUser.id,
+    specialization: "Cardiology",
+    license_number: "CARDIOLOGY-DOC-001",
+  });
+
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const response = await request(app)
+    .patch(`/api/admin/emergency-alerts/${alertId}/assign`)
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: doctorId,
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(
+    response.body.message,
+    "Doctor specialization is not eligible for Emergency Alert assignment",
+  );
+});
+
+test("Admin cannot assign Emergency Alert to inactive Doctor", async () => {
+  const doctorUser = await createUser({
+    fullName: "Inactive Emergency Doctor",
+    email: "inactive.emergency@test.local",
+    role: "DOCTOR",
+    accountStatus: "INACTIVE",
+  });
+
+  const [doctorId] = await db("doctors").insert({
+    user_id: doctorUser.id,
+    specialization: "Emergency Medicine",
+    license_number: "INACTIVE-EMERGENCY-001",
+  });
+
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const response = await request(app)
+    .patch(`/api/admin/emergency-alerts/${alertId}/assign`)
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: doctorId,
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.message, "Doctor account is not active");
+});
+
+test("Admin cannot assign Emergency Alert to nonexistent Doctor", async () => {
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const response = await request(app)
+    .patch(`/api/admin/emergency-alerts/${alertId}/assign`)
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: 999999999,
+    });
+
+  assert.equal(response.status, 404);
+  assert.equal(response.body.message, "Doctor not found");
+});
+
+test("Admin cannot assign nonexistent Emergency Alert", async () => {
+  const response = await request(app)
+    .patch("/api/admin/emergency-alerts/999999999/assign")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+    });
+
+  assert.equal(response.status, 404);
+  assert.equal(response.body.message, "Emergency Alert not found");
+});
+
+test("Admin cannot assign Emergency Alert that is not pending assignment", async () => {
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    priority: "HIGH",
+    status: "CANCELLED",
+  });
+
+  const response = await request(app)
+    .patch(`/api/admin/emergency-alerts/${alertId}/assign`)
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+    });
+
+  assert.equal(response.status, 409);
+  assert.equal(
+    response.body.message,
+    "Emergency Alert is not pending assignment",
+  );
+});
+
+test("Admin cannot assign an Emergency Alert twice", async () => {
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const firstResponse = await request(app)
+    .patch(`/api/admin/emergency-alerts/${alertId}/assign`)
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+    });
+
+  assert.equal(firstResponse.status, 200);
+
+  const secondResponse = await request(app)
+    .patch(`/api/admin/emergency-alerts/${alertId}/assign`)
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+    });
+
+  assert.equal(secondResponse.status, 409);
+});
+
+test("Emergency Alert assignment requires doctor_id", async () => {
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const response = await request(app)
+    .patch(`/api/admin/emergency-alerts/${alertId}/assign`)
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({});
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.message, "Validation failed");
+  assert.equal(response.body.errors.doctor_id, "doctor_id is required");
+});
+
+test("Emergency Alert assignment rejects invalid doctor_id", async () => {
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const response = await request(app)
+    .patch(`/api/admin/emergency-alerts/${alertId}/assign`)
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: 0,
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.message, "Validation failed");
+});
+
+test("Emergency Alert assignment rejects additional request fields", async () => {
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const response = await request(app)
+    .patch(`/api/admin/emergency-alerts/${alertId}/assign`)
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      status: "RESOLVED",
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.message, "Validation failed");
+  assert.equal(response.body.errors.status, "status is not allowed");
+});
+
+test("Emergency Alert assignment rejects unsafe numeric doctor_id", async () => {
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const response = await request(app)
+    .patch(`/api/admin/emergency-alerts/${alertId}/assign`)
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: Number.MAX_SAFE_INTEGER + 1,
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.message, "Validation failed");
+});
+
+test("Emergency Alert assignment rejects doctor_id above unsigned BIGINT maximum", async () => {
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const response = await request(app)
+    .patch(`/api/admin/emergency-alerts/${alertId}/assign`)
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: "18446744073709551616",
+    });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body.message, "Validation failed");
+});
+
+test("Concurrent Emergency Alert assignments allow only one assignment", async () => {
+  const secondDoctorUser = await createUser({
+    fullName: "Concurrent Emergency Doctor",
+    email: "concurrent.emergency@test.local",
+    role: "DOCTOR",
+    accountStatus: "ACTIVE",
+  });
+
+  const [secondDoctorId] = await db("doctors").insert({
+    user_id: secondDoctorUser.id,
+    specialization: "Emergency Medicine",
+    license_number: "CONCURRENT-EMERGENCY-001",
+  });
+
+  const [alertId] = await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const [firstResponse, secondResponse] = await Promise.all([
+    request(app)
+      .patch(`/api/admin/emergency-alerts/${alertId}/assign`)
+      .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+      .send({
+        doctor_id: users.doctorProfile.id,
+      }),
+
+    request(app)
+      .patch(`/api/admin/emergency-alerts/${alertId}/assign`)
+      .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+      .send({
+        doctor_id: secondDoctorId,
+      }),
+  ]);
+
+  const statuses = [firstResponse.status, secondResponse.status].sort(
+    (a, b) => a - b,
+  );
+
+  assert.deepEqual(statuses, [200, 409]);
+
+  const alert = await db("emergency_alerts").where({ id: alertId }).first();
+
+  assert.equal(alert.status, "ASSIGNED");
+  assert.ok(
+    [users.doctorProfile.id, secondDoctorId].includes(
+      Number(alert.assigned_doctor_id),
+    ),
+  );
+  assert.equal(Number(alert.assigned_by_admin_id), users.admin.id);
+  assert.ok(alert.assigned_at);
+});

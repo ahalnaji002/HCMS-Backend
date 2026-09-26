@@ -302,3 +302,28 @@ Successful creation returns `201`; successful list, detail, and cancellation
 return `200`. Validation failures return `400`, missing or non-owned Patient
 alerts return `404`, missing authentication returns `401`, and an authenticated
 non-Patient role attempting to use Patient routes returns `403`.
+
+### Admin Emergency Alert Monitoring and Assignment
+
+```http
+GET   /api/admin/emergency-alerts
+GET   /api/admin/emergency-alerts/:alertId
+PATCH /api/admin/emergency-alerts/:alertId/assign
+```
+
+These routes require an authenticated `ADMIN`. Admins may list all Emergency
+Alerts and view a specific alert. Lists are returned newest first by `sent_at`,
+with `id` as the deterministic tie-breaker.
+
+Assignment requires only `doctor_id`. The selected Doctor must exist, have an
+`ACTIVE` Doctor account, and have either `General Medicine` or
+`Emergency Medicine` as their specialization.
+
+Only an alert with `status = PENDING_ASSIGNMENT` may be assigned. A successful
+assignment sets `assigned_doctor_id`, `assigned_by_admin_id`, `assigned_at`,
+and changes the alert status to `ASSIGNED`. The assignment is performed inside
+a transaction and prevents reassignment after the alert state changes.
+
+Successful list, detail, and assignment requests return `200`. Validation
+failures return `400`, missing alerts or Doctors return `404`, and assignment
+state conflicts return `409`.

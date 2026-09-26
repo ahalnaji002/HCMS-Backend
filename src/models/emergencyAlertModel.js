@@ -72,9 +72,61 @@ async function cancelPendingByIdAndPatientId(
   return findByIdAndPatientId(alertId, patientId, connection);
 }
 
+function listAll(connection = db) {
+  return connection("emergency_alerts")
+    .select(EMERGENCY_ALERT_COLUMNS)
+    .orderBy("sent_at", "desc")
+    .orderBy("id", "desc");
+}
+
+function findById(alertId, connection = db) {
+  return connection("emergency_alerts")
+    .select(EMERGENCY_ALERT_COLUMNS)
+    .where({ id: alertId })
+    .first();
+}
+
+function findByIdForUpdate(alertId, connection) {
+  return connection("emergency_alerts")
+    .select(EMERGENCY_ALERT_COLUMNS)
+    .where({ id: alertId })
+    .forUpdate()
+    .first();
+}
+
+async function assignPendingToDoctor(
+  alertId,
+  doctorId,
+  adminUserId,
+  connection = db,
+) {
+  const affectedRows = await connection("emergency_alerts")
+    .where({
+      id: alertId,
+      status: "PENDING_ASSIGNMENT",
+    })
+    .update({
+      assigned_doctor_id: doctorId,
+      assigned_by_admin_id: adminUserId,
+      assigned_at: connection.fn.now(),
+      status: "ASSIGNED",
+      updated_at: connection.fn.now(),
+    });
+
+  if (affectedRows === 0) {
+    return null;
+  }
+
+  return findById(alertId, connection);
+}
+
 module.exports = {
   create,
+  findById,
+  findByIdForUpdate,
   findByIdAndPatientId,
+  listAll,
   listByPatientId,
   cancelPendingByIdAndPatientId,
+  assignPendingToDoctor,
 };
