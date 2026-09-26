@@ -3,6 +3,15 @@ const TEXT_MAX_BYTES = 65535;
 const UNSIGNED_BIGINT_MAX = 18446744073709551615n;
 
 const CREATE_FIELDS = new Set(["request_type", "description"]);
+const ASSIGN_FIELDS = new Set(["ngo_id"]);
+const STATUS_FIELDS = new Set(["status"]);
+const ALLOWED_STATUS_TARGETS = new Set([
+  "PENDING",
+  "UNDER_REVIEW",
+  "APPROVED",
+  "REJECTED",
+  "COMPLETED",
+]);
 
 function validationFailure(res, errors) {
   return res.status(400).json({
@@ -101,8 +110,82 @@ function validateCreateAssistanceRequest(req, res, next) {
   return next();
 }
 
+function validateAssignNgo(req, res, next) {
+  const input = req.body;
+
+  if (input === null || typeof input !== "object" || Array.isArray(input)) {
+    return validationFailure(res, {
+      body: "request body must be a JSON object",
+    });
+  }
+
+  const errors = {};
+
+  for (const field of Object.keys(input)) {
+    if (!ASSIGN_FIELDS.has(field)) {
+      errors[field] = `${field} is not allowed`;
+    }
+  }
+
+  if (input.ngo_id === undefined) {
+    errors.ngo_id = "ngo_id is required";
+  } else if (!isValidPositiveId(input.ngo_id)) {
+    errors.ngo_id = "ngo_id must be a positive integer";
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return validationFailure(res, errors);
+  }
+
+  req.validatedAssistanceRequestAssignment = {
+    ngo_id: String(input.ngo_id),
+  };
+
+  return next();
+}
+
+function validateUpdateStatus(req, res, next) {
+  const input = req.body;
+
+  if (input === null || typeof input !== "object" || Array.isArray(input)) {
+    return validationFailure(res, {
+      body: "request body must be a JSON object",
+    });
+  }
+
+  const errors = {};
+
+  for (const field of Object.keys(input)) {
+    if (!STATUS_FIELDS.has(field)) {
+      errors[field] = `${field} is not allowed`;
+    }
+  }
+
+  if (input.status === undefined) {
+    errors.status = "status is required";
+  } else if (
+    typeof input.status !== "string" ||
+    !ALLOWED_STATUS_TARGETS.has(input.status)
+  ) {
+    errors.status =
+      "status must be PENDING, UNDER_REVIEW, APPROVED, REJECTED, or COMPLETED";
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return validationFailure(res, errors);
+  }
+
+  req.validatedAssistanceRequestStatus = {
+    status: input.status,
+  };
+
+  return next();
+}
+
 module.exports = {
+  validateAssignNgo,
   validateCreateAssistanceRequest,
   validatePatientId,
   validateRequestId,
+  validateUpdateStatus,
 };

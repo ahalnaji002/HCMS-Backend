@@ -1,7 +1,16 @@
 const assistanceRequestModel = require("../models/assistanceRequestModel");
+const db = require("../config/database");
 const doctorModel = require("../models/doctorModel");
 const doctorPatientAssignmentModel = require("../models/doctorPatientAssignmentModel");
+const ngoModel = require("../models/ngoModel");
 const patientModel = require("../models/patientModel");
+const userModel = require("../models/userModel");
+
+const ALLOWED_STATUS_TRANSITIONS = {
+  PENDING: new Set(["UNDER_REVIEW"]),
+  UNDER_REVIEW: new Set(["APPROVED", "REJECTED"]),
+  APPROVED: new Set(["COMPLETED"]),
+};
 
 class AssistanceRequestNotFoundError extends Error {
   constructor(message) {
@@ -14,6 +23,20 @@ class AssistanceRequestForbiddenError extends Error {
   constructor(message) {
     super(message);
     this.name = "AssistanceRequestForbiddenError";
+  }
+}
+
+class AssistanceRequestConflictError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "AssistanceRequestConflictError";
+  }
+}
+
+class AssistanceRequestValidationError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "AssistanceRequestValidationError";
   }
 }
 
@@ -63,6 +86,16 @@ async function getPatientProfileOrThrow(userId) {
   return patient;
 }
 
+async function getNgoProfileOrThrow(userId) {
+  const ngo = await ngoModel.findByUserId(userId);
+
+  if (!ngo) {
+    throw new AssistanceRequestNotFoundError("NGO profile not found");
+  }
+
+  return ngo;
+}
+
 async function createForAssignedPatient(user, patientId, requestData) {
   await getPatientOrThrow(patientId);
 
@@ -98,10 +131,164 @@ async function getOwnRequest(user, requestId) {
   return assistanceRequest;
 }
 
+function listForAdmin() {
+  return assistanceRequestModel.listAll();
+}
+
+async function getForAdmin(requestId) {
+  const assistanceRequest = await assistanceRequestModel.findById(requestId);
+
+  if (!assistanceRequest) {
+    throw new AssistanceRequestNotFoundError("Assistance Request not found");
+  }
+
+  return assistanceRequest;
+}
+
+async function assignNgo(requestId, ngoId) {
+  return db.transaction(async (trx) => {
+    const assistanceRequest =
+      await assistanceRequestModel.findByIdForUpdate(requestId, trx);
+
+    if (!assistanceRequest) {
+      throw new AssistanceRequestNotFoundError("Assistance Request not found");
+    }
+
+    if (
+      assistanceRequest.status !== "PENDING" ||
+      assistanceRequest.ngo_id !== null
+    ) {
+      throw new AssistanceRequestConflictError(
+        "Assistance Request is not available for assignment",
+      );
+    }
+
+    const ngo = await ngoModel.findByIdForUpdate(ngoId, trx);
+
+    if (!ngo) {
+      throw new AssistanceRequestNotFoundError("NGO not found");
+    }
+
+    const ngoUser = await userModel.findByIdForUpdate(ngo.user_id, trx);
+
+    if (
+      !ngoUser ||
+      ngoUser.role !== "NGO" ||
+      ngoUser.account_status !== "ACTIVE"
+    ) {
+      throw new AssistanceRequestValidationError(
+        "NGO must have an active NGO user account",
+      );
+    }
+
+    const assigned = await assistanceRequestModel.assignPendingToNgo(
+      requestId,
+      ngoId,
+      trx,
+    );
+
+    if (!assigned) {
+      throw new AssistanceRequestConflictError(
+        "Assistance Request is not available for assignment",
+      );
+    }
+
+    return assigned;
+  });
+}
+
+async function listForNgo(user) {
+  const ngo = await getNgoProfileOrThrow(user.id);
+  return assistanceRequestModel.listByNgoId(ngo.id);
+}
+
+async function getForNgo(user, requestId) {
+  const ngo = await getNgoProfileOrThrow(user.id);
+  const assistanceRequest = await assistanceRequestModel.findByIdAndNgoId(
+    requestId,
+    ngo.id,
+  );
+
+  if (assistanceRequest) {
+    return assistanceRequest;
+  }
+
+  const existing = await assistanceRequestModel.findById(requestId);
+
+  if (existing) {
+    throw new AssistanceRequestForbiddenError(
+      "Assistance Request is assigned to another NGO",
+    );
+  }
+
+  throw new AssistanceRequestNotFoundError("Assistance Request not found");
+}
+
+async function updateStatusForNgo(user, requestId, nextStatus) {
+  const ngo = await getNgoProfileOrThrow(user.id);
+
+  return db.transaction(async (trx) => {
+    const assistanceRequest =
+      await assistanceRequestModel.findByIdForUpdate(requestId, trx);
+
+    if (!assistanceRequest) {
+      throw new AssistanceRequestNotFoundError("Assistance Request not found");
+    }
+
+    if (String(assistanceRequest.ngo_id) !== String(ngo.id)) {
+      throw new AssistanceRequestForbiddenError(
+        "Assistance Request is assigned to another NGO",
+      );
+    }
+
+    const allowedTargets = ALLOWED_STATUS_TRANSITIONS[assistanceRequest.status];
+
+    if (!allowedTargets || !allowedTargets.has(nextStatus)) {
+      throw new AssistanceRequestConflictError(
+        "Invalid Assistance Request status transition",
+      );
+    }
+
+    if (
+      assistanceRequest.status === "APPROVED" &&
+      nextStatus === "COMPLETED" &&
+      !(await assistanceRequestModel.hasResourceAllocation(requestId, trx))
+    ) {
+      throw new AssistanceRequestConflictError(
+        "At least one resource allocation is required before completing the assistance request.",
+      );
+    }
+
+    const updated = await assistanceRequestModel.updateStatusConditionally(
+      requestId,
+      ngo.id,
+      assistanceRequest.status,
+      nextStatus,
+      trx,
+    );
+
+    if (!updated) {
+      throw new AssistanceRequestConflictError(
+        "Assistance Request status changed concurrently",
+      );
+    }
+
+    return updated;
+  });
+}
+
 module.exports = {
+  AssistanceRequestConflictError,
   AssistanceRequestForbiddenError,
   AssistanceRequestNotFoundError,
+  AssistanceRequestValidationError,
+  assignNgo,
   createForAssignedPatient,
+  getForAdmin,
+  getForNgo,
   getOwnRequest,
+  listForAdmin,
+  listForNgo,
   listOwnRequests,
+  updateStatusForNgo,
 };

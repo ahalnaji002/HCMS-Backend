@@ -25,6 +25,14 @@ function findByUserId(userId, connection = db) {
   return connection("ngos").where({ user_id: userId }).first();
 }
 
+function findById(id, connection = db) {
+  return connection("ngos").where({ id }).first();
+}
+
+function findByIdForUpdate(id, connection) {
+  return connection("ngos").where({ id }).forUpdate().first();
+}
+
 function findByRegistrationNumber(registrationNumber, connection = db) {
   return connection("ngos")
     .where({ registration_number: registrationNumber })
@@ -38,6 +46,8 @@ async function create(ngo, connection = db) {
 
 module.exports = {
   create,
+  findById,
+  findByIdForUpdate,
   findByRegistrationNumber,
   findByUserId,
 };
