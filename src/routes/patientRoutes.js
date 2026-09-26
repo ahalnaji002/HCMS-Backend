@@ -22,6 +22,10 @@ const {
   validateCreateEmergencyAlert,
   validateCancelEmergencyAlert,
 } = require("../middleware/validateEmergencyAlert");
+const assistanceRequestController = require("../controllers/assistanceRequestController");
+const {
+  validateRequestId,
+} = require("../middleware/validateAssistanceRequest");
 
 const router = express.Router();
 
@@ -46,6 +50,17 @@ router.patch(
   validateAlertId,
   validateCancelEmergencyAlert,
   emergencyAlertController.cancelOwnAlert,
+);
+
+router.get(
+  "/assistance-requests",
+  assistanceRequestController.listOwnRequests,
+);
+
+router.get(
+  "/assistance-requests/:requestId",
+  validateRequestId,
+  assistanceRequestController.getOwnRequest,
 );
 
 router.get("/medical-record", medicalRecordController.getOwnMedicalRecord);

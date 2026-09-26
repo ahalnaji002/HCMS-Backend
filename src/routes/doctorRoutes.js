@@ -7,6 +7,12 @@ const treatmentPlanController = require("../controllers/treatmentPlanController"
 const treatmentMedicationController = require("../controllers/treatmentMedicationController");
 const treatmentAppointmentController = require("../controllers/treatmentAppointmentController");
 const doctorAssignedPatientController = require("../controllers/doctorAssignedPatientController");
+const assistanceRequestController = require("../controllers/assistanceRequestController");
+
+const {
+  validateCreateAssistanceRequest,
+  validatePatientId: validateAssistanceRequestPatientId,
+} = require("../middleware/validateAssistanceRequest");
 
 const {
   validateCreateMedicalRecord,
@@ -47,6 +53,13 @@ router.get(
   "/patients/:patientId",
   validatePatientId,
   doctorAssignedPatientController.show,
+);
+
+router.post(
+  "/patients/:patientId/assistance-requests",
+  validateAssistanceRequestPatientId,
+  validateCreateAssistanceRequest,
+  assistanceRequestController.createForAssignedPatient,
 );
 
 router.post(

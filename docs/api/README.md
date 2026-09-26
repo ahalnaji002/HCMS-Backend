@@ -256,6 +256,35 @@ The appointment calendar date must be within the plan's inclusive date range;
 a null plan end date has no upper bound. Status is `SCHEDULED`, `COMPLETED`, or
 `CANCELLED`. Patients can only read appointments under their own plans.
 
+## Assistance Requests
+
+```http
+POST /api/doctor/patients/:patientId/assistance-requests
+GET  /api/patient/assistance-requests
+GET  /api/patient/assistance-requests/:requestId
+```
+
+The creation route requires an authenticated `DOCTOR` with an `ACTIVE`
+Doctor-Patient Assignment for the Patient identified by `patientId`. It accepts
+exactly `request_type` and `description`, and both are required non-empty
+strings. `request_type` is limited to 100 characters, while `description` must
+fit the database `TEXT` capacity.
+
+The server derives `patient_id` from the route and `doctor_id` from the
+authenticated Doctor profile. New requests use `ngo_id = NULL` and
+`status = PENDING`; IDs, status, NGO assignment, review fields, and timestamps
+cannot be supplied by the client.
+
+Patient routes require an authenticated `PATIENT` and provide read-only access
+to that Patient's own Assistance Requests. Lists are ordered newest first by
+`submitted_at`, with `id` as the deterministic tie-breaker. Missing or
+non-owned requests return `404`.
+
+Successful creation returns `201`, and successful list or detail requests
+return `200`. Validation failures return `400`, missing resources return `404`,
+missing authentication returns `401`, wrong-role access returns `403`, and a
+Doctor without an active assignment receives `403`.
+
 ## HTTPS deployment requirement
 
 The Express process currently listens for HTTP and has no TLS certificate or
