@@ -10,6 +10,7 @@ const doctorAssignedPatientController = require("../controllers/doctorAssignedPa
 const assistanceRequestController = require("../controllers/assistanceRequestController");
 const resourceAllocationController = require("../controllers/resourceAllocationController");
 const emergencyAlertController = require("../controllers/emergencyAlertController");
+const dashboardReportController = require("../controllers/dashboardReportController");
 
 const {
   validateCreateAssistanceRequest,
@@ -55,6 +56,8 @@ const {
 const router = express.Router();
 
 router.use(authenticate, authorizeRoles("DOCTOR"));
+
+router.get("/dashboard", dashboardReportController.getDoctorDashboard);
 
 router.get("/patients", doctorAssignedPatientController.list);
 

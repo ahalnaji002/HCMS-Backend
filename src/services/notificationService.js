@@ -346,8 +346,8 @@ function listOwnNotifications(user) {
   return notificationModel.listByUserId(user.id);
 }
 
-function getOwnUnreadCount(user) {
-  return notificationModel.countUnreadByUserId(user.id);
+function getOwnUnreadCount(user, connection = db) {
+  return notificationModel.countUnreadByUserId(user.id, connection);
 }
 
 async function markOwnNotificationRead(user, notificationId) {

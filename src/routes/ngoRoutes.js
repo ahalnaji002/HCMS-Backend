@@ -1,6 +1,7 @@
 const express = require("express");
 const assistanceRequestController = require("../controllers/assistanceRequestController");
 const resourceAllocationController = require("../controllers/resourceAllocationController");
+const dashboardReportController = require("../controllers/dashboardReportController");
 const authenticate = require("../middleware/authenticate");
 const authorizeRoles = require("../middleware/authorizeRoles");
 const {
@@ -17,6 +18,8 @@ const {
 const router = express.Router();
 
 router.use(authenticate, authorizeRoles("NGO"));
+
+router.get("/dashboard", dashboardReportController.getNgoDashboard);
 
 router.get(
   "/assistance-requests",

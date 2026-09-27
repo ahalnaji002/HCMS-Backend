@@ -706,6 +706,141 @@ credentials, API/encryption keys, tokens, administrator credentials, private
 deployment configuration, and other environment secrets are not System
 Settings and are never exposed by these endpoints.
 
+## Dashboards and Basic Reports
+
+All dashboard and report endpoints require an `ACTIVE` authenticated account
+and use the existing role-router authorization. Dashboard values are current
+state counts, are always JSON numbers, and remain present as numeric `0` when
+no matching rows exist. Every dashboard and paginated report reads all of its
+queries in one `REPEATABLE READ` database transaction for a consistent
+snapshot. These read-only operations take no explicit row locks, mutate no
+data, and create no Activity Logs.
+
+### Admin Dashboard
+
+```http
+GET /api/admin/dashboard
+```
+
+Requires `ADMIN` and returns exactly:
+
+- `total_patients`: Patient profiles whose joined user is `ACTIVE`.
+- `total_doctors`: Doctor profiles whose joined user is `ACTIVE`.
+- `total_ngos`: NGO profiles whose joined user is `ACTIVE`.
+- `pending_join_requests`: Join Requests with status `PENDING`.
+- `active_emergency_alerts`: all Emergency Alerts whose status is not
+  `RESOLVED`, including Visitor alerts with no Patient.
+- `pending_assistance_requests`: Assistance Requests with status `PENDING`.
+
+Inactive Patient, Doctor, and NGO accounts do not contribute to their profile
+totals. Other metrics use their documented current status predicates.
+
+### Patient Dashboard
+
+```http
+GET /api/patient/dashboard
+```
+
+Requires `PATIENT`; the Patient profile is derived from the authenticated user.
+It returns exactly:
+
+- `active_treatment_plans`: the Patient's Treatment Plans with status `ACTIVE`.
+- `pending_reminders`: the authenticated user's Reminders with status
+  `PENDING`.
+- `active_emergency_alerts`: the Patient's Emergency Alerts whose status is not
+  `RESOLVED`; Visitor and other Patients' alerts are excluded.
+- `pending_assistance_requests`: the Patient's Assistance Requests with status
+  `PENDING`.
+- `unread_notifications`: the authenticated user's Notifications where
+  `is_read` is false, using the existing unread-count behavior.
+
+A missing Patient profile returns `404`.
+
+### Doctor Dashboard
+
+```http
+GET /api/doctor/dashboard
+```
+
+Requires `DOCTOR`; the Doctor profile is derived from the authenticated user.
+It returns exactly:
+
+- `active_patients`: distinct Patient IDs in the Doctor's `ACTIVE`
+  Doctor-Patient Assignments; inactive history and duplicate Patient history do
+  not inflate the count.
+- `assigned_emergency_alerts`: alerts assigned to the Doctor whose status is
+  not `RESOLVED`.
+- `submitted_assistance_requests`: all Assistance Requests submitted by the
+  Doctor, regardless of status.
+
+A missing Doctor profile returns `404`.
+
+### NGO Dashboard
+
+```http
+GET /api/ngo/dashboard
+```
+
+Requires `NGO`; the NGO profile is derived from the authenticated user. It
+returns exactly:
+
+- `assigned_assistance_requests`: all Assistance Requests whose `ngo_id` is
+  the authenticated NGO, regardless of status.
+- `resource_allocations`: the number of Resource Allocation rows joined through
+  those Assistance Requests; this is a row count and never a sum of quantity.
+
+Requests and allocations belonging to another NGO are excluded. A missing NGO
+profile returns `404`.
+
+### Admin Basic Reports
+
+The three report endpoints require `ADMIN`:
+
+```http
+GET /api/admin/reports/patients
+GET /api/admin/reports/treatment-plans
+GET /api/admin/reports/assistance-requests
+```
+
+All use `page=1` and `limit=20` by default, allow a maximum `limit` of `100`,
+and order by `created_at DESC, id DESC`. Duplicate, unknown, non-positive, or
+unsafe pagination values return `400`; values are not clamped. An empty page
+returns the requested `page` and `limit`, an empty `items` array, and the
+database-derived `total` and `total_pages`.
+
+Response `data` has this shape:
+
+```json
+{
+  "items": [],
+  "page": 1,
+  "limit": 20,
+  "total": 0,
+  "total_pages": 0
+}
+```
+
+The Patient report permits only `page` and `limit`. Each item exposes exactly
+`id`, `user_id`, joined `full_name`, and `created_at`. National ID, phone,
+email, password data, medical data, and other profile fields are excluded.
+
+The Treatment Plan report permits only `page` and `limit`. Each item exposes
+exactly `id`, `patient_id`, `doctor_id`, `status`, `start_date`, `end_date`, and
+`created_at`. Instructions, medications, appointments, clinical narrative,
+and joined personal data are excluded.
+
+The Assistance Request report additionally permits only the optional `status`
+filter, using `PENDING`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, or `COMPLETED`.
+The filter applies consistently to both `items` and `total`. Each item exposes
+exactly `id`, `patient_id`, `doctor_id`, `ngo_id`, `status`, `request_type`,
+`created_at`, and `updated_at`; descriptions and joined profile data are
+excluded.
+
+These basic reports provide no date filters, trends, analytics, grouping,
+exports, generated timestamps, or recent-activity feed. Dashboard and report
+responses expose no medical narrative, message content, contact credentials,
+tokens, secrets, or System Setting values.
+
 ## HTTPS deployment requirement
 
 The Express process currently listens for HTTP and has no TLS certificate or
