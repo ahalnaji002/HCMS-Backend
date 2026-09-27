@@ -400,6 +400,64 @@ The read endpoint accepts an empty JSON object and is receiver-only. It sets
 `is_read = true` and `read_at` on the first successful request; repeated calls
 are idempotent and preserve the original `read_at` value.
 
+## Notifications
+
+```http
+GET   /api/notifications
+GET   /api/notifications/unread-count
+PATCH /api/notifications/:notificationId/read
+PATCH /api/notifications/read-all
+```
+
+All Notification routes require an `ACTIVE` authenticated account and are
+available to `PATIENT`, `DOCTOR`, `NGO`, and `ADMIN` users. Every operation is
+scoped to `notifications.user_id = authenticated user id`; `user_id` is never
+accepted from client input. A missing or non-owned Notification returns `404`
+without revealing whether another user owns it.
+
+The list returns only Notification table fields: `id`, `user_id`, `title`,
+`message`, `type`, `is_read`, `reference_type`, `reference_id`, `created_at`,
+and `read_at`. Results are ordered by `created_at DESC, id DESC`. The unread
+count response contains `data.unread_count` for the current user only.
+
+Both PATCH endpoints accept only an empty JSON object. Marking one Notification
+read sets `is_read = true` and `read_at` on the first call. Repeated calls are
+idempotent and preserve the original `read_at`. `read-all` changes only the
+current user's unread rows and returns the number changed as
+`data.updated_count`.
+
+Notifications are created only by approved Backend events; there is no manual
+or public Notification POST endpoint. The allowed polymorphic reference types
+are exactly `ASSISTANCE_REQUEST`, `EMERGENCY_ALERT`, and `TREATMENT_PLAN`.
+Their `reference_id` values are validated as MySQL unsigned-BIGINT IDs and the
+referenced rows must exist. The Backend derives recipients from the referenced
+entity relationship. The current event hooks are:
+
+- Admin assignment of an Emergency Alert notifies only the assigned Doctor.
+- An assigned Doctor changing an Emergency Alert from `ASSIGNED` to
+  `IN_PROGRESS` notifies the registered Patient.
+- An assigned Doctor changing an Emergency Alert from `IN_PROGRESS` to
+  `RESOLVED` notifies the registered Patient.
+- A Treatment Plan update notifies the affected Patient.
+- Each approved Assistance Request transition (`PENDING -> UNDER_REVIEW`,
+  `UNDER_REVIEW -> APPROVED`, `UNDER_REVIEW -> REJECTED`, and
+  `APPROVED -> COMPLETED`) notifies the beneficiary Patient and submitting
+  Doctor.
+
+For these events, `type` uses the same approved literal as `reference_type`.
+The state mutation and all resulting Notification inserts share one database
+transaction, so either all changes commit or all roll back. Failed or repeated
+invalid transitions do not create Notifications. For registered Patients, the
+Emergency Alert status transition and its Patient Notification commit or roll
+back together. Visitor Emergency Alerts have no registered Patient recipient;
+their Doctor status transitions still succeed but create no Patient
+Notification. Message and Resource Allocation activity does not create
+Notifications, and this API does not
+provide SMS, email, push, deletion, filtering, or pagination.
+
+Malformed IDs or non-empty PATCH bodies return `400`; missing authentication
+returns `401`; and missing or non-owned Notifications return `404`.
+
 ## HTTPS deployment requirement
 
 The Express process currently listens for HTTP and has no TLS certificate or
