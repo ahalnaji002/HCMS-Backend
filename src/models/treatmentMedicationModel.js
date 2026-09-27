@@ -32,6 +32,13 @@ function listByPlanId(planId, connection = db) {
     .orderBy("id", "asc");
 }
 
+function findById(medicationId, connection = db) {
+  return connection("treatment_medications")
+    .select(TREATMENT_MEDICATION_COLUMNS)
+    .where({ id: medicationId })
+    .first();
+}
+
 function findByIdAndPlanId(medicationId, planId, connection = db) {
   return connection("treatment_medications")
     .select(TREATMENT_MEDICATION_COLUMNS)
@@ -73,6 +80,7 @@ function deleteByIdAndPlanId(medicationId, planId, connection = db) {
 module.exports = {
   create,
   deleteByIdAndPlanId,
+  findById,
   findByIdAndPlanId,
   listByPlanId,
   updateByIdAndPlanId,

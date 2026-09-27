@@ -428,7 +428,8 @@ current user's unread rows and returns the number changed as
 
 Notifications are created only by approved Backend events; there is no manual
 or public Notification POST endpoint. The allowed polymorphic reference types
-are exactly `ASSISTANCE_REQUEST`, `EMERGENCY_ALERT`, and `TREATMENT_PLAN`.
+are `ASSISTANCE_REQUEST`, `EMERGENCY_ALERT`, `TREATMENT_PLAN`, and the
+internally generated `REMINDER` type described below.
 Their `reference_id` values are validated as MySQL unsigned-BIGINT IDs and the
 referenced rows must exist. The Backend derives recipients from the referenced
 entity relationship. The current event hooks are:
@@ -457,6 +458,94 @@ provide SMS, email, push, deletion, filtering, or pagination.
 
 Malformed IDs or non-empty PATCH bodies return `400`; missing authentication
 returns `401`; and missing or non-owned Notifications return `404`.
+
+## Reminders
+
+```http
+POST  /api/patient/reminders
+GET   /api/patient/reminders
+GET   /api/patient/reminders/:reminderId
+PATCH /api/patient/reminders/:reminderId/cancel
+```
+
+All Reminder routes require an `ACTIVE` authenticated `PATIENT`. Patients may
+create, list, view, and cancel only their own Reminders. Ownership is enforced
+with `reminders.user_id = authenticated user id`; a missing or non-owned
+Reminder returns `404`. No Doctor, NGO, or Admin Reminder endpoint is exposed.
+
+Creation accepts exactly:
+
+```json
+{
+  "type": "MEDICATION",
+  "reference_id": "42",
+  "remind_at": "2026-09-29T08:00:00"
+}
+```
+
+`type`, `reference_id`, and `remind_at` are required and non-null. `type` is
+exactly `MEDICATION` or `APPOINTMENT`. The Backend maps these values to
+`TREATMENT_MEDICATION` and `TREATMENT_APPOINTMENT` respectively and stores the
+result as `reference_type`; clients cannot supply that field. The referenced
+row must exist and belong through its Treatment Plan to the authenticated
+Patient. A missing or type-mismatched reference returns `404`; an existing
+reference belonging to another Patient returns `403`.
+
+`reference_id` and `reminderId` use the positive MySQL unsigned-BIGINT range.
+Unsafe JSON numbers, zero, negatives, decimals, malformed values, and values
+above `18446744073709551615` return `400`. Creation also rejects `user_id`,
+`reference_type`, `status`, `sent_at`, timestamps, and all unknown fields.
+
+`remind_at` must be a real local calendar datetime in the exact
+`YYYY-MM-DDTHH:mm:ss` format, without an offset or timezone suffix, and must be
+strictly later than the current application time. Alternate formats and past
+or current datetimes return `400`. The calendar value is stored as a MySQL
+`DATETIME` without shifting its intended local date or time.
+
+New Reminders are created with server-derived `user_id`, `status = PENDING`,
+and `sent_at = null`. Lists contain only the current Patient's rows and are
+ordered by `remind_at ASC, id ASC`; filtering and pagination are not provided.
+The API exposes only Reminder table fields.
+
+The status workflow is:
+
+```text
+PENDING --due worker--> SENT
+PENDING --Patient-----> CANCELLED
+```
+
+Cancellation accepts exactly an empty JSON object and refreshes `updated_at`.
+Only `PENDING` Reminders can be cancelled; attempting to cancel `SENT` or
+`CANCELLED` returns `409`. There is no reschedule, delete, manual-send, or
+general-update endpoint.
+
+An internal worker scans once per minute for `PENDING` rows whose `remind_at`
+is due. A successful delivery sets `status = SENT`, sets `sent_at` to the
+actual delivery time, refreshes `updated_at`, and creates exactly one
+Notification for the Reminder owner with:
+
+```text
+title          = Reminder due
+message        = Reminder #<id> is due.
+type           = REMINDER
+reference_type = REMINDER
+reference_id   = reminder.id
+```
+
+The worker is started only by the server process and is disabled in the test
+environment. Its interval does not keep the Node.js process alive by itself.
+Delivery and Notification creation share one database transaction. Delivery
+and cancellation lock and reread the Reminder, recheck its state, and use a
+conditional state update. Concurrent scans cannot duplicate Notifications,
+and cancellation and delivery cannot both succeed. If Notification insertion
+fails, the transaction rolls back: the Reminder remains `PENDING`, `sent_at`
+stays null, and a later worker run may retry it. No `FAILED` state or retry
+counter is used.
+
+Malformed requests return `400`; unauthenticated requests return `401`;
+wrong-role access returns `403`; missing or non-owned Reminders return `404`;
+and invalid state transitions return `409`. Email, SMS, push, WebSockets,
+realtime delivery, filtering, and pagination are outside this API.
 
 ## HTTPS deployment requirement
 

@@ -3,6 +3,7 @@ const doctorModel = require("../models/doctorModel");
 const emergencyAlertModel = require("../models/emergencyAlertModel");
 const notificationModel = require("../models/notificationModel");
 const patientModel = require("../models/patientModel");
+const reminderModel = require("../models/reminderModel");
 const treatmentPlanModel = require("../models/treatmentPlanModel");
 const db = require("../config/database");
 
@@ -10,6 +11,7 @@ const UNSIGNED_BIGINT_MAX = 18446744073709551615n;
 const ALLOWED_REFERENCE_TYPES = new Set([
   "ASSISTANCE_REQUEST",
   "EMERGENCY_ALERT",
+  "REMINDER",
   "TREATMENT_PLAN",
 ]);
 const ASSISTANCE_STATUS_TRANSITIONS = new Set([
@@ -84,6 +86,7 @@ async function validateReference(referenceType, referenceId, connection = db) {
   const modelByType = {
     ASSISTANCE_REQUEST: assistanceRequestModel,
     EMERGENCY_ALERT: emergencyAlertModel,
+    REMINDER: reminderModel,
     TREATMENT_PLAN: treatmentPlanModel,
   };
   const referencedEntity = await modelByType[referenceType].findById(
@@ -311,6 +314,34 @@ async function notifyAssistanceRequestStatusChanged(
   return [patientNotification, doctorNotification];
 }
 
+async function notifyReminderDue(reminderId, userId, connection) {
+  const reminder = await validateReference("REMINDER", reminderId, connection);
+
+  if (String(reminder.user_id) !== String(userId)) {
+    throw new NotificationValidationError(
+      "Reminder notification recipient does not own the Reminder",
+    );
+  }
+
+  if (reminder.status !== "PENDING") {
+    throw new NotificationValidationError(
+      "Reminder is not pending delivery",
+    );
+  }
+
+  return createInternalNotification(
+    {
+      user_id: reminder.user_id,
+      title: "Reminder due",
+      message: `Reminder #${reminder.id} is due.`,
+      type: "REMINDER",
+      reference_type: "REMINDER",
+      reference_id: reminder.id,
+    },
+    connection,
+  );
+}
+
 function listOwnNotifications(user) {
   return notificationModel.listByUserId(user.id);
 }
@@ -350,6 +381,7 @@ module.exports = {
   notifyAssistanceRequestStatusChanged,
   notifyEmergencyAlertAssigned,
   notifyEmergencyAlertStatusChanged,
+  notifyReminderDue,
   notifyTreatmentPlanUpdated,
   validateReference,
 };

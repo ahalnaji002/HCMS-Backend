@@ -30,6 +30,12 @@ const {
 const {
   validateRequestId: validateResourceRequestId,
 } = require("../middleware/validateResourceAllocation");
+const reminderController = require("../controllers/reminderController");
+const {
+  validateCancelReminder,
+  validateCreateReminder,
+  validateReminderId,
+} = require("../middleware/validateReminder");
 
 const router = express.Router();
 
@@ -54,6 +60,27 @@ router.patch(
   validateAlertId,
   validateCancelEmergencyAlert,
   emergencyAlertController.cancelOwnAlert,
+);
+
+router.post(
+  "/reminders",
+  validateCreateReminder,
+  reminderController.create,
+);
+
+router.get("/reminders", reminderController.list);
+
+router.get(
+  "/reminders/:reminderId",
+  validateReminderId,
+  reminderController.get,
+);
+
+router.patch(
+  "/reminders/:reminderId/cancel",
+  validateReminderId,
+  validateCancelReminder,
+  reminderController.cancel,
 );
 
 router.get(
