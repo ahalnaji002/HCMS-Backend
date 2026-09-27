@@ -3,6 +3,7 @@ const assistanceRequestModel = require("../models/assistanceRequestModel");
 const emergencyAlertModel = require("../models/emergencyAlertModel");
 const joinRequestModel = require("../models/joinRequestModel");
 const resourceAllocationModel = require("../models/resourceAllocationModel");
+const systemSettingModel = require("../models/systemSettingModel");
 
 const UNSIGNED_BIGINT_MAX = 18446744073709551615n;
 
@@ -45,6 +46,10 @@ const EVENT_DEFINITIONS = Object.freeze({
     entityType: "RESOURCE_ALLOCATION",
     description: (id) => `Resource Allocation #${id} deleted.`,
   },
+  UPDATE_SYSTEM_SETTING: {
+    entityType: "SYSTEM_SETTING",
+    description: (id) => `System Setting #${id} updated`,
+  },
 });
 
 const APPROVED_ACTIONS = Object.freeze(Object.keys(EVENT_DEFINITIONS));
@@ -53,6 +58,7 @@ const APPROVED_ENTITY_TYPES = Object.freeze([
   "EMERGENCY_ALERT",
   "ASSISTANCE_REQUEST",
   "RESOURCE_ALLOCATION",
+  "SYSTEM_SETTING",
 ]);
 
 const ENTITY_MODELS = {
@@ -60,6 +66,7 @@ const ENTITY_MODELS = {
   EMERGENCY_ALERT: emergencyAlertModel,
   ASSISTANCE_REQUEST: assistanceRequestModel,
   RESOURCE_ALLOCATION: resourceAllocationModel,
+  SYSTEM_SETTING: systemSettingModel,
 };
 
 class ActivityLogNotFoundError extends Error {

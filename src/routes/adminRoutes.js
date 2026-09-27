@@ -5,6 +5,7 @@ const emergencyAlertController = require("../controllers/emergencyAlertControlle
 const assistanceRequestController = require("../controllers/assistanceRequestController");
 const resourceAllocationController = require("../controllers/resourceAllocationController");
 const activityLogController = require("../controllers/activityLogController");
+const systemSettingController = require("../controllers/systemSettingController");
 const authenticate = require("../middleware/authenticate");
 const authorizeRoles = require("../middleware/authorizeRoles");
 
@@ -33,6 +34,9 @@ const {
   validateListQuery: validateActivityLogListQuery,
   validateLogId,
 } = require("../middleware/validateActivityLog");
+const {
+  validateUpdate: validateSystemSettingUpdate,
+} = require("../middleware/validateSystemSetting");
 
 const router = express.Router();
 
@@ -51,6 +55,18 @@ router.get(
   "/activity-logs/:logId",
   validateLogId,
   activityLogController.show,
+);
+
+// ==============================
+// System Settings
+// ==============================
+
+router.get("/settings", systemSettingController.list);
+router.get("/settings/:key", systemSettingController.show);
+router.patch(
+  "/settings/:key",
+  validateSystemSettingUpdate,
+  systemSettingController.update,
 );
 
 // ==============================

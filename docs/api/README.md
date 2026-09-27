@@ -614,6 +614,7 @@ The approved action and entity mappings are:
 | `CREATE_RESOURCE_ALLOCATION` | `RESOURCE_ALLOCATION` | Assigned NGO creates an allocation |
 | `UPDATE_RESOURCE_ALLOCATION` | `RESOURCE_ALLOCATION` | Assigned NGO updates an allocation |
 | `DELETE_RESOURCE_ALLOCATION` | `RESOURCE_ALLOCATION` | Assigned NGO deletes an allocation |
+| `UPDATE_SYSTEM_SETTING` | `SYSTEM_SETTING` | Admin changes a predefined System Setting value |
 
 For these events, `user_id` is always the authenticated actor, and
 `ip_address` is the Express-resolved `req.ip` or `NULL` when unavailable. The
@@ -640,8 +641,70 @@ No Activity Logs are currently created for authentication, registration,
 profile changes, Doctor-Patient Assignment changes, medical/treatment data,
 Patient Emergency creation or cancellation, Messages, Notification reads,
 Reminders, GET/read operations, reports, dashboards, visitors, or automatic
-system events. System Setting audit events remain part of the separate Issue
-#49 workflow and are not implemented here.
+system events.
+
+## System Settings
+
+```http
+GET   /api/admin/settings
+GET   /api/admin/settings/:key
+PATCH /api/admin/settings/:key
+```
+
+All System Setting endpoints require an authenticated `ADMIN`. There is no
+public, Patient, Doctor, or NGO settings endpoint. Settings are predefined and
+their keys are immutable; the API exposes no POST, DELETE, or bulk-update
+operation.
+
+Exactly three non-secret settings are approved:
+
+| Key | Default | Description | Validation |
+|---|---|---|---|
+| `system_name` | `HCMS` | System display name | Required trimmed string, 1–100 characters |
+| `support_email` | `NULL` | Support email address | `NULL` or trimmed valid email, 1–255 characters |
+| `support_phone` | `NULL` | Support phone number | `NULL` or exactly 10 digits beginning with `059` or `056` |
+
+Empty and whitespace-only strings are invalid. Numbers, booleans, objects, and
+arrays are not coerced. Only surrounding whitespace is removed; embedded phone
+formatting or spaces are rejected.
+
+The list returns only approved catalog rows, ordered by `setting_key ASC`. An
+arbitrary database row is never exposed. Detail and update return `404` for an
+unknown, unapproved, or unexpectedly missing predefined key. PATCH accepts
+exactly:
+
+```json
+{
+  "setting_value": "HCMS"
+}
+```
+
+Client-supplied IDs, keys, descriptions, actor metadata, timestamps, and
+unknown fields return `400`. PATCH never creates a missing row. Responses
+expose exactly `id`, `setting_key`, `setting_value`, `description`, and
+`updated_at`; they omit `updated_by_admin_id`, `created_at`, and joined user
+information.
+
+A real change locks the setting row in a transaction, stores the normalized
+value, derives `updated_by_admin_id` from the authenticated Admin, and refreshes
+`updated_at`. It creates exactly one Activity Log in that transaction using
+`UPDATE_SYSTEM_SETTING`, `SYSTEM_SETTING`, the numeric setting ID, and the
+fixed description `System Setting #<id> updated`. The request IP is recorded,
+but the key and old/new values are not included in the log. A log insertion
+failure rolls back the value and all update metadata.
+
+Submitting a normalized value identical to the locked current value returns
+`200` as a no-op. It does not change the value, actor, or timestamp and creates
+no Activity Log; `NULL` to `NULL` behaves the same way. Concurrent updates
+serialize on the setting row. Identical concurrent values produce one actual
+change and one log, while different serialized values may each change the row
+and create one log per actual change.
+
+The System Setting seed inserts the three missing catalog rows without
+overwriting an existing value or metadata. JWT secrets, database or SMTP
+credentials, API/encryption keys, tokens, administrator credentials, private
+deployment configuration, and other environment secrets are not System
+Settings and are never exposed by these endpoints.
 
 ## HTTPS deployment requirement
 
