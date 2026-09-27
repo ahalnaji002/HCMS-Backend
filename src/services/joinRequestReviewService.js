@@ -1,6 +1,7 @@
 const db = require("../config/database");
 const joinRequestModel = require("../models/joinRequestModel");
 const userModel = require("../models/userModel");
+const activityLogService = require("./activityLogService");
 
 class JoinRequestNotFoundError extends Error {
   constructor() {
@@ -95,7 +96,7 @@ async function validateLockedRequest(id, trx) {
   return request;
 }
 
-async function approveJoinRequest(id, adminId) {
+async function approveJoinRequest(id, adminId, ipAddress) {
   return db.transaction(async (trx) => {
     const request = await validateLockedRequest(id, trx);
 
@@ -112,13 +113,22 @@ async function approveJoinRequest(id, adminId) {
     await userModel.updateAccountStatus(request.user_id, "ACTIVE", trx);
 
     const reviewed = await joinRequestModel.findDetailedById(id, trx);
+    await activityLogService.recordEvent(
+      {
+        action: "APPROVE_JOIN_REQUEST",
+        actorUserId: adminId,
+        entityId: request.id,
+        ipAddress,
+      },
+      trx,
+    );
     return formatDetailedJoinRequest(reviewed);
   });
 }
 
-async function rejectJoinRequest(id, adminId, rejectionReason) {
+async function rejectJoinRequest(id, adminId, rejectionReason, ipAddress) {
   return db.transaction(async (trx) => {
-    await validateLockedRequest(id, trx);
+    const request = await validateLockedRequest(id, trx);
 
     await joinRequestModel.updateReview(
       id,
@@ -132,6 +142,15 @@ async function rejectJoinRequest(id, adminId, rejectionReason) {
     );
 
     const reviewed = await joinRequestModel.findDetailedById(id, trx);
+    await activityLogService.recordEvent(
+      {
+        action: "REJECT_JOIN_REQUEST",
+        actorUserId: adminId,
+        entityId: request.id,
+        ipAddress,
+      },
+      trx,
+    );
     return formatDetailedJoinRequest(reviewed);
   });
 }

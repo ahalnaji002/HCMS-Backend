@@ -4,6 +4,7 @@ const db = require("../config/database");
 const doctorModel = require("../models/doctorModel");
 const userModel = require("../models/userModel");
 const notificationService = require("./notificationService");
+const activityLogService = require("./activityLogService");
 
 class EmergencyAlertNotFoundError extends Error {
   constructor(message) {
@@ -142,7 +143,7 @@ async function getAlertForAdmin(alertId) {
   return alert;
 }
 
-async function assignDoctorToAlert(user, alertId, doctorId) {
+async function assignDoctorToAlert(user, alertId, doctorId, ipAddress) {
   return db.transaction(async (trx) => {
     const alert = await emergencyAlertModel.findByIdForUpdate(alertId, trx);
 
@@ -202,6 +203,15 @@ async function assignDoctorToAlert(user, alertId, doctorId) {
       assignedAlert.id,
       trx,
     );
+    await activityLogService.recordEvent(
+      {
+        action: "ASSIGN_EMERGENCY_ALERT",
+        actorUserId: user.id,
+        entityId: assignedAlert.id,
+        ipAddress,
+      },
+      trx,
+    );
 
     return assignedAlert;
   });
@@ -212,7 +222,12 @@ const DOCTOR_STATUS_TRANSITIONS = {
   IN_PROGRESS: "RESOLVED",
 };
 
-async function updateStatusForAssignedDoctor(user, alertId, nextStatus) {
+async function updateStatusForAssignedDoctor(
+  user,
+  alertId,
+  nextStatus,
+  ipAddress,
+) {
   return db.transaction(async (trx) => {
     const doctor = await doctorModel.findByUserId(user.id, trx);
 
@@ -254,6 +269,15 @@ async function updateStatusForAssignedDoctor(user, alertId, nextStatus) {
       updatedAlert.id,
       alert.status,
       nextStatus,
+      trx,
+    );
+    await activityLogService.recordEvent(
+      {
+        action: "UPDATE_EMERGENCY_STATUS",
+        actorUserId: user.id,
+        entityId: updatedAlert.id,
+        ipAddress,
+      },
       trx,
     );
 

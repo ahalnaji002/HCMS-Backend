@@ -179,6 +179,7 @@ async function assignDoctor(req, res) {
       req.user,
       req.params.alertId,
       req.validatedEmergencyAlertAssignment.doctor_id,
+      req.ip,
     );
 
     return res.status(200).json({
@@ -200,6 +201,7 @@ async function updateStatusForDoctor(req, res) {
         req.user,
         req.params.alertId,
         req.validatedEmergencyAlertStatus.status,
+        req.ip,
       );
 
     return res.status(200).json({

@@ -6,6 +6,7 @@ const ngoModel = require("../models/ngoModel");
 const patientModel = require("../models/patientModel");
 const userModel = require("../models/userModel");
 const notificationService = require("./notificationService");
+const activityLogService = require("./activityLogService");
 
 const ALLOWED_STATUS_TRANSITIONS = {
   PENDING: new Set(["UNDER_REVIEW"]),
@@ -97,18 +98,38 @@ async function getNgoProfileOrThrow(userId) {
   return ngo;
 }
 
-async function createForAssignedPatient(user, patientId, requestData) {
+async function createForAssignedPatient(
+  user,
+  patientId,
+  requestData,
+  ipAddress,
+) {
   await getPatientOrThrow(patientId);
 
   const doctor = await getDoctorOrThrow(user.id);
 
   await requireActiveAssignment(doctor.id, patientId);
 
-  return assistanceRequestModel.create({
-    patient_id: patientId,
-    doctor_id: doctor.id,
-    request_type: requestData.request_type,
-    description: requestData.description,
+  return db.transaction(async (trx) => {
+    const assistanceRequest = await assistanceRequestModel.create(
+      {
+        patient_id: patientId,
+        doctor_id: doctor.id,
+        request_type: requestData.request_type,
+        description: requestData.description,
+      },
+      trx,
+    );
+    await activityLogService.recordEvent(
+      {
+        action: "CREATE_ASSISTANCE_REQUEST",
+        actorUserId: user.id,
+        entityId: assistanceRequest.id,
+        ipAddress,
+      },
+      trx,
+    );
+    return assistanceRequest;
   });
 }
 
@@ -225,7 +246,7 @@ async function getForNgo(user, requestId) {
   throw new AssistanceRequestNotFoundError("Assistance Request not found");
 }
 
-async function updateStatusForNgo(user, requestId, nextStatus) {
+async function updateStatusForNgo(user, requestId, nextStatus, ipAddress) {
   const ngo = await getNgoProfileOrThrow(user.id);
 
   return db.transaction(async (trx) => {
@@ -278,6 +299,15 @@ async function updateStatusForNgo(user, requestId, nextStatus) {
       updated.id,
       assistanceRequest.status,
       nextStatus,
+      trx,
+    );
+    await activityLogService.recordEvent(
+      {
+        action: "UPDATE_ASSISTANCE_STATUS",
+        actorUserId: user.id,
+        entityId: updated.id,
+        ipAddress,
+      },
       trx,
     );
 
