@@ -61,7 +61,8 @@ async function approve(req, res) {
   try {
     const request = await approveJoinRequest(
       req.validatedJoinRequestId,
-      req.user.id
+      req.user.id,
+      req.ip,
     );
     return res.status(200).json({
       success: true,
@@ -81,7 +82,8 @@ async function reject(req, res) {
     const request = await rejectJoinRequest(
       req.validatedJoinRequestId,
       req.user.id,
-      req.validatedRejectionReason
+      req.validatedRejectionReason,
+      req.ip,
     );
     return res.status(200).json({
       success: true,

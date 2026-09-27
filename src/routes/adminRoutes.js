@@ -4,6 +4,7 @@ const assignmentController = require("../controllers/adminDoctorPatientAssignmen
 const emergencyAlertController = require("../controllers/emergencyAlertController");
 const assistanceRequestController = require("../controllers/assistanceRequestController");
 const resourceAllocationController = require("../controllers/resourceAllocationController");
+const activityLogController = require("../controllers/activityLogController");
 const authenticate = require("../middleware/authenticate");
 const authorizeRoles = require("../middleware/authorizeRoles");
 
@@ -28,10 +29,29 @@ const {
 const {
   validateRequestId: validateResourceRequestId,
 } = require("../middleware/validateResourceAllocation");
+const {
+  validateListQuery: validateActivityLogListQuery,
+  validateLogId,
+} = require("../middleware/validateActivityLog");
 
 const router = express.Router();
 
 router.use(authenticate, authorizeRoles("ADMIN"));
+
+// ==============================
+// Activity Logs
+// ==============================
+
+router.get(
+  "/activity-logs",
+  validateActivityLogListQuery,
+  activityLogController.list,
+);
+router.get(
+  "/activity-logs/:logId",
+  validateLogId,
+  activityLogController.show,
+);
 
 // ==============================
 // Join Request Review

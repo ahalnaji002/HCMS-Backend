@@ -547,6 +547,102 @@ wrong-role access returns `403`; missing or non-owned Reminders return `404`;
 and invalid state transitions return `409`. Email, SMS, push, WebSockets,
 realtime delivery, filtering, and pagination are outside this API.
 
+## Activity Logs
+
+```http
+GET /api/admin/activity-logs
+GET /api/admin/activity-logs/:logId
+```
+
+Both endpoints require an `ACTIVE` authenticated `ADMIN`. Patients, Doctors,
+NGOs, and unauthenticated callers cannot read Activity Logs. Logs are immutable:
+there is no public or role-specific `POST`, `PATCH`, `PUT`, or `DELETE` endpoint.
+
+The list accepts only these optional query parameters:
+
+```text
+page
+limit
+user_id
+action
+entity_type
+entity_id
+date_from
+date_to
+```
+
+`page` defaults to `1`. `limit` defaults to `20` and cannot exceed `100`; both
+must be positive integers. `user_id` and `entity_id` must be positive MySQL
+unsigned-BIGINT values. `date_from` and `date_to` use the exact local datetime
+format `YYYY-MM-DDTHH:mm:ss`, must be real calendar values, and `date_from`
+cannot be later than `date_to`. Unknown or invalid query parameters return
+`400`. IP filtering, description search, arbitrary sorting, status/role
+filters, and cursor pagination are not supported.
+
+Results are ordered by `created_at DESC, id DESC` and returned as:
+
+```json
+{
+  "success": true,
+  "message": "Activity Logs retrieved successfully",
+  "data": {
+    "items": [],
+    "page": 1,
+    "limit": 20,
+    "total": 0,
+    "total_pages": 0
+  }
+}
+```
+
+List and detail expose only `id`, `user_id`, `action`, `entity_type`,
+`entity_id`, `description`, `ip_address`, and `created_at`. Detail does not
+expand the actor or referenced entity. An invalid `logId` returns `400`; a
+missing log returns `404`. Missing authentication returns `401`, and a
+non-Admin role returns `403`.
+
+The approved action and entity mappings are:
+
+| Action | Entity type | Recorded workflow |
+|---|---|---|
+| `APPROVE_JOIN_REQUEST` | `JOIN_REQUEST` | Admin approves a Join Request |
+| `REJECT_JOIN_REQUEST` | `JOIN_REQUEST` | Admin rejects a Join Request |
+| `ASSIGN_EMERGENCY_ALERT` | `EMERGENCY_ALERT` | Admin assigns an Emergency Alert |
+| `UPDATE_EMERGENCY_STATUS` | `EMERGENCY_ALERT` | Assigned Doctor changes Emergency status |
+| `CREATE_ASSISTANCE_REQUEST` | `ASSISTANCE_REQUEST` | Doctor creates an Assistance Request |
+| `UPDATE_ASSISTANCE_STATUS` | `ASSISTANCE_REQUEST` | Assigned NGO changes Assistance status |
+| `CREATE_RESOURCE_ALLOCATION` | `RESOURCE_ALLOCATION` | Assigned NGO creates an allocation |
+| `UPDATE_RESOURCE_ALLOCATION` | `RESOURCE_ALLOCATION` | Assigned NGO updates an allocation |
+| `DELETE_RESOURCE_ALLOCATION` | `RESOURCE_ALLOCATION` | Assigned NGO deletes an allocation |
+
+For these events, `user_id` is always the authenticated actor, and
+`ip_address` is the Express-resolved `req.ip` or `NULL` when unavailable. The
+Backend does not read or store raw forwarding headers and does not alter the
+application's proxy-trust configuration. `action`, `entity_type`, `entity_id`,
+and the fixed human-readable description are generated and validated by the
+Backend; clients cannot submit Activity Logs or control audit fields.
+
+The business mutation, existing Notifications, and Activity Log insertion use
+the same database transaction. Failed, forbidden, stale, or conflicting
+operations create no log. Activity Log insertion failure rolls back the
+business mutation and all other transaction-scoped side effects. Resource
+Allocation deletion validates and locks the allocation before deletion; its
+Activity Log retains the deleted allocation ID and remains readable without
+attempting to resolve the removed row.
+
+Descriptions contain only the approved resource identifier and, for status
+events, the validated persisted status. Passwords, hashes, tokens,
+authorization headers, national IDs, phone numbers, request bodies, serialized
+profiles, rejection reasons, medical data, messages, Emergency or Assistance
+descriptions, Treatment details, and arbitrary client strings are not logged.
+
+No Activity Logs are currently created for authentication, registration,
+profile changes, Doctor-Patient Assignment changes, medical/treatment data,
+Patient Emergency creation or cancellation, Messages, Notification reads,
+Reminders, GET/read operations, reports, dashboards, visitors, or automatic
+system events. System Setting audit events remain part of the separate Issue
+#49 workflow and are not implemented here.
+
 ## HTTPS deployment requirement
 
 The Express process currently listens for HTTP and has no TLS certificate or

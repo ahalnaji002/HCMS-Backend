@@ -38,6 +38,13 @@ function findByIdAndRequestId(resourceId, requestId, connection = db) {
     .first();
 }
 
+function findById(resourceId, connection = db) {
+  return connection("resource_allocations")
+    .select(RESOURCE_ALLOCATION_COLUMNS)
+    .where({ id: resourceId })
+    .first();
+}
+
 function findByIdForUpdate(resourceId, connection) {
   return connection("resource_allocations")
     .select(RESOURCE_ALLOCATION_COLUMNS)
@@ -79,6 +86,7 @@ function deleteByIdAndRequestId(
 module.exports = {
   create,
   deleteByIdAndRequestId,
+  findById,
   findByIdAndRequestId,
   findByIdForUpdate,
   listByRequestId,

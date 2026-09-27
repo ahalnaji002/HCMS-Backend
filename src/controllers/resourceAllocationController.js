@@ -41,6 +41,7 @@ async function createForNgo(req, res) {
       req.user,
       req.validatedResourceRequestId,
       req.validatedResourceAllocation,
+      req.ip,
     );
 
     return res.status(201).json({
@@ -76,6 +77,7 @@ async function updateForNgo(req, res) {
       req.validatedResourceRequestId,
       req.validatedResourceId,
       req.validatedResourceAllocation,
+      req.ip,
     );
     return res.status(200).json({
       success: true,
@@ -93,6 +95,7 @@ async function deleteForNgo(req, res) {
       req.user,
       req.validatedResourceRequestId,
       req.validatedResourceId,
+      req.ip,
     );
     return res.status(200).json({
       success: true,

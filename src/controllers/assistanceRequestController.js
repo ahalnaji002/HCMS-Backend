@@ -44,6 +44,7 @@ async function createForAssignedPatient(req, res) {
         req.user,
         req.validatedAssistanceRequestPatientId,
         req.validatedAssistanceRequest,
+        req.ip,
       );
 
     return res.status(201).json({
@@ -191,6 +192,7 @@ async function updateStatusForNgo(req, res) {
         req.user,
         req.validatedAssistanceRequestId,
         req.validatedAssistanceRequestStatus.status,
+        req.ip,
       );
 
     return res.status(200).json({

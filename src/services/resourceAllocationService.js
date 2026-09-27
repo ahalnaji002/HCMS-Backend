@@ -4,6 +4,7 @@ const doctorModel = require("../models/doctorModel");
 const ngoModel = require("../models/ngoModel");
 const patientModel = require("../models/patientModel");
 const resourceAllocationModel = require("../models/resourceAllocationModel");
+const activityLogService = require("./activityLogService");
 
 class ResourceAllocationNotFoundError extends Error {
   constructor(message) {
@@ -78,7 +79,7 @@ function requireMutableRequest(assistanceRequest) {
   }
 }
 
-async function createForNgo(user, requestId, allocationData) {
+async function createForNgo(user, requestId, allocationData, ipAddress) {
   const ngo = await getNgoProfileOrThrow(user.id);
 
   return db.transaction(async (trx) => {
@@ -91,13 +92,23 @@ async function createForNgo(user, requestId, allocationData) {
       );
     }
 
-    return resourceAllocationModel.create(
+    const allocation = await resourceAllocationModel.create(
       {
         assistance_request_id: requestId,
         ...allocationData,
       },
       trx,
     );
+    await activityLogService.recordEvent(
+      {
+        action: "CREATE_RESOURCE_ALLOCATION",
+        actorUserId: user.id,
+        entityId: allocation.id,
+        ipAddress,
+      },
+      trx,
+    );
+    return allocation;
   });
 }
 
@@ -124,7 +135,13 @@ async function getLockedResourceOrThrow(resourceId, requestId, connection) {
   return allocation;
 }
 
-async function updateForNgo(user, requestId, resourceId, updates) {
+async function updateForNgo(
+  user,
+  requestId,
+  resourceId,
+  updates,
+  ipAddress,
+) {
   const ngo = await getNgoProfileOrThrow(user.id);
 
   return db.transaction(async (trx) => {
@@ -146,11 +163,21 @@ async function updateForNgo(user, requestId, resourceId, updates) {
       );
     }
 
+    await activityLogService.recordEvent(
+      {
+        action: "UPDATE_RESOURCE_ALLOCATION",
+        actorUserId: user.id,
+        entityId: updated.id,
+        ipAddress,
+      },
+      trx,
+    );
+
     return updated;
   });
 }
 
-async function deleteForNgo(user, requestId, resourceId) {
+async function deleteForNgo(user, requestId, resourceId, ipAddress) {
   const ngo = await getNgoProfileOrThrow(user.id);
 
   return db.transaction(async (trx) => {
@@ -174,6 +201,16 @@ async function deleteForNgo(user, requestId, resourceId) {
         "Resource Allocation changed concurrently",
       );
     }
+
+    await activityLogService.recordEvent(
+      {
+        action: "DELETE_RESOURCE_ALLOCATION",
+        actorUserId: user.id,
+        entityId: allocation.id,
+        ipAddress,
+      },
+      trx,
+    );
 
     return allocation;
   });
