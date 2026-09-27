@@ -6,6 +6,7 @@ const assistanceRequestController = require("../controllers/assistanceRequestCon
 const resourceAllocationController = require("../controllers/resourceAllocationController");
 const activityLogController = require("../controllers/activityLogController");
 const systemSettingController = require("../controllers/systemSettingController");
+const dashboardReportController = require("../controllers/dashboardReportController");
 const authenticate = require("../middleware/authenticate");
 const authorizeRoles = require("../middleware/authorizeRoles");
 
@@ -37,10 +38,35 @@ const {
 const {
   validateUpdate: validateSystemSettingUpdate,
 } = require("../middleware/validateSystemSetting");
+const {
+  validateAssistanceRequestReportQuery,
+  validateReportQuery,
+} = require("../middleware/validateReportQuery");
 
 const router = express.Router();
 
 router.use(authenticate, authorizeRoles("ADMIN"));
+
+// ==============================
+// Dashboard and Reports
+// ==============================
+
+router.get("/dashboard", dashboardReportController.getAdminDashboard);
+router.get(
+  "/reports/patients",
+  validateReportQuery,
+  dashboardReportController.getPatientReport,
+);
+router.get(
+  "/reports/treatment-plans",
+  validateReportQuery,
+  dashboardReportController.getTreatmentPlanReport,
+);
+router.get(
+  "/reports/assistance-requests",
+  validateAssistanceRequestReportQuery,
+  dashboardReportController.getAssistanceRequestReport,
+);
 
 // ==============================
 // Activity Logs

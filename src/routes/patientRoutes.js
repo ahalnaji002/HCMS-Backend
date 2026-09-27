@@ -31,6 +31,7 @@ const {
   validateRequestId: validateResourceRequestId,
 } = require("../middleware/validateResourceAllocation");
 const reminderController = require("../controllers/reminderController");
+const dashboardReportController = require("../controllers/dashboardReportController");
 const {
   validateCancelReminder,
   validateCreateReminder,
@@ -40,6 +41,8 @@ const {
 const router = express.Router();
 
 router.use(authenticate, authorizeRoles("PATIENT"));
+
+router.get("/dashboard", dashboardReportController.getPatientDashboard);
 
 router.post(
   "/emergency-alerts",
