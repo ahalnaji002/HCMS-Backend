@@ -3,6 +3,7 @@ const emergencyAlertModel = require("../models/emergencyAlertModel");
 const db = require("../config/database");
 const doctorModel = require("../models/doctorModel");
 const userModel = require("../models/userModel");
+const notificationService = require("./notificationService");
 
 class EmergencyAlertNotFoundError extends Error {
   constructor(message) {
@@ -197,6 +198,11 @@ async function assignDoctorToAlert(user, alertId, doctorId) {
       );
     }
 
+    await notificationService.notifyEmergencyAlertAssigned(
+      assignedAlert.id,
+      trx,
+    );
+
     return assignedAlert;
   });
 }
@@ -243,6 +249,13 @@ async function updateStatusForAssignedDoctor(user, alertId, nextStatus) {
         "Emergency Alert status changed concurrently",
       );
     }
+
+    await notificationService.notifyEmergencyAlertStatusChanged(
+      updatedAlert.id,
+      alert.status,
+      nextStatus,
+      trx,
+    );
 
     return updatedAlert;
   });

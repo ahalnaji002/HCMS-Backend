@@ -5,6 +5,7 @@ const doctorPatientAssignmentModel = require("../models/doctorPatientAssignmentM
 const ngoModel = require("../models/ngoModel");
 const patientModel = require("../models/patientModel");
 const userModel = require("../models/userModel");
+const notificationService = require("./notificationService");
 
 const ALLOWED_STATUS_TRANSITIONS = {
   PENDING: new Set(["UNDER_REVIEW"]),
@@ -272,6 +273,13 @@ async function updateStatusForNgo(user, requestId, nextStatus) {
         "Assistance Request status changed concurrently",
       );
     }
+
+    await notificationService.notifyAssistanceRequestStatusChanged(
+      updated.id,
+      assistanceRequest.status,
+      nextStatus,
+      trx,
+    );
 
     return updated;
   });

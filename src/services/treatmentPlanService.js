@@ -2,6 +2,8 @@ const patientModel = require("../models/patientModel");
 const doctorModel = require("../models/doctorModel");
 const doctorPatientAssignmentModel = require("../models/doctorPatientAssignmentModel");
 const treatmentPlanModel = require("../models/treatmentPlanModel");
+const db = require("../config/database");
+const notificationService = require("./notificationService");
 
 class TreatmentPlanNotFoundError extends Error {
   constructor(message) {
@@ -166,11 +168,18 @@ async function updateForAssignedPatient(
 
   validateResultingDateRange(resultingStartDate, resultingEndDate);
 
-  return treatmentPlanModel.updateByIdAndPatientId(
-    planId,
-    patientId,
-    treatmentPlanData,
-  );
+  return db.transaction(async (trx) => {
+    const updatedPlan = await treatmentPlanModel.updateByIdAndPatientId(
+      planId,
+      patientId,
+      treatmentPlanData,
+      trx,
+    );
+
+    await notificationService.notifyTreatmentPlanUpdated(updatedPlan.id, trx);
+
+    return updatedPlan;
+  });
 }
 
 async function getPatientProfileOrThrow(userId) {
