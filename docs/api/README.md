@@ -107,6 +107,107 @@ Missing authentication returns `401`; an authenticated but disallowed role
 returns `403`. Resource ownership and active Doctor-Patient Assignment checks
 are additionally enforced where described below.
 
+## Sprint 7 API index
+
+This index summarizes the implemented Sprint 7 API surface. Follow the linked
+feature headings for complete validation, ownership, workflow, error, and
+limitation details. All successful responses use the common envelope described
+above.
+
+**[Emergency Alerts](#emergency-alerts)**
+
+| Method | Route | Access | Request/input | Success `data` | Important restriction |
+|---|---|---|---|---|---|
+| `POST` | `/api/emergency-alerts` | Public | `phone`; optional `location`, `description` | `emergency_alert` | Visitor creation only; `patient_id = NULL` |
+| `POST` | `/api/patient/emergency-alerts` | `PATIENT` | `phone`; optional `location`, `description` | `emergency_alert` | Patient identity is server-derived |
+| `GET` | `/api/patient/emergency-alerts` | `PATIENT` | None | `emergency_alerts` | Own alerts only; newest first |
+| `GET` | `/api/patient/emergency-alerts/:alertId` | `PATIENT` | `alertId` | `emergency_alert` | Own alert only |
+| `PATCH` | `/api/patient/emergency-alerts/:alertId/cancel` | `PATIENT` | Empty body | `emergency_alert` | Own `PENDING_ASSIGNMENT` alert only |
+| `GET` | `/api/admin/emergency-alerts` | `ADMIN` | None | `emergency_alerts` | All registered-Patient and Visitor alerts |
+| `GET` | `/api/admin/emergency-alerts/:alertId` | `ADMIN` | `alertId` | `emergency_alert` | Admin monitoring only |
+| `PATCH` | `/api/admin/emergency-alerts/:alertId/assign` | `ADMIN` | `doctor_id` | `emergency_alert` | Pending alert and eligible active Doctor required |
+| `PATCH` | `/api/doctor/emergency-alerts/:alertId/status` | `DOCTOR` | `status` | `emergency_alert` | Assigned Doctor and approved next state required |
+
+**[Assistance Requests](#assistance-requests)**
+
+| Method | Route | Access | Request/input | Success `data` | Important restriction |
+|---|---|---|---|---|---|
+| `POST` | `/api/doctor/patients/:patientId/assistance-requests` | `DOCTOR` | `request_type`, `description` | `assistance_request` | Requires an `ACTIVE` assignment to the Patient |
+| `GET` | `/api/patient/assistance-requests` | `PATIENT` | None | `assistance_requests` | Own requests only |
+| `GET` | `/api/patient/assistance-requests/:requestId` | `PATIENT` | `requestId` | `assistance_request` | Own request only |
+| `GET` | `/api/admin/assistance-requests` | `ADMIN` | None | `assistance_requests` | Lists all requests |
+| `GET` | `/api/admin/assistance-requests/:requestId` | `ADMIN` | `requestId` | `assistance_request` | Admin monitoring only |
+| `PATCH` | `/api/admin/assistance-requests/:requestId/assign` | `ADMIN` | `ngo_id` | `assistance_request` | Unassigned `PENDING` request and active NGO required |
+| `GET` | `/api/ngo/assistance-requests` | `NGO` | None | `assistance_requests` | Assigned NGO's requests only |
+| `GET` | `/api/ngo/assistance-requests/:requestId` | `NGO` | `requestId` | `assistance_request` | Assigned NGO only |
+| `PATCH` | `/api/ngo/assistance-requests/:requestId/status` | `NGO` | `status` | `assistance_request` | Assigned NGO and approved transition required |
+
+**[Resource Allocations](#resource-allocations)**
+
+| Method | Route | Access | Request/input | Success `data` | Important restriction |
+|---|---|---|---|---|---|
+| `POST` | `/api/ngo/assistance-requests/:requestId/resources` | `NGO` | `resource_name`, `quantity`; optional `delivery_date`, `notes` | `resource_allocation` | Owning NGO; request must be `APPROVED` |
+| `GET` | `/api/ngo/assistance-requests/:requestId/resources` | `NGO` | `requestId` | `resource_allocations` | Owning NGO only |
+| `PATCH` | `/api/ngo/assistance-requests/:requestId/resources/:resourceId` | `NGO` | At least one editable field | `resource_allocation` | Blocked after request completion |
+| `DELETE` | `/api/ngo/assistance-requests/:requestId/resources/:resourceId` | `NGO` | Path IDs | `resource_allocation` | Blocked after request completion |
+| `GET` | `/api/patient/assistance-requests/:requestId/resources` | `PATIENT` | `requestId` | `resource_allocations` | Beneficiary Patient only |
+| `GET` | `/api/doctor/assistance-requests/:requestId/resources` | `DOCTOR` | `requestId` | `resource_allocations` | Original submitting Doctor only |
+| `GET` | `/api/admin/assistance-requests/:requestId/resources` | `ADMIN` | `requestId` | `resource_allocations` | Existing request required |
+
+**[Patient-Doctor Messaging](#patient-doctor-messaging)**
+
+| Method | Route | Access | Request/input | Success `data` | Important restriction |
+|---|---|---|---|---|---|
+| `POST` | `/api/messages` | `PATIENT`, `DOCTOR` | `receiver_id`, `message_text` | `message` | Exact pair must have an `ACTIVE` assignment |
+| `GET` | `/api/messages/conversations` | `PATIENT`, `DOCTOR` | None | `conversations` | Participant's conversations only |
+| `GET` | `/api/messages/conversations/:userId` | `PATIENT`, `DOCTOR` | Other participant `userId` | `messages` | Existing shared history required |
+| `PATCH` | `/api/messages/:messageId/read` | `PATIENT`, `DOCTOR` | Empty body | `message` | Receiver only; idempotent |
+
+**[Notifications](#notifications)**
+
+| Method | Route | Access | Request/input | Success `data` | Important restriction |
+|---|---|---|---|---|---|
+| `GET` | `/api/notifications` | Any authenticated role | None | `notifications` | Current user's rows only |
+| `GET` | `/api/notifications/unread-count` | Any authenticated role | None | `unread_count` | Current user only |
+| `PATCH` | `/api/notifications/:notificationId/read` | Any authenticated role | Empty body | `notification` | Owner only; idempotent |
+| `PATCH` | `/api/notifications/read-all` | Any authenticated role | Empty body | `updated_count` | Current user's unread rows only |
+
+**[Reminders](#reminders)**
+
+| Method | Route | Access | Request/input | Success `data` | Important restriction |
+|---|---|---|---|---|---|
+| `POST` | `/api/patient/reminders` | `PATIENT` | `type`, `reference_id`, `remind_at` | `reminder` | Owned reference and future local time required |
+| `GET` | `/api/patient/reminders` | `PATIENT` | None | `reminders` | Own rows only |
+| `GET` | `/api/patient/reminders/:reminderId` | `PATIENT` | `reminderId` | `reminder` | Own Reminder only |
+| `PATCH` | `/api/patient/reminders/:reminderId/cancel` | `PATIENT` | Empty body | `reminder` | Own `PENDING` Reminder only |
+
+**[Activity Logs](#activity-logs)**
+
+| Method | Route | Access | Request/input | Success `data` | Important restriction |
+|---|---|---|---|---|---|
+| `GET` | `/api/admin/activity-logs` | `ADMIN` | Approved filters; `page`, `limit` | `items`, `page`, `limit`, `total`, `total_pages` | Read-only safe projection |
+| `GET` | `/api/admin/activity-logs/:logId` | `ADMIN` | `logId` | `activity_log` | No entity or actor expansion |
+
+**[System Settings](#system-settings)**
+
+| Method | Route | Access | Request/input | Success `data` | Important restriction |
+|---|---|---|---|---|---|
+| `GET` | `/api/admin/settings` | `ADMIN` | None | `settings` | Approved catalog rows only |
+| `GET` | `/api/admin/settings/:key` | `ADMIN` | Approved key | `setting` | Unknown or missing catalog key returns `404` |
+| `PATCH` | `/api/admin/settings/:key` | `ADMIN` | `setting_value` | `setting` | Existing approved key only; same value is a no-op |
+
+**[Dashboards and Basic Reports](#dashboards-and-basic-reports)**
+
+| Method | Route | Access | Request/input | Success `data` | Important restriction |
+|---|---|---|---|---|---|
+| `GET` | `/api/admin/dashboard` | `ADMIN` | None | Admin metric object | Exact current-state counts only |
+| `GET` | `/api/patient/dashboard` | `PATIENT` | None | Patient metric object | Authenticated Patient scope only |
+| `GET` | `/api/doctor/dashboard` | `DOCTOR` | None | Doctor metric object | Authenticated Doctor scope only |
+| `GET` | `/api/ngo/dashboard` | `NGO` | None | NGO metric object | Authenticated NGO scope only |
+| `GET` | `/api/admin/reports/patients` | `ADMIN` | `page`, `limit` | `items`, `page`, `limit`, `total`, `total_pages` | Exact safe Patient projection |
+| `GET` | `/api/admin/reports/treatment-plans` | `ADMIN` | `page`, `limit` | `items`, `page`, `limit`, `total`, `total_pages` | Exact safe Treatment Plan projection |
+| `GET` | `/api/admin/reports/assistance-requests` | `ADMIN` | `page`, `limit`; optional `status` | `items`, `page`, `limit`, `total`, `total_pages` | Exact safe Assistance projection |
+
 ## Profiles
 
 ```http
@@ -340,9 +441,12 @@ creation, updates, and deletion never change the Assistance Request status.
 
 Patients may read allocations only for their own Assistance Requests. Doctors
 may read allocations only for requests they originally submitted; this access
-does not depend on a current Doctor-Patient Assignment. Admins may read
-allocations for any existing Assistance Request. These roles have no Resource
-Allocation write endpoints.
+does not depend on a current Doctor-Patient Assignment. This is creator-scoped
+historical read access for the original submitting Doctor, approved for Sprint
+7 specifically for Resource Allocation reads; it is not a general relaxation
+of Doctor access controls or active-assignment requirements elsewhere. Admins
+may read allocations for any existing Assistance Request. These roles have no
+Resource Allocation write endpoints.
 
 Malformed IDs or bodies return `400`; missing requests or relationship-scoped
 allocations return `404`; wrong-role and ownership violations return `403`;
@@ -877,6 +981,14 @@ Creation requires `phone`; `location` and `description` are optional.
 are not accepted from the client. Every new alert is created by the server
 with `priority = HIGH` and `status = PENDING_ASSIGNMENT`.
 
+The database status enum still contains `NEW`, and `NEW` remains the database
+schema default for compatibility. Sprint 7 API behavior does not remove or use
+that value as the created workflow state: both Visitor and authenticated
+Patient creation explicitly persist `PENDING_ASSIGNMENT`. The application
+workflow is `PENDING_ASSIGNMENT -> ASSIGNED -> IN_PROGRESS -> RESOLVED`, while
+an originating Patient may instead cancel their own alert through
+`PENDING_ASSIGNMENT -> CANCELLED`.
+
 A Patient may cancel only their own alert while its status is
 `PENDING_ASSIGNMENT`. Cancellation changes the status to `CANCELLED` and
 updates `updated_at`. Cancellation does not accept request-body fields. The
@@ -945,3 +1057,11 @@ values return `400`; missing authentication returns `401`; authenticated
 non-Doctor roles return `403`; missing or non-owned alerts return `404`; and
 invalid or stale workflow transitions return `409`. No Doctor Emergency Alert
 list or detail route is exposed.
+
+## Sprint 7 verification and handoff
+
+Sprint 7 cross-role workflows are covered by the repository integration suite.
+The final documentation was reviewed against the SRS, ERD, Data Dictionary,
+and implemented API behavior. The Issue #52 review required no production-code
+or database-schema correction. Final Sprint 7 closure and verification are
+handed to Issue #53.
