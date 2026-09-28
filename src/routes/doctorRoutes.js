@@ -7,6 +7,22 @@ const treatmentPlanController = require("../controllers/treatmentPlanController"
 const treatmentMedicationController = require("../controllers/treatmentMedicationController");
 const treatmentAppointmentController = require("../controllers/treatmentAppointmentController");
 const doctorAssignedPatientController = require("../controllers/doctorAssignedPatientController");
+const assistanceRequestController = require("../controllers/assistanceRequestController");
+const resourceAllocationController = require("../controllers/resourceAllocationController");
+const emergencyAlertController = require("../controllers/emergencyAlertController");
+const dashboardReportController = require("../controllers/dashboardReportController");
+
+const {
+  validateCreateAssistanceRequest,
+  validatePatientId: validateAssistanceRequestPatientId,
+} = require("../middleware/validateAssistanceRequest");
+const {
+  validateRequestId: validateResourceRequestId,
+} = require("../middleware/validateResourceAllocation");
+const {
+  validateAlertId,
+  validateEmergencyAlertStatusUpdate,
+} = require("../middleware/validateEmergencyAlert");
 
 const {
   validateCreateMedicalRecord,
@@ -41,12 +57,34 @@ const router = express.Router();
 
 router.use(authenticate, authorizeRoles("DOCTOR"));
 
+router.get("/dashboard", dashboardReportController.getDoctorDashboard);
+
 router.get("/patients", doctorAssignedPatientController.list);
 
 router.get(
   "/patients/:patientId",
   validatePatientId,
   doctorAssignedPatientController.show,
+);
+
+router.post(
+  "/patients/:patientId/assistance-requests",
+  validateAssistanceRequestPatientId,
+  validateCreateAssistanceRequest,
+  assistanceRequestController.createForAssignedPatient,
+);
+
+router.get(
+  "/assistance-requests/:requestId/resources",
+  validateResourceRequestId,
+  resourceAllocationController.listForDoctor,
+);
+
+router.patch(
+  "/emergency-alerts/:alertId/status",
+  validateAlertId,
+  validateEmergencyAlertStatusUpdate,
+  emergencyAlertController.updateStatusForDoctor,
 );
 
 router.post(

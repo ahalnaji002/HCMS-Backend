@@ -68,6 +68,17 @@ function findActiveByDoctorAndPatient(doctorId, patientId, connection = db) {
     .first();
 }
 
+function findActiveByDoctorAndPatientForUpdate(doctorId, patientId, connection) {
+  return connection("doctor_patient_assignments")
+    .where({
+      doctor_id: doctorId,
+      patient_id: patientId,
+      status: "ACTIVE",
+    })
+    .forUpdate()
+    .first();
+}
+
 async function create(assignment, connection = db) {
   const payload = {
     doctor_id: assignment.doctor_id,
@@ -101,6 +112,7 @@ async function updateStatus(id, status, endedAt, connection = db) {
 module.exports = {
   create,
   findActiveByDoctorAndPatient,
+  findActiveByDoctorAndPatientForUpdate,
   findById,
   findByIdForUpdate,
   listActivePatientsByDoctorId,

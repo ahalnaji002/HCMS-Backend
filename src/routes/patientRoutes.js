@@ -16,9 +16,92 @@ const {
   validatePlanId: validateAppointmentPlanId,
 } = require("../middleware/validateTreatmentAppointment");
 
+const emergencyAlertController = require("../controllers/emergencyAlertController");
+const {
+  validateAlertId,
+  validateCreateEmergencyAlert,
+  validateCancelEmergencyAlert,
+} = require("../middleware/validateEmergencyAlert");
+const assistanceRequestController = require("../controllers/assistanceRequestController");
+const resourceAllocationController = require("../controllers/resourceAllocationController");
+const {
+  validateRequestId,
+} = require("../middleware/validateAssistanceRequest");
+const {
+  validateRequestId: validateResourceRequestId,
+} = require("../middleware/validateResourceAllocation");
+const reminderController = require("../controllers/reminderController");
+const dashboardReportController = require("../controllers/dashboardReportController");
+const {
+  validateCancelReminder,
+  validateCreateReminder,
+  validateReminderId,
+} = require("../middleware/validateReminder");
+
 const router = express.Router();
 
 router.use(authenticate, authorizeRoles("PATIENT"));
+
+router.get("/dashboard", dashboardReportController.getPatientDashboard);
+
+router.post(
+  "/emergency-alerts",
+  validateCreateEmergencyAlert,
+  emergencyAlertController.createPatientAlert,
+);
+
+router.get("/emergency-alerts", emergencyAlertController.listOwnAlerts);
+
+router.get(
+  "/emergency-alerts/:alertId",
+  validateAlertId,
+  emergencyAlertController.getOwnAlert,
+);
+
+router.patch(
+  "/emergency-alerts/:alertId/cancel",
+  validateAlertId,
+  validateCancelEmergencyAlert,
+  emergencyAlertController.cancelOwnAlert,
+);
+
+router.post(
+  "/reminders",
+  validateCreateReminder,
+  reminderController.create,
+);
+
+router.get("/reminders", reminderController.list);
+
+router.get(
+  "/reminders/:reminderId",
+  validateReminderId,
+  reminderController.get,
+);
+
+router.patch(
+  "/reminders/:reminderId/cancel",
+  validateReminderId,
+  validateCancelReminder,
+  reminderController.cancel,
+);
+
+router.get(
+  "/assistance-requests",
+  assistanceRequestController.listOwnRequests,
+);
+
+router.get(
+  "/assistance-requests/:requestId",
+  validateRequestId,
+  assistanceRequestController.getOwnRequest,
+);
+
+router.get(
+  "/assistance-requests/:requestId/resources",
+  validateResourceRequestId,
+  resourceAllocationController.listForPatient,
+);
 
 router.get("/medical-record", medicalRecordController.getOwnMedicalRecord);
 

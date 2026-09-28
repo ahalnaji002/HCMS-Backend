@@ -1,0 +1,220 @@
+const assistanceRequestService = require("../services/assistanceRequestService");
+
+function handleAssistanceRequestError(error, res) {
+  if (error instanceof assistanceRequestService.AssistanceRequestNotFoundError) {
+    return res.status(404).json({
+      success: false,
+      message: error.message,
+    });
+  }
+
+  if (error instanceof assistanceRequestService.AssistanceRequestForbiddenError) {
+    return res.status(403).json({
+      success: false,
+      message: error.message,
+    });
+  }
+
+  if (error instanceof assistanceRequestService.AssistanceRequestConflictError) {
+    return res.status(409).json({
+      success: false,
+      message: error.message,
+    });
+  }
+
+  if (error instanceof assistanceRequestService.AssistanceRequestValidationError) {
+    return res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+
+  console.error("Assistance Request error:", error);
+
+  return res.status(500).json({
+    success: false,
+    message: "Internal server error",
+  });
+}
+
+async function createForAssignedPatient(req, res) {
+  try {
+    const assistanceRequest =
+      await assistanceRequestService.createForAssignedPatient(
+        req.user,
+        req.validatedAssistanceRequestPatientId,
+        req.validatedAssistanceRequest,
+        req.ip,
+      );
+
+    return res.status(201).json({
+      success: true,
+      message: "Assistance Request created successfully",
+      data: {
+        assistance_request: assistanceRequest,
+      },
+    });
+  } catch (error) {
+    return handleAssistanceRequestError(error, res);
+  }
+}
+
+async function listOwnRequests(req, res) {
+  try {
+    const assistanceRequests =
+      await assistanceRequestService.listOwnRequests(req.user);
+
+    return res.status(200).json({
+      success: true,
+      message: "Assistance Requests retrieved successfully",
+      data: {
+        assistance_requests: assistanceRequests,
+      },
+    });
+  } catch (error) {
+    return handleAssistanceRequestError(error, res);
+  }
+}
+
+async function getOwnRequest(req, res) {
+  try {
+    const assistanceRequest = await assistanceRequestService.getOwnRequest(
+      req.user,
+      req.validatedAssistanceRequestId,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Assistance Request retrieved successfully",
+      data: {
+        assistance_request: assistanceRequest,
+      },
+    });
+  } catch (error) {
+    return handleAssistanceRequestError(error, res);
+  }
+}
+
+async function listForAdmin(req, res) {
+  try {
+    const assistanceRequests = await assistanceRequestService.listForAdmin();
+
+    return res.status(200).json({
+      success: true,
+      message: "Assistance Requests retrieved successfully",
+      data: {
+        assistance_requests: assistanceRequests,
+      },
+    });
+  } catch (error) {
+    return handleAssistanceRequestError(error, res);
+  }
+}
+
+async function getForAdmin(req, res) {
+  try {
+    const assistanceRequest = await assistanceRequestService.getForAdmin(
+      req.validatedAssistanceRequestId,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Assistance Request retrieved successfully",
+      data: {
+        assistance_request: assistanceRequest,
+      },
+    });
+  } catch (error) {
+    return handleAssistanceRequestError(error, res);
+  }
+}
+
+async function assignNgo(req, res) {
+  try {
+    const assistanceRequest = await assistanceRequestService.assignNgo(
+      req.validatedAssistanceRequestId,
+      req.validatedAssistanceRequestAssignment.ngo_id,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Assistance Request assigned successfully",
+      data: {
+        assistance_request: assistanceRequest,
+      },
+    });
+  } catch (error) {
+    return handleAssistanceRequestError(error, res);
+  }
+}
+
+async function listForNgo(req, res) {
+  try {
+    const assistanceRequests = await assistanceRequestService.listForNgo(
+      req.user,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Assistance Requests retrieved successfully",
+      data: {
+        assistance_requests: assistanceRequests,
+      },
+    });
+  } catch (error) {
+    return handleAssistanceRequestError(error, res);
+  }
+}
+
+async function getForNgo(req, res) {
+  try {
+    const assistanceRequest = await assistanceRequestService.getForNgo(
+      req.user,
+      req.validatedAssistanceRequestId,
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Assistance Request retrieved successfully",
+      data: {
+        assistance_request: assistanceRequest,
+      },
+    });
+  } catch (error) {
+    return handleAssistanceRequestError(error, res);
+  }
+}
+
+async function updateStatusForNgo(req, res) {
+  try {
+    const assistanceRequest =
+      await assistanceRequestService.updateStatusForNgo(
+        req.user,
+        req.validatedAssistanceRequestId,
+        req.validatedAssistanceRequestStatus.status,
+        req.ip,
+      );
+
+    return res.status(200).json({
+      success: true,
+      message: "Assistance Request status updated successfully",
+      data: {
+        assistance_request: assistanceRequest,
+      },
+    });
+  } catch (error) {
+    return handleAssistanceRequestError(error, res);
+  }
+}
+
+module.exports = {
+  assignNgo,
+  createForAssignedPatient,
+  getForAdmin,
+  getForNgo,
+  getOwnRequest,
+  listForAdmin,
+  listForNgo,
+  listOwnRequests,
+  updateStatusForNgo,
+};
