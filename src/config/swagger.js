@@ -39,6 +39,39 @@ const options = {
         description:
           "Authenticated user profile retrieval and self-service updates.",
       },
+      {
+        name: "Admin Dashboard & Reports",
+        description:
+          "Administrative dashboard metrics and paginated system reports.",
+      },
+      {
+        name: "Activity Logs",
+        description: "Administrative audit and activity log access.",
+      },
+      {
+        name: "System Settings",
+        description: "Administrative system configuration.",
+      },
+      {
+        name: "Join Requests",
+        description: "Administrative review of Doctor and NGO join requests.",
+      },
+      {
+        name: "Doctor-Patient Assignments",
+        description: "Administrative management of Doctor-Patient assignments.",
+      },
+      {
+        name: "Emergency Alerts",
+        description: "Emergency alert management and Doctor assignment.",
+      },
+      {
+        name: "Assistance Requests",
+        description: "Assistance request review and NGO assignment.",
+      },
+      {
+        name: "Resource Allocations",
+        description: "Resources allocated to assistance requests.",
+      },
     ],
   },
 

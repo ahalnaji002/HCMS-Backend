@@ -111,8 +111,514 @@
  *               example: '0591234567'
  *
  *     AdminProfile:
- *       allOf:
- *         - $ref: '#/components/schemas/User'
+ *       $ref: '#/components/schemas/User'
+ *
+ *       AdminDashboard:
+ *       type: object
+ *       required:
+ *         - total_patients
+ *         - total_doctors
+ *         - total_ngos
+ *         - pending_join_requests
+ *         - active_emergency_alerts
+ *         - pending_assistance_requests
+ *       properties:
+ *         total_patients:
+ *           type: integer
+ *           example: 25
+ *         total_doctors:
+ *           type: integer
+ *           example: 8
+ *         total_ngos:
+ *           type: integer
+ *           example: 4
+ *         pending_join_requests:
+ *           type: integer
+ *           example: 3
+ *         active_emergency_alerts:
+ *           type: integer
+ *           example: 2
+ *         pending_assistance_requests:
+ *           type: integer
+ *           example: 6
+ *
+ *     PatientReportItem:
+ *       type: object
+ *       required: [id, user_id, full_name, created_at]
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 27
+ *         user_id:
+ *           type: integer
+ *           example: 9
+ *         full_name:
+ *           type: string
+ *           example: Ahmed Alnaji
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *
+ *     TreatmentPlanReportItem:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         patient_id:
+ *           type: integer
+ *         doctor_id:
+ *           type: integer
+ *         status:
+ *           type: string
+ *         start_date:
+ *           type: string
+ *           format: date
+ *         end_date:
+ *           type: string
+ *           format: date
+ *           nullable: true
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *
+ *     AssistanceRequestReportItem:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         patient_id:
+ *           type: integer
+ *         doctor_id:
+ *           type: integer
+ *           nullable: true
+ *         ngo_id:
+ *           type: integer
+ *           nullable: true
+ *         status:
+ *           type: string
+ *           enum: [PENDING, UNDER_REVIEW, APPROVED, REJECTED, COMPLETED]
+ *         request_type:
+ *           type: string
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *
+ *     ActivityLog:
+ *       type: object
+ *       required:
+ *         - id
+ *         - user_id
+ *         - action
+ *         - entity_type
+ *         - entity_id
+ *         - description
+ *         - created_at
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 1
+ *         user_id:
+ *           type: integer
+ *           example: 1
+ *         action:
+ *           type: string
+ *           enum:
+ *             - APPROVE_JOIN_REQUEST
+ *             - REJECT_JOIN_REQUEST
+ *             - ASSIGN_EMERGENCY_ALERT
+ *             - UPDATE_EMERGENCY_STATUS
+ *             - CREATE_ASSISTANCE_REQUEST
+ *             - UPDATE_ASSISTANCE_STATUS
+ *             - CREATE_RESOURCE_ALLOCATION
+ *             - UPDATE_RESOURCE_ALLOCATION
+ *             - DELETE_RESOURCE_ALLOCATION
+ *             - UPDATE_SYSTEM_SETTING
+ *         entity_type:
+ *           type: string
+ *           enum:
+ *             - JOIN_REQUEST
+ *             - EMERGENCY_ALERT
+ *             - ASSISTANCE_REQUEST
+ *             - RESOURCE_ALLOCATION
+ *             - SYSTEM_SETTING
+ *         entity_id:
+ *           type: integer
+ *           example: 12
+ *         description:
+ *           type: string
+ *           example: Join Request #12 approved.
+ *         ip_address:
+ *           type: string
+ *           nullable: true
+ *           example: "::1"
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *
+ *
+ *     SystemSetting:
+ *       type: object
+ *       required:
+ *         - id
+ *         - setting_key
+ *         - setting_value
+ *         - description
+ *         - updated_at
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 1
+ *         setting_key:
+ *           type: string
+ *           enum:
+ *             - system_name
+ *             - support_email
+ *             - support_phone
+ *           example: system_name
+ *         setting_value:
+ *           type: string
+ *           nullable: true
+ *           example: Healthcare Conflict Management System
+ *         description:
+ *           type: string
+ *           nullable: true
+ *           example: Display name of the HCMS platform
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *
+ *     DoctorPatientAssignment:
+ *       type: object
+ *       required:
+ *         - id
+ *         - doctor_id
+ *         - patient_id
+ *         - status
+ *         - assigned_at
+ *         - created_at
+ *         - updated_at
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 1
+ *         doctor_id:
+ *           type: integer
+ *           example: 3
+ *         patient_id:
+ *           type: integer
+ *           example: 27
+ *         status:
+ *           type: string
+ *           enum: [ACTIVE, INACTIVE]
+ *           example: ACTIVE
+ *         assignment_reason:
+ *           type: string
+ *           nullable: true
+ *           maxLength: 255
+ *           example: Patient requires follow-up care.
+ *         notes:
+ *           type: string
+ *           nullable: true
+ *           description: Optional notes. Maximum size is 65535 UTF-8 bytes.
+ *           example: Follow up with the patient regularly.
+ *         assigned_at:
+ *           type: string
+ *           format: date-time
+ *         ended_at:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *
+ *     EmergencyAlert:
+ *       type: object
+ *       required:
+ *         - id
+ *         - phone
+ *         - priority
+ *         - status
+ *         - sent_at
+ *         - created_at
+ *         - updated_at
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 1
+ *         patient_id:
+ *           type: integer
+ *           nullable: true
+ *           example: 27
+ *         phone:
+ *           type: string
+ *           maxLength: 30
+ *           example: '0591234567'
+ *         location:
+ *           type: string
+ *           nullable: true
+ *           maxLength: 255
+ *           example: Gaza
+ *         assigned_doctor_id:
+ *           type: integer
+ *           nullable: true
+ *           example: 3
+ *         assigned_by_admin_id:
+ *           type: integer
+ *           nullable: true
+ *           example: 1
+ *         description:
+ *           type: string
+ *           nullable: true
+ *           description: Emergency description. Maximum size is 65535 UTF-8 bytes.
+ *           example: Patient requires urgent medical assistance.
+ *         priority:
+ *           type: string
+ *           example: HIGH
+ *         status:
+ *           type: string
+ *           enum:
+ *             - PENDING_ASSIGNMENT
+ *             - ASSIGNED
+ *             - IN_PROGRESS
+ *             - RESOLVED
+ *             - CANCELLED
+ *           example: PENDING_ASSIGNMENT
+ *         sent_at:
+ *           type: string
+ *           format: date-time
+ *         assigned_at:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *         responded_at:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *         resolved_at:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *
+ *
+ *     AssistanceRequest:
+ *       type: object
+ *       required:
+ *         - id
+ *         - patient_id
+ *         - doctor_id
+ *         - request_type
+ *         - description
+ *         - status
+ *         - submitted_at
+ *         - created_at
+ *         - updated_at
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 1
+ *         patient_id:
+ *           type: integer
+ *           example: 27
+ *         doctor_id:
+ *           type: integer
+ *           example: 3
+ *         ngo_id:
+ *           type: integer
+ *           nullable: true
+ *           example: 2
+ *         request_type:
+ *           type: string
+ *           maxLength: 100
+ *           example: Medical Supplies
+ *         description:
+ *           type: string
+ *           description: Assistance request description. Maximum size is 65535 UTF-8 bytes.
+ *           example: Patient requires medical supplies for continued treatment.
+ *         status:
+ *           type: string
+ *           enum:
+ *             - PENDING
+ *             - UNDER_REVIEW
+ *             - APPROVED
+ *             - REJECTED
+ *             - COMPLETED
+ *           example: PENDING
+ *         submitted_at:
+ *           type: string
+ *           format: date-time
+ *         reviewed_at:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *
+ *     ResourceAllocation:
+ *       type: object
+ *       required:
+ *         - id
+ *         - assistance_request_id
+ *         - resource_name
+ *         - quantity
+ *         - created_at
+ *         - updated_at
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 1
+ *         assistance_request_id:
+ *           type: integer
+ *           example: 1
+ *         resource_name:
+ *           type: string
+ *           maxLength: 150
+ *           example: Medical Kit
+ *         quantity:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 4294967295
+ *           example: 5
+ *         delivery_date:
+ *           type: string
+ *           format: date
+ *           nullable: true
+ *           example: '2026-10-15'
+ *         notes:
+ *           type: string
+ *           nullable: true
+ *           description: Optional notes. Maximum size is 65535 UTF-8 bytes.
+ *           example: Deliver directly to the patient.
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *     JoinRequestUser:
+ *       type: object
+ *       required:
+ *         - full_name
+ *         - email
+ *         - role
+ *         - account_status
+ *       properties:
+ *         full_name:
+ *           type: string
+ *           example: Ahmed Alnaji
+ *         email:
+ *           type: string
+ *           format: email
+ *           example: ahmed@example.com
+ *         role:
+ *           type: string
+ *           enum: [DOCTOR, NGO]
+ *         account_status:
+ *           type: string
+ *           enum: [ACTIVE, INACTIVE]
+ *         phone:
+ *           type: string
+ *           nullable: true
+ *           pattern: '^(059|056)[0-9]{7}$'
+ *
+ *     JoinRequestDoctorDetails:
+ *       type: object
+ *       required:
+ *         - specialization
+ *         - license_number
+ *       properties:
+ *         specialization:
+ *           type: string
+ *           example: General Medicine
+ *         license_number:
+ *           type: string
+ *           example: MED-2026-001
+ *
+ *     JoinRequestNgoDetails:
+ *       type: object
+ *       required:
+ *         - organization_name
+ *       properties:
+ *         organization_name:
+ *           type: string
+ *           example: Gaza Medical Relief
+ *         registration_number:
+ *           type: string
+ *           nullable: true
+ *           example: NGO-2026-001
+ *         address:
+ *           type: string
+ *           nullable: true
+ *           example: Gaza
+ *         contact_phone:
+ *           type: string
+ *           nullable: true
+ *           pattern: '^(059|056)[0-9]{7}$'
+ *
+ *     JoinRequest:
+ *       type: object
+ *       required:
+ *         - id
+ *         - user_id
+ *         - request_type
+ *         - status
+ *         - user
+ *         - created_at
+ *         - updated_at
+ *       properties:
+ *         id:
+ *           type: integer
+ *           example: 5
+ *         user_id:
+ *           type: integer
+ *           example: 12
+ *         request_type:
+ *           type: string
+ *           enum: [DOCTOR, NGO]
+ *         status:
+ *           type: string
+ *           enum: [PENDING, APPROVED, REJECTED]
+ *         reviewed_by_admin_id:
+ *           type: integer
+ *           nullable: true
+ *           example: 1
+ *         reviewed_at:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *         rejection_reason:
+ *           type: string
+ *           nullable: true
+ *           maxLength: 500
+ *           example: Registration information could not be verified.
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *         user:
+ *           $ref: '#/components/schemas/JoinRequestUser'
+ *         doctor:
+ *           $ref: '#/components/schemas/JoinRequestDoctorDetails'
+ *         ngo:
+ *           $ref: '#/components/schemas/JoinRequestNgoDetails'
  *
  *     RegistrationCommonFields:
  *       type: object
