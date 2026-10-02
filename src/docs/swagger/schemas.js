@@ -113,7 +113,7 @@
  *     AdminProfile:
  *       $ref: '#/components/schemas/User'
  *
- *       AdminDashboard:
+ *     AdminDashboard:
  *       type: object
  *       required:
  *         - total_patients
@@ -141,6 +141,173 @@
  *         pending_assistance_requests:
  *           type: integer
  *           example: 6
+ *
+ *     PatientDashboard:
+ *       type: object
+ *       required: [active_treatment_plans, pending_reminders, active_emergency_alerts, pending_assistance_requests, unread_notifications]
+ *       properties:
+ *         active_treatment_plans:
+ *           type: integer
+ *         pending_reminders:
+ *           type: integer
+ *         active_emergency_alerts:
+ *           type: integer
+ *         pending_assistance_requests:
+ *           type: integer
+ *         unread_notifications:
+ *           type: integer
+ *
+ *     MedicalRecord:
+ *       type: object
+ *       required: [id, patient_id, blood_type, allergies, chronic_diseases, medical_history, previous_surgeries, created_at, updated_at]
+ *       properties:
+ *         id:
+ *           type: integer
+ *         patient_id:
+ *           type: integer
+ *         blood_type:
+ *           type: string
+ *           nullable: true
+ *         allergies:
+ *           type: string
+ *           nullable: true
+ *         chronic_diseases:
+ *           type: string
+ *           nullable: true
+ *         medical_history:
+ *           type: string
+ *           nullable: true
+ *         previous_surgeries:
+ *           type: string
+ *           nullable: true
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *
+ *     TreatmentPlan:
+ *       type: object
+ *       required: [id, patient_id, doctor_id, title, general_instructions, status, start_date, end_date, created_at, updated_at]
+ *       properties:
+ *         id:
+ *           type: integer
+ *         patient_id:
+ *           type: integer
+ *         doctor_id:
+ *           type: integer
+ *         title:
+ *           type: string
+ *         general_instructions:
+ *           type: string
+ *           nullable: true
+ *         status:
+ *           type: string
+ *           enum: [ACTIVE, COMPLETED, CANCELLED]
+ *         start_date:
+ *           type: string
+ *           format: date
+ *         end_date:
+ *           type: string
+ *           format: date
+ *           nullable: true
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *
+ *     TreatmentMedication:
+ *       type: object
+ *       required: [id, treatment_plan_id, medication_name, dosage, frequency, duration, instructions, created_at, updated_at]
+ *       properties:
+ *         id:
+ *           type: integer
+ *         treatment_plan_id:
+ *           type: integer
+ *         medication_name:
+ *           type: string
+ *         dosage:
+ *           type: string
+ *         frequency:
+ *           type: string
+ *         duration:
+ *           type: string
+ *           nullable: true
+ *         instructions:
+ *           type: string
+ *           nullable: true
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *
+ *     TreatmentAppointment:
+ *       type: object
+ *       required: [id, treatment_plan_id, appointment_date, purpose, location, status, notes, created_at, updated_at]
+ *       properties:
+ *         id:
+ *           type: integer
+ *         treatment_plan_id:
+ *           type: integer
+ *         appointment_date:
+ *           type: string
+ *           format: date-time
+ *           description: Local datetime formatted as YYYY-MM-DD HH:mm:ss.
+ *         purpose:
+ *           type: string
+ *         location:
+ *           type: string
+ *           nullable: true
+ *         status:
+ *           type: string
+ *           enum: [SCHEDULED, COMPLETED, CANCELLED]
+ *         notes:
+ *           type: string
+ *           nullable: true
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *
+ *     Reminder:
+ *       type: object
+ *       required: [id, user_id, type, reference_type, reference_id, remind_at, status, sent_at, created_at, updated_at]
+ *       properties:
+ *         id:
+ *           type: integer
+ *         user_id:
+ *           type: integer
+ *         type:
+ *           type: string
+ *           enum: [MEDICATION, APPOINTMENT]
+ *         reference_type:
+ *           type: string
+ *           enum: [TREATMENT_MEDICATION, TREATMENT_APPOINTMENT]
+ *         reference_id:
+ *           type: integer
+ *         remind_at:
+ *           type: string
+ *           format: date-time
+ *         status:
+ *           type: string
+ *           enum: [PENDING, SENT, CANCELLED]
+ *         sent_at:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
  *
  *     PatientReportItem:
  *       type: object

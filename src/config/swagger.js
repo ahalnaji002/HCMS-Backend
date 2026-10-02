@@ -72,6 +72,22 @@ const options = {
         name: "Resource Allocations",
         description: "Resources allocated to assistance requests.",
       },
+      {
+        name: "Patient Dashboard",
+        description: "Patient-specific dashboard counts.",
+      },
+      {
+        name: "Patient Emergency Alerts",
+        description: "Emergency alerts created and managed by the authenticated Patient.",
+      },
+      {
+        name: "Patient Reminders",
+        description: "Medication and appointment reminders owned by the authenticated Patient.",
+      },
+      {
+        name: "Patient Medical Records",
+        description: "Read-only access to the authenticated Patient's medical record, treatment plans, medications, and appointments.",
+      },
     ],
   },
 
