@@ -25,7 +25,7 @@
  *                 minimum: 1
  *               remind_at:
  *                 type: string
- *                 pattern: '^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}$'
+ *                 pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$'
  *                 description: Valid future local datetime in YYYY-MM-DDTHH:mm:ss format, without timezone offset.
  *           example:
  *             type: MEDICATION

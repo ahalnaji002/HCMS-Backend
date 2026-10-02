@@ -256,7 +256,7 @@
  *           type: integer
  *         appointment_date:
  *           type: string
- *           format: date-time
+ *           pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$'
  *           description: Local datetime formatted as YYYY-MM-DD HH:mm:ss.
  *         purpose:
  *           type: string
@@ -294,7 +294,7 @@
  *           type: integer
  *         remind_at:
  *           type: string
- *           format: date-time
+ *           pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$'
  *         status:
  *           type: string
  *           enum: [PENDING, SENT, CANCELLED]
@@ -302,6 +302,67 @@
  *           type: string
  *           format: date-time
  *           nullable: true
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *
+ *     DoctorDashboard:
+ *       type: object
+ *       required: [active_patients, assigned_emergency_alerts, submitted_assistance_requests]
+ *       properties:
+ *         active_patients:
+ *           type: integer
+ *         assigned_emergency_alerts:
+ *           type: integer
+ *         submitted_assistance_requests:
+ *           type: integer
+ *
+ *     AssignedPatient:
+ *       type: object
+ *       required: [id, full_name, email, phone, role, account_status, date_of_birth, gender, address]
+ *       description: Safe Patient profile returned to an assigned Doctor. National ID is not included.
+ *       properties:
+ *         id:
+ *           type: integer
+ *         full_name:
+ *           type: string
+ *         email:
+ *           type: string
+ *           format: email
+ *         phone:
+ *           type: string
+ *           nullable: true
+ *         role:
+ *           type: string
+ *           enum: [PATIENT]
+ *         account_status:
+ *           type: string
+ *           enum: [ACTIVE, INACTIVE]
+ *         date_of_birth:
+ *           type: string
+ *           format: date
+ *         gender:
+ *           type: string
+ *           enum: [MALE, FEMALE]
+ *         address:
+ *           type: string
+ *           nullable: true
+ *
+ *     MedicalNote:
+ *       type: object
+ *       required: [id, medical_record_id, doctor_id, note, created_at, updated_at]
+ *       properties:
+ *         id:
+ *           type: integer
+ *         medical_record_id:
+ *           type: integer
+ *         doctor_id:
+ *           type: integer
+ *         note:
+ *           type: string
  *         created_at:
  *           type: string
  *           format: date-time

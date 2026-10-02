@@ -88,6 +88,30 @@ const options = {
         name: "Patient Medical Records",
         description: "Read-only access to the authenticated Patient's medical record, treatment plans, medications, and appointments.",
       },
+      {
+        name: "Doctor Dashboard",
+        description: "Doctor-specific dashboard counts.",
+      },
+      {
+        name: "Assigned Patients",
+        description: "Patients with an ACTIVE assignment to the authenticated Doctor.",
+      },
+      {
+        name: "Doctor Medical Records",
+        description: "Medical records and Doctor-authored notes for actively assigned Patients.",
+      },
+      {
+        name: "Doctor Treatment Plans",
+        description: "Treatment Plans managed for actively assigned Patients.",
+      },
+      {
+        name: "Doctor Treatment Medications",
+        description: "Medication records managed under an authorized Treatment Plan.",
+      },
+      {
+        name: "Doctor Treatment Appointments",
+        description: "Appointments managed under an authorized Treatment Plan.",
+      },
     ],
   },
 
