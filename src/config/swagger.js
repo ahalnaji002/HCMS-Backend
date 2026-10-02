@@ -34,6 +34,11 @@ const options = {
         name: "Authentication",
         description: "Registration, login, and current-user authentication.",
       },
+      {
+        name: "Profile",
+        description:
+          "Authenticated user profile retrieval and self-service updates.",
+      },
     ],
   },
 

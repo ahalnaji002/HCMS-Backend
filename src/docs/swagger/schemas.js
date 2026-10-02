@@ -38,6 +38,82 @@
  *           type: string
  *           format: date-time
  *
+ *     PatientProfile:
+ *       allOf:
+ *         - $ref: '#/components/schemas/User'
+ *         - type: object
+ *           required:
+ *             - national_id
+ *             - date_of_birth
+ *             - gender
+ *           properties:
+ *             national_id:
+ *               type: string
+ *               pattern: '^[1-9][0-9]{8}$'
+ *               description: Palestinian national ID. Must contain exactly 9 digits and must not start with 0.
+ *               example: '123456789'
+ *             date_of_birth:
+ *               type: string
+ *               format: date
+ *               example: '2002-05-15'
+ *             gender:
+ *               type: string
+ *               enum: [MALE, FEMALE]
+ *               example: MALE
+ *             address:
+ *               type: string
+ *               nullable: true
+ *               maxLength: 255
+ *               example: Gaza, Palestine
+ *
+ *     DoctorProfile:
+ *       allOf:
+ *         - $ref: '#/components/schemas/User'
+ *         - type: object
+ *           required:
+ *             - specialization
+ *             - license_number
+ *           properties:
+ *             specialization:
+ *               type: string
+ *               maxLength: 100
+ *               example: General Medicine
+ *             license_number:
+ *               type: string
+ *               maxLength: 100
+ *               example: MED-2026-001
+ *
+ *     NgoProfile:
+ *       allOf:
+ *         - $ref: '#/components/schemas/User'
+ *         - type: object
+ *           required:
+ *             - organization_name
+ *           properties:
+ *             organization_name:
+ *               type: string
+ *               maxLength: 150
+ *               example: Gaza Medical Relief
+ *             registration_number:
+ *               type: string
+ *               nullable: true
+ *               maxLength: 100
+ *               example: NGO-2026-001
+ *             address:
+ *               type: string
+ *               nullable: true
+ *               maxLength: 255
+ *               example: Gaza, Palestine
+ *             contact_phone:
+ *               type: string
+ *               nullable: true
+ *               pattern: '^(059|056)[0-9]{7}$'
+ *               example: '0591234567'
+ *
+ *     AdminProfile:
+ *       allOf:
+ *         - $ref: '#/components/schemas/User'
+ *
  *     RegistrationCommonFields:
  *       type: object
  *       required:
