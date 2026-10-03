@@ -1,24 +1,32 @@
 const express = require("express");
 const cors = require("cors");
-const doctorRoutes = require("./routes/doctorRoutes");
-const patientRoutes = require("./routes/patientRoutes");
+const swaggerUi = require("swagger-ui-express");
+
+const swaggerSpec = require("./config/swagger");
+
+const authRoutes = require("./routes/authRoutes");
+const profileRoutes = require("./routes/profileRoutes");
 const emergencyAlertRoutes = require("./routes/emergencyAlertRoutes");
-const ngoRoutes = require("./routes/ngoRoutes");
 const messageRoutes = require("./routes/messageRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
+const adminRoutes = require("./routes/adminRoutes");
+const doctorRoutes = require("./routes/doctorRoutes");
+const ngoRoutes = require("./routes/ngoRoutes");
+const patientRoutes = require("./routes/patientRoutes");
 
 const {
   apiErrorHandler,
   apiNotFound,
 } = require("./middleware/apiErrorHandler");
-const adminRoutes = require("./routes/adminRoutes");
-const authRoutes = require("./routes/authRoutes");
-const profileRoutes = require("./routes/profileRoutes");
 
 const app = express();
 
+// Global middleware
 app.use(cors());
 app.use(express.json());
+
+// API documentation
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.get("/", (req, res) => {
   res.json({
@@ -26,6 +34,7 @@ app.get("/", (req, res) => {
   });
 });
 
+// API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/emergency-alerts", emergencyAlertRoutes);
 app.use("/api/messages", messageRoutes);
@@ -36,6 +45,7 @@ app.use("/api/doctor", doctorRoutes);
 app.use("/api/ngo", ngoRoutes);
 app.use("/api/patient", patientRoutes);
 
+// API error handling
 app.use("/api", apiNotFound);
 app.use(apiErrorHandler);
 
