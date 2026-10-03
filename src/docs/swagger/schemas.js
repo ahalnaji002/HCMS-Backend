@@ -370,6 +370,91 @@
  *           type: string
  *           format: date-time
  *
+ *     NgoDashboard:
+ *       type: object
+ *       required: [assigned_assistance_requests, resource_allocations]
+ *       properties:
+ *         assigned_assistance_requests:
+ *           type: integer
+ *         resource_allocations:
+ *           type: integer
+ *
+ *     Message:
+ *       type: object
+ *       required: [id, sender_id, receiver_id, message_text, is_read, sent_at, read_at, created_at]
+ *       properties:
+ *         id:
+ *           type: integer
+ *         sender_id:
+ *           type: integer
+ *         receiver_id:
+ *           type: integer
+ *         message_text:
+ *           type: string
+ *         is_read:
+ *           type: boolean
+ *         sent_at:
+ *           type: string
+ *           format: date-time
+ *         read_at:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *
+ *     ConversationParticipant:
+ *       type: object
+ *       required: [id, full_name, role]
+ *       properties:
+ *         id:
+ *           type: integer
+ *         full_name:
+ *           type: string
+ *         role:
+ *           type: string
+ *           enum: [PATIENT, DOCTOR]
+ *
+ *     Conversation:
+ *       type: object
+ *       required: [participant, last_message]
+ *       properties:
+ *         participant:
+ *           $ref: '#/components/schemas/ConversationParticipant'
+ *         last_message:
+ *           $ref: '#/components/schemas/Message'
+ *
+ *     Notification:
+ *       type: object
+ *       required: [id, user_id, title, message, type, is_read, reference_type, reference_id, created_at, read_at]
+ *       properties:
+ *         id:
+ *           type: integer
+ *         user_id:
+ *           type: integer
+ *         title:
+ *           type: string
+ *         message:
+ *           type: string
+ *         type:
+ *           type: string
+ *           enum: [ASSISTANCE_REQUEST, EMERGENCY_ALERT, REMINDER, TREATMENT_PLAN]
+ *         is_read:
+ *           type: boolean
+ *         reference_type:
+ *           type: string
+ *           enum: [ASSISTANCE_REQUEST, EMERGENCY_ALERT, REMINDER, TREATMENT_PLAN]
+ *         reference_id:
+ *           type: integer
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         read_at:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *
  *     PatientReportItem:
  *       type: object
  *       required: [id, user_id, full_name, created_at]

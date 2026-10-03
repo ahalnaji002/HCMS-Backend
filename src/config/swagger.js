@@ -112,6 +112,30 @@ const options = {
         name: "Doctor Treatment Appointments",
         description: "Appointments managed under an authorized Treatment Plan.",
       },
+      {
+        name: "NGO Dashboard",
+        description: "Dashboard metrics for the authenticated NGO.",
+      },
+      {
+        name: "NGO Assistance Requests",
+        description: "Assistance Requests assigned to the authenticated NGO.",
+      },
+      {
+        name: "NGO Resource Allocations",
+        description: "Resources managed by the assigned NGO for Assistance Requests.",
+      },
+      {
+        name: "Messages",
+        description: "Patient-Doctor conversations protected by active assignments.",
+      },
+      {
+        name: "Notifications",
+        description: "Notifications belonging to the authenticated user.",
+      },
+      {
+        name: "Public Emergency Alerts",
+        description: "Emergency Alerts submitted without an authenticated account.",
+      },
     ],
   },
 
