@@ -288,3 +288,14 @@ This data dictionary defines the fields, data types, keys, constraints, nullabil
 - A public Visitor can only submit an Emergency Alert and has no tracking, viewing, editing, cancellation, or authenticated follow-up access.
 - Only the originating authenticated Patient may cancel their own Emergency Alert while it is `PENDING_ASSIGNMENT`.
 - Emergency Alert assignment is Admin-only. The assigned Doctor must have an `ACTIVE` account and specialization `General Medicine` or `Emergency Medicine`.
+
+## Approved Schema Requirements Addendum — Pending ERD/PDF and Implementation Revision
+
+The following data requirements are approved, but are not part of the current implemented schema described above. Do not treat this proposal as a migration specification; finalize physical types, constraints, and migration after updating the authoritative ERD and reviewing privacy/access requirements.
+
+- Add a patient health-intake submission, separate from `medical_records` and `medical_notes`, containing the patient's self-reported current problem, symptoms/onset, chronic-condition answer/details, medication answer/details, allergy answer/details, optional additional information, submitted/updated timestamps, and workflow state.
+- Support the patient-facing workflow **تم تسليم الطلب** → **قيد المراجعة** → **تم تعيين طبيب**. Store the explicit administrator review-start event/time and reviewer identity. The review-start action locks patient edits; simply viewing the submission does not. Corrections after lock are handled as support requests forwarded to an administrator, not by support editing the intake.
+- Store doctor availability (`متاح/غير متاح`) and admin-configured capacity. Derive active assignment count from `doctor_patient_assignments`; derive assigned open emergency alert count separately. Capacity is informational and must not be a constraint that prevents assignment.
+- Make `doctor_patient_assignments.assignment_reason` required for new assignments and treat it as internal administrative/clinical coordination data.
+- Add a diagnosis field to each doctor's clinical documentation, tied to the author doctor and documentation timestamp. Do not add a single shared diagnosis field to `medical_records`.
+- A patient can have active assignments to multiple doctors, but at most one active assignment for each doctor-patient pair.

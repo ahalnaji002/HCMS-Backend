@@ -417,5 +417,34 @@ The Healthcare Conflict Management System (HCMS) has been designed to support fu
 - Mobile application support.
 - Advanced analytics and reporting dashboards.
 - Artificial intelligence to assist in monitoring patient conditions and prioritizing emergency cases.
+
 - **Secure Password Recovery:** Provide secure password recovery and reset functionality using a time-limited, single-use verification mechanism and an approved delivery channel such as email or SMS.
 - **Doctor and NGO Application Re-submission:** Provide a secure applicant-access workflow for Doctor and NGO accounts that are not activated after administrative review. Rejected applicants may securely access their application status and rejection reason, update permitted application information, and submit a new join request for administrative review. Previous reviewed requests shall be preserved for history, and only one PENDING join request shall be allowed for the same user at a time. Applicant access shall not grant access to protected Doctor or NGO system functionality until the account is approved and activated.
+
+## Approved Requirements Addendum — Patient Intake and Care Coordination
+
+**Status:** Approved product requirements; implementation and the authoritative SRS PDF have not yet been updated. This addendum supplements the transcribed SRS and takes precedence where they conflict, pending formal revision of the source PDF.
+
+### Platform scope and patient intake
+
+- HCMS is a multi-organization coordination network. Current external participants are individual doctors and NGOs; hospitals do not have a separate account or organization role in this scope.
+- Patient registration collects account and identity information only. After login, the patient completes one required self-reported health-intake form. The form is not a diagnosis and is not a direct request for NGO assistance.
+- The form asks about the current health problem (required free text), symptoms and onset (required; “I don't know” is valid for onset), chronic conditions, current medications, known allergies, and optional additional information. Conditional details are requested when the patient answers yes. The free-text description may mention more than one concern.
+- The patient can navigate their profile before completing the form. Until it is completed, the system shall not permit doctor assignment or creation of a new assistance request on the patient's behalf. Emergency-alert access remains available.
+- After submission, the patient sees **تم تسليم الطلب** and may edit the form until an administrator explicitly starts review. Merely opening or viewing the form does not start review. The start-review action changes the status to **قيد المراجعة** and makes the form read-only to the patient. After assignment is saved, the status is **تم تعيين طبيب**. The patient is prompted after submission to review answers and is told that editing closes when review begins.
+- After the form is locked, the patient may submit a correction/addition through the technical-support channel. Support staff forward it to an authorized administrator and do not access or edit the health form themselves.
+
+### Assignment and workload
+
+- Administrators review the intake and choose doctors. A patient may have multiple active doctor assignments for different concerns; the required internal assignment reason states what that doctor is following. A duplicate active assignment for the same doctor-patient pair is not allowed.
+- Administration records doctor availability as **متاح/غير متاح** and configures capacity in coordination with the doctor. The system calculates active patient assignments and displays open assigned emergency alerts as separate workload indicators.
+- Capacity is an administrative warning only and never blocks an assignment, whether routine or emergency. An unavailable doctor cannot receive a routine assignment, but may receive an emergency assignment; the administrator sees availability and workload and makes the decision.
+- A doctor becoming unavailable after assignment is outside this release's scope.
+- Emergency alerts and routine patient assignments remain separate workflows. Existing emergency specialization eligibility rules continue to apply.
+
+### Clinical documentation and privacy
+
+- The patient's intake is a self-reported account, not a diagnosis. Each doctor records a separate diagnosis within that doctor's clinical documentation, associated with its author and documentation time; there is no shared patient-level diagnosis field.
+- The patient and doctors currently assigned to that patient may read recorded diagnoses. Detailed medical-note text remains visible only to its authoring doctor. NGOs and unassigned doctors cannot access the intake or diagnoses.
+- The patient and administrators (for review/assignment) may access the intake; assigned doctors may access it for care. Access control must be enforced by the backend API as well as the interface.
+- NGOs receive only information needed to process their assigned assistance request, not the intake form or the full medical record. The doctor remains the party that creates an assistance request on the patient's behalf.

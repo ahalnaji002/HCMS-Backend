@@ -694,6 +694,7 @@ Before marking a screen integrated:
 - [ ] Do not implement Forgot/Reset Password in the current release.
 - [ ] On logout, remove local JWT/auth state.
 - [ ] Never assume an inactive Doctor–Patient assignment grants access.
+
 - [ ] Keep frontend models/types aligned with the backend response rather than inventing fields.
 
 ---
@@ -754,3 +755,24 @@ Join requests may be reviewed only according to the backend's current pending/re
 
 ---
 
+## Approved Product Requirements — Intake and Care Coordination (Not Yet Implemented)
+
+This section records the approved target behavior. It is not an API implementation guarantee; endpoints and payloads below must be designed/updated before frontend implementation. Where older sections conflict, this approved target behavior applies.
+
+### Patient intake workflow
+
+- Registration remains account/identity-only. After login, the patient completes one required self-reported health-intake form; it must not be presented as a diagnosis.
+- Required information: current health problem (free text), symptoms and onset (allow unknown onset), chronic conditions, current medications, and known allergies. Ask conditional detail for “yes” answers; provide optional additional information. The patient's free text can mention several concerns.
+- Keep profile navigation and emergency alerts available before intake completion. Do not allow a doctor assignment or a new assistance request on the patient's behalf until the intake has been submitted.
+- Patient-visible statuses are exactly **تم تسليم الطلب**, **قيد المراجعة**, and **تم تعيين طبيب**. The patient may edit after submission until an administrator explicitly starts review; opening the form alone does not lock it. Starting review locks patient edits. Assignment status follows a saved doctor assignment.
+- After lock, the patient sends correction/addition requests through technical support. Support forwards the request to an authorized administrator and has no direct access to the intake content or edit capability.
+- Backend authorization: patient reads/edits only their own intake while editable; admin can review it; assigned doctors can read it for care; other doctors and NGOs cannot.
+
+### Assignments, capacity, and clinical information
+
+- A patient may have multiple active assignments to different doctors for different concerns. Require a non-empty internal assignment reason describing the concern followed. Reject a duplicate active assignment for the same doctor-patient pair. Do not expose the internal reason to the patient; show the assigned doctor's name, specialization, assignment status, and next step.
+- Admin-managed availability is **متاح/غير متاح**. Capacity is used to display workload warnings only and never blocks routine or emergency assignment. Routine assignment to an unavailable doctor is disallowed; emergency assignment remains possible and the admin makes the final decision after seeing availability and workload. Count active patient assignments and open assigned emergency alerts separately.
+- Each doctor's diagnosis is separate clinical documentation tied to that doctor and documentation time. Patient and currently assigned doctors may read diagnoses; detailed note text remains author-only. NGO and unassigned doctors cannot read diagnoses.
+- Keep assistance requests and emergency alerts as separate workflows. Doctors create assistance requests on behalf of patients; NGOs receive only the information needed for their assigned request, not the intake or complete medical record.
+
+Before implementation, define versioned contracts for patient intake CRUD/review transitions, assignment administration and availability/capacity, and diagnosis visibility. Enforce permissions and transition rules server-side; do not rely on hidden UI controls.

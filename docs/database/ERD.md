@@ -323,6 +323,7 @@
 1. Removed undocumented `emergency_alerts` fields: `alert_type`, `latitude`, `longitude`, and `cancelled_at`.
 2. Emergency `phone` is `VARCHAR(30)`; `patient_id` and `description` are nullable; `assigned_by_admin_id` and `assigned_at` are retained.
 3. Assistance Requests use `doctor_id` and `request_type VARCHAR(100)`.
+
 4. Notifications use `title VARCHAR(150)` and `type VARCHAR(50)`; no `sent_at` column is defined.
 5. Reminders require both `reference_type` and `reference_id`; `sent_at` remains nullable.
 6. Activity Logs use `action VARCHAR(50)` and `description TEXT NOT NULL`.
@@ -330,3 +331,15 @@
 8. Resource Allocation `resource_name` is `VARCHAR(150)`, is not an FK, and no resources table exists.
 
 **Legend:** PK = Primary Key; FK = Foreign Key; UQ = Unique; NN = Not Null; NULL = Nullable; AI = Auto Increment.
+
+## Approved Data-Model Change Requirements — Not Yet in the Current ERD
+
+The ERD above remains the transcription of the approved baseline ERD PDF. The following requirements have since been approved and require a reviewed ERD/PDF revision before schema implementation:
+
+- Introduce a patient health-intake entity separate from `medical_records` and `medical_notes`. It stores the patient's self-reported answers, workflow status, submission/update timestamps, and the administrator/review-start timestamp and identity. The intake is a single submission per patient in the current scope; the patient may edit it until explicit admin review begins.
+- Model explicit transitions corresponding to **تم تسليم الطلب**, **قيد المراجعة**, and **تم تعيين طبيب**. Viewing an intake does not start review; the admin action to start review locks patient edits. Post-lock correction is a technical-support request routed to an administrator and does not grant support access to intake data.
+- Add doctor availability and admin-configured capacity attributes. Assignment and emergency workload counts are derived from existing assignments and alerts; capacity is informational, not a database or application assignment limit.
+- Require an internal `assignment_reason` for new doctor-patient assignments. Keep the existing rule that multiple doctors may be active for one patient while preventing duplicate active assignments for the same pair.
+- Store each doctor's diagnosis with that doctor's clinical documentation, author identity, and timestamp. Do not store a single global diagnosis on the patient's `medical_records` row.
+
+These are logical requirements, not finalized table/column names or migration instructions. Review authorization paths so the patient, administrators, and assigned doctors receive only the access defined in the approved SRS addendum; NGOs and unassigned doctors receive no intake/diagnosis access.
