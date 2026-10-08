@@ -11,6 +11,9 @@ const assistanceRequestController = require("../controllers/assistanceRequestCon
 const resourceAllocationController = require("../controllers/resourceAllocationController");
 const emergencyAlertController = require("../controllers/emergencyAlertController");
 const dashboardReportController = require("../controllers/dashboardReportController");
+const patientIntakeController = require("../controllers/patientIntakeController");
+const doctorDiagnosisController = require("../controllers/doctorDiagnosisController");
+const { validateCreateDoctorDiagnosis } = require("../middleware/validateDoctorDiagnosis");
 
 const {
   validateCreateAssistanceRequest,
@@ -65,6 +68,23 @@ router.get(
   "/patients/:patientId",
   validatePatientId,
   doctorAssignedPatientController.show,
+);
+
+router.get(
+  "/patients/:patientId/intake",
+  validatePatientId,
+  patientIntakeController.getForAssignedDoctor,
+);
+router.get(
+  "/patients/:patientId/diagnoses",
+  validatePatientId,
+  doctorDiagnosisController.listForAssignedPatient,
+);
+router.post(
+  "/patients/:patientId/diagnoses",
+  validatePatientId,
+  validateCreateDoctorDiagnosis,
+  doctorDiagnosisController.createForAssignedPatient,
 );
 
 router.post(

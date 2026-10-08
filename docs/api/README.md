@@ -281,11 +281,13 @@ GET   /api/admin/doctor-patient-assignments/:id
 PATCH /api/admin/doctor-patient-assignments/:id/status
 ```
 
-Creation requires `doctor_id` and `patient_id`; `assignment_reason` and
-`notes` are optional. References must resolve to active accounts with matching
-roles. New assignments are `ACTIVE`. List results include active and inactive
-history in deterministic newest-first order. Status updates accept `ACTIVE`
-or `INACTIVE`; deactivation sets `ended_at`, and reactivation clears it.
+Creation requires `doctor_id`, `patient_id`, and a non-empty
+`assignment_reason`; `notes` are optional. References must resolve to active
+accounts with matching roles. New assignments are `ACTIVE`. List results
+include active and inactive history in deterministic newest-first order.
+Status updates accept `ACTIVE` or `INACTIVE`; deactivation sets `ended_at`, and
+reactivation clears it. Reactivation also requires an existing non-empty
+assignment reason.
 
 Multiple historical rows may exist for a pair, but only one may be `ACTIVE`.
 Creation and reactivation enforce this transactionally and preserve history.
@@ -1082,6 +1084,57 @@ values return `400`; missing authentication returns `401`; authenticated
 non-Doctor roles return `403`; missing or non-owned alerts return `404`; and
 invalid or stale workflow transitions return `409`. No Doctor Emergency Alert
 list or detail route is exposed.
+
+## Patient Intake and Care Coordination
+
+The approved intake extension is implemented on this branch. Patient intake is one self-reported submission, separate from diagnoses and assistance requests. Patient registration remains unchanged and does not collect condition details.
+
+### Patient intake
+
+```http
+GET   /api/patient/intake
+POST  /api/patient/intake
+PUT   /api/patient/intake
+GET   /api/doctor/patients/:patientId/intake
+GET   /api/admin/patient-intakes
+PATCH /api/admin/patient-intakes/:intakeId/start-review
+```
+
+The authenticated Patient owns the intake. `GET` returns `data.intake: null` before submission. `POST` accepts `current_problem`, `symptoms`, `symptom_onset`, `chronic_conditions_answer`, `chronic_conditions_details`, `medications_answer`, `medications_details`, `allergies_answer`, `allergies_details`, and optional `additional_information`. Current problem, symptoms, and onset must contain non-whitespace text; unknown onset is allowed. Each answer is `YES`, `NO`, or `UNKNOWN`; details are required for `YES`. Status and identity/timestamp fields are server-managed.
+
+Only one intake can be submitted per patient. It starts as `SUBMITTED` and may be edited by that patient while still in this status. Viewing it does not lock it. An explicit Admin start-review action sets `UNDER_REVIEW`, records the reviewer user ID and timestamp, and prevents further patient edits. Once a Doctor assignment is saved, status becomes `DOCTOR_ASSIGNED`; additional different Doctors may be assigned for separate concerns. The Patient can read their own intake; Admins can review it; only actively assigned Doctors can read it. NGOs and unassigned Doctors cannot read it.
+
+The Patient-facing labels are **تم تسليم الطلب**, **قيد المراجعة**, and **تم تعيين طبيب**, mapping respectively to `SUBMITTED`, `UNDER_REVIEW`, and `DOCTOR_ASSIGNED`.
+
+### Assignments and workload
+
+```http
+GET   /api/admin/active-doctors
+PATCH /api/admin/doctors/:doctorId/workload
+GET   /api/patient/doctor-assignments
+POST  /api/admin/doctor-patient-assignments
+PATCH /api/admin/doctor-patient-assignments/:id/status
+```
+
+`GET /api/admin/active-doctors` returns active assignment count and open assigned emergency alert count separately, plus `capacity_warning`. The warning is derived from `capacity_limit` and active patient-assignment count; it is informational and never blocks an assignment. Workload updates accept `availability` (`AVAILABLE` or `UNAVAILABLE`) and/or `capacity_limit` (non-negative integer or `null`). Routine assignment and reactivation are rejected for unavailable Doctors. Emergency alert assignment remains separate and does not reject a Doctor based on availability or capacity; existing emergency specialization and active-account checks still apply.
+
+Creating an assignment requires a non-empty `assignment_reason` (internal and not returned by the Patient assignment endpoint), an intake in `UNDER_REVIEW` or `DOCTOR_ASSIGNED`, active Patient/Doctor accounts, and an available Doctor. Capacity never blocks assignment. Multiple Doctors may be active for one Patient, but the same Doctor-Patient pair cannot have duplicate active assignments. A saved assignment changes intake status to `DOCTOR_ASSIGNED`. Reactivating a historical assignment uses the same routine checks and updates intake status.
+
+### Diagnoses and correction requests
+
+```http
+GET   /api/patient/diagnoses
+GET   /api/doctor/patients/:patientId/diagnoses
+POST  /api/doctor/patients/:patientId/diagnoses
+GET   /api/patient/intake-correction-requests
+POST  /api/patient/intake-correction-requests
+GET   /api/admin/intake-correction-requests
+PATCH /api/admin/intake-correction-requests/:requestId/resolve
+```
+
+Doctors with an active assignment may create diagnoses using `{ "diagnosis": "..." }`; doctor identity and documentation time come from the server. A Patient may read their own diagnoses, and assigned Doctors may read the Patient's diagnoses. This diagnosis is distinct from author-only medical notes. NGOs and unassigned Doctors have no diagnosis access.
+
+After review starts, a Patient may send a correction/addition request using `{ "message": "..." }`; before review starts the endpoint returns `409`. Support is within administration and does not receive intake access or edit capability. Admins list requests and resolve an open request using `{ "admin_response": "..." }`; resolver identity and time are stored. Successful creation returns `201`, other successful reads/updates return `200`. Invalid payloads/identifiers return `400`, missing resources return `404`, role or assignment failures return `403`, and duplicate intake, locked edits, invalid state transitions, unavailable routine assignment, or premature correction requests return `409`.
 
 ## Sprint 7 verification and handoff
 

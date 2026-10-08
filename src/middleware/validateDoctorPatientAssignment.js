@@ -95,18 +95,14 @@ function validateCreateAssignment(req, res, next) {
     errors.patient_id = "patient_id must be a positive integer";
   }
 
-  if (
-    input.assignment_reason !== undefined &&
-    input.assignment_reason !== null
+  if (typeof input.assignment_reason !== "string") {
+    errors.assignment_reason = "assignment_reason is required and must be a string";
+  } else if (input.assignment_reason.trim().length === 0) {
+    errors.assignment_reason = "assignment_reason must not be empty";
+  } else if (
+    input.assignment_reason.trim().length > ASSIGNMENT_REASON_MAX_LENGTH
   ) {
-    if (typeof input.assignment_reason !== "string") {
-      errors.assignment_reason = "assignment_reason must be a string or null";
-    } else if (
-      input.assignment_reason.trim().length > ASSIGNMENT_REASON_MAX_LENGTH
-    ) {
-      errors.assignment_reason =
-        "assignment_reason must not exceed 255 characters";
-    }
+    errors.assignment_reason = "assignment_reason must not exceed 255 characters";
   }
 
   if (input.notes !== undefined && input.notes !== null) {
@@ -126,10 +122,7 @@ function validateCreateAssignment(req, res, next) {
     patient_id: String(input.patient_id),
   };
 
-  if (input.assignment_reason !== undefined) {
-    req.validatedAssignment.assignment_reason =
-      input.assignment_reason === null ? null : input.assignment_reason.trim();
-  }
+  req.validatedAssignment.assignment_reason = input.assignment_reason.trim();
 
   if (input.notes !== undefined) {
     req.validatedAssignment.notes =

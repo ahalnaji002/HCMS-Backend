@@ -69,6 +69,7 @@
  *             required:
  *               - doctor_id
  *               - patient_id
+ *               - assignment_reason
  *             additionalProperties: false
  *             properties:
  *               doctor_id:
@@ -81,7 +82,7 @@
  *                 example: 27
  *               assignment_reason:
  *                 type: string
- *                 nullable: true
+ *                 minLength: 1
  *                 maxLength: 255
  *                 example: Patient requires follow-up care.
  *               notes:

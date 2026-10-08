@@ -271,7 +271,7 @@ Request:
 }
 ```
 
-`assignment_reason` and `notes` are optional.
+`assignment_reason` is required and `notes` are optional.
 
 The backend creates the assignment as `ACTIVE`.
 
@@ -762,9 +762,9 @@ Join requests may be reviewed only according to the backend's current pending/re
 
 ---
 
-## Approved Product Requirements — Intake and Care Coordination (Not Yet Implemented)
+## Approved Product Requirements — Intake and Care Coordination
 
-This section records the approved target behavior. It is not an API implementation guarantee; endpoints and payloads below must be designed/updated before frontend implementation. Where older sections conflict, this approved target behavior applies.
+This section records approved behavior and the current backend contract. See `docs/api/README.md` for detailed validation, status codes, and response shapes. Where older sections conflict, this approved target behavior applies.
 
 ### Patient intake workflow
 
@@ -782,4 +782,4 @@ This section records the approved target behavior. It is not an API implementati
 - Each doctor's diagnosis is separate clinical documentation tied to that doctor and documentation time. Patient and currently assigned doctors may read diagnoses; detailed note text remains author-only. NGO and unassigned doctors cannot read diagnoses.
 - Keep assistance requests and emergency alerts as separate workflows. Doctors create assistance requests on behalf of patients; NGOs receive only the information needed for their assigned request, not the intake or complete medical record.
 
-Before implementation, define versioned contracts for patient intake CRUD/review transitions, assignment administration and availability/capacity, and diagnosis visibility. Enforce permissions and transition rules server-side; do not rely on hidden UI controls.
+Implemented route families: Patient intake and correction requests under `/api/patient`; admin intake review, doctor workload, and correction-request resolution under `/api/admin`; assigned-doctor intake and diagnosis reads/writes under `/api/doctor`. Capacity is returned as a warning signal only. Enforce permissions and transition rules server-side; do not rely on hidden UI controls.

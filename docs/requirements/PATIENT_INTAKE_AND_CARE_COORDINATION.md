@@ -1,7 +1,7 @@
 # Patient Intake and Care Coordination
 
-**Decision status:** Approved product requirements, pending implementation.
-**Scope:** Documentation feature on branch `docs/patient-intake-care-coordination`.
+**Decision status:** Approved product requirements; backend implementation is in progress on `feature/close-patient-intake-gaps`.
+**Scope:** Approved product behavior for patient intake, assignment coordination, and clinical diagnosis records.
 **Authority note:** This approved addendum supplements the current SRS/API/ERD transcriptions. The baseline ERD and SRS PDFs remain unchanged and authoritative for the implemented baseline until formally revised. These requirements do not claim that the current software already supports them.
 
 ## Platform scope
@@ -37,4 +37,4 @@ HCMS is a multi-organization coordination network. Current participants are pati
 
 ## Current implementation versus approved target
 
-The current schema and API documents describe the baseline system and do not yet implement the intake workflow, explicit review lock, admin-managed doctor availability/capacity, required assignment reason, or per-doctor diagnosis visibility described here. The next implementation planning step is to revise the authoritative SRS and ERD, settle the physical schema and API contracts, then implement the end-to-end workflow and access control.
+The baseline SRS/ERD PDFs remain unchanged. The backend implementation adds reviewed migrations and API contracts for these approved requirements; the authoritative Markdown ERD and Data Dictionary now include the implementation extension. The work must be treated as complete only after migrations and integration behavior have been verified against a dedicated test database.

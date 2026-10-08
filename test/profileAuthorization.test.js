@@ -183,6 +183,20 @@ function ngoRegistration(overrides = {}) {
   };
 }
 
+function patientIntakePayload(overrides = {}) {
+  return {
+    current_problem: "Recurring headaches",
+    symptoms: "Headache and nausea",
+    symptom_onset: "About two weeks ago",
+    chronic_conditions_answer: "NO",
+    medications_answer: "YES",
+    medications_details: "Paracetamol",
+    allergies_answer: "UNKNOWN",
+    additional_information: "Symptoms are worse in the evening",
+    ...overrides,
+  };
+}
+
 before(async () => {
   await verifyTestDatabase();
 });
@@ -192,6 +206,9 @@ beforeEach(async () => {
 
   await db("activity_logs").del();
   await db("system_settings").del();
+  await db("intake_correction_requests").del();
+  await db("doctor_diagnoses").del();
+  await db("patient_intakes").del();
   await db("notifications").del();
   await db("reminders").del();
   await db("messages").del();
@@ -211,6 +228,18 @@ beforeEach(async () => {
   await db("users").del();
 
   users = await createFixtures();
+  await db("patient_intakes").insert({
+    patient_id: users.patientProfile.id,
+    current_problem: "Test intake",
+    symptoms: "Test symptoms",
+    symptom_onset: "Unknown",
+    chronic_conditions_answer: "NO",
+    medications_answer: "NO",
+    allergies_answer: "NO",
+    status: "UNDER_REVIEW",
+    review_started_at: db.fn.now(),
+    review_started_by_admin_id: users.admin.id,
+  });
 });
 
 after(async () => {
@@ -218,6 +247,9 @@ after(async () => {
     if (testDatabaseVerified) {
       await db("activity_logs").del();
       await db("system_settings").del();
+      await db("intake_correction_requests").del();
+      await db("doctor_diagnoses").del();
+      await db("patient_intakes").del();
       await db("notifications").del();
       await db("reminders").del();
       await db("messages").del();
@@ -365,6 +397,7 @@ test("authorization uses current database account status", async () => {
 test("authorization uses current database role instead of stale token role", async () => {
   const token = tokenFor(users.patient);
 
+  await db("patient_intakes").where({ patient_id: users.patientProfile.id }).del();
   await db("patients").where({ user_id: users.patient.id }).del();
 
   await db("users").where({ id: users.patient.id }).update({ role: "ADMIN" });
@@ -584,20 +617,197 @@ test("admin can create an active doctor-patient assignment", async () => {
   assert.ok(storedAssignment);
 });
 
-test("assignment_reason and notes are optional", async () => {
+test("assignment reason is required while notes remain optional", async () => {
   const response = await request(app)
     .post("/api/admin/doctor-patient-assignments")
     .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
     .send({
       doctor_id: users.doctorProfile.id,
       patient_id: users.patientProfile.id,
+      assignment_reason: "Routine follow-up",
     });
 
   assert.equal(response.status, 201);
   assert.equal(response.body.success, true);
   assert.equal(response.body.data.assignment.status, "ACTIVE");
-  assert.equal(response.body.data.assignment.assignment_reason, null);
+  assert.equal(response.body.data.assignment.assignment_reason, "Routine follow-up");
   assert.equal(response.body.data.assignment.notes, null);
+
+  const missingReason = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+    });
+  assert.equal(missingReason.status, 400);
+  assert.ok(missingReason.body.errors.assignment_reason);
+});
+
+test("Patient intake submission, edit, review lock, correction, and assignment flow", async () => {
+  await db("patient_intakes").where({ patient_id: users.patientProfile.id }).del();
+  const patientAuthorization = `Bearer ${tokenFor(users.patient)}`;
+  const adminAuthorization = `Bearer ${tokenFor(users.admin)}`;
+
+  const beforeSubmission = await request(app)
+    .get("/api/patient/intake")
+    .set("Authorization", patientAuthorization);
+  assert.equal(beforeSubmission.status, 200);
+  assert.equal(beforeSubmission.body.data.intake, null);
+
+  const submission = await request(app)
+    .post("/api/patient/intake")
+    .set("Authorization", patientAuthorization)
+    .send(patientIntakePayload());
+  assert.equal(submission.status, 201);
+  assert.equal(submission.body.data.intake.status, "SUBMITTED");
+
+  const edit = await request(app)
+    .put("/api/patient/intake")
+    .set("Authorization", patientAuthorization)
+    .send(patientIntakePayload({ current_problem: "Updated headache report" }));
+  assert.equal(edit.status, 200);
+  assert.equal(edit.body.data.intake.current_problem, "Updated headache report");
+  assert.equal(edit.body.data.intake.status, "SUBMITTED");
+
+  const intakeId = edit.body.data.intake.id;
+  const review = await request(app)
+    .patch(`/api/admin/patient-intakes/${intakeId}/start-review`)
+    .set("Authorization", adminAuthorization);
+  assert.equal(review.status, 200);
+  assert.equal(review.body.data.intake.status, "UNDER_REVIEW");
+  assert.equal(
+    Number(review.body.data.intake.review_started_by_admin_id),
+    users.admin.id,
+  );
+  assert.ok(review.body.data.intake.review_started_at);
+
+  const lockedEdit = await request(app)
+    .put("/api/patient/intake")
+    .set("Authorization", patientAuthorization)
+    .send(patientIntakePayload());
+  assert.equal(lockedEdit.status, 409);
+
+  const correction = await request(app)
+    .post("/api/patient/intake-correction-requests")
+    .set("Authorization", patientAuthorization)
+    .send({ message: "Please add my newly reported symptom." });
+  assert.equal(correction.status, 201);
+  assert.equal(correction.body.data.request.status, "OPEN");
+
+  const resolve = await request(app)
+    .patch(
+      `/api/admin/intake-correction-requests/${correction.body.data.request.id}/resolve`,
+    )
+    .set("Authorization", adminAuthorization)
+    .send({ admin_response: "The correction has been recorded for review." });
+  assert.equal(resolve.status, 200);
+  assert.equal(resolve.body.data.request.status, "RESOLVED");
+  assert.equal(
+    Number(resolve.body.data.request.resolved_by_admin_id),
+    users.admin.id,
+  );
+
+  const assignment = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", adminAuthorization)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+      assignment_reason: "Follow up the headache concern",
+    });
+  assert.equal(assignment.status, 201);
+  assert.equal(assignment.body.data.assignment.status, "ACTIVE");
+  const assignedIntake = await request(app)
+    .get("/api/patient/intake")
+    .set("Authorization", patientAuthorization);
+  assert.equal(assignedIntake.body.data.intake.status, "DOCTOR_ASSIGNED");
+});
+
+test("Doctor availability blocks routine assignment while capacity remains advisory", async () => {
+  const adminAuthorization = `Bearer ${tokenFor(users.admin)}`;
+  await request(app)
+    .patch(`/api/admin/doctors/${users.doctorProfile.id}/workload`)
+    .set("Authorization", adminAuthorization)
+    .send({ availability: "UNAVAILABLE", capacity_limit: 0 });
+
+  const blockedRoutine = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", adminAuthorization)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+      assignment_reason: "Unavailable check",
+    });
+  assert.equal(blockedRoutine.status, 409);
+  assert.match(blockedRoutine.body.message, /Unavailable/);
+
+  const alert = await insertDoctorEmergencyAlert({
+    patient_id: users.patientProfile.id,
+    assigned_doctor_id: null,
+    assigned_by_admin_id: null,
+    assigned_at: null,
+    status: "PENDING_ASSIGNMENT",
+  });
+  const emergency = await request(app)
+    .patch(`/api/admin/emergency-alerts/${alert.id}/assign`)
+    .set("Authorization", adminAuthorization)
+    .send({ doctor_id: users.doctorProfile.id });
+  assert.equal(emergency.status, 200);
+
+  await request(app)
+    .patch(`/api/admin/doctors/${users.doctorProfile.id}/workload`)
+    .set("Authorization", adminAuthorization)
+    .send({ availability: "AVAILABLE" });
+  const allowedAtCapacity = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", adminAuthorization)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+      assignment_reason: "Capacity warning must not block assignment",
+    });
+  assert.equal(allowedAtCapacity.status, 201);
+
+  const workload = await request(app)
+    .get("/api/admin/active-doctors")
+    .set("Authorization", adminAuthorization);
+  assert.equal(workload.status, 200);
+  const doctor = workload.body.data.doctors.find(
+    (item) => Number(item.id) === users.doctorProfile.id,
+  );
+  assert.equal(Number(doctor.active_assignment_count), 1);
+  assert.equal(Number(doctor.open_emergency_alert_count), 1);
+  assert.equal(doctor.capacity_warning, true);
+});
+
+test("Diagnosis APIs expose records only to the Patient and actively assigned Doctors", async () => {
+  await insertAssignment();
+  const doctorAuthorization = `Bearer ${tokenFor(users.doctor)}`;
+  const patientAuthorization = `Bearer ${tokenFor(users.patient)}`;
+  const diagnosis = await request(app)
+    .post(`/api/doctor/patients/${users.patientProfile.id}/diagnoses`)
+    .set("Authorization", doctorAuthorization)
+    .send({ diagnosis: "Migraine under evaluation" });
+  assert.equal(diagnosis.status, 201);
+  assert.equal(Number(diagnosis.body.data.diagnosis.doctor_id), users.doctorProfile.id);
+
+  const patientRead = await request(app)
+    .get("/api/patient/diagnoses")
+    .set("Authorization", patientAuthorization);
+  assert.equal(patientRead.status, 200);
+  assert.equal(patientRead.body.data.diagnoses.length, 1);
+
+  const assignedDoctorRead = await request(app)
+    .get(`/api/doctor/patients/${users.patientProfile.id}/diagnoses`)
+    .set("Authorization", doctorAuthorization);
+  assert.equal(assignedDoctorRead.status, 200);
+  assert.equal(assignedDoctorRead.body.data.diagnoses.length, 1);
+
+  const ngoRead = await request(app)
+    .get(`/api/doctor/patients/${users.patientProfile.id}/diagnoses`)
+    .set("Authorization", `Bearer ${tokenFor(users.ngo)}`);
+  assert.equal(ngoRead.status, 403);
 });
 
 test("assignment creation rejects invalid doctor and patient ids", async () => {
@@ -645,6 +855,7 @@ test("assignment creation returns 404 when doctor does not exist", async () => {
     .send({
       doctor_id: "999999999",
       patient_id: users.patientProfile.id,
+      assignment_reason: "Test reason",
     });
 
   assert.equal(response.status, 404);
@@ -659,6 +870,7 @@ test("assignment creation returns 404 when patient does not exist", async () => 
     .send({
       doctor_id: users.doctorProfile.id,
       patient_id: "999999999",
+      assignment_reason: "Test reason",
     });
 
   assert.equal(response.status, 404);
@@ -677,6 +889,7 @@ test("assignment creation rejects an inactive doctor account", async () => {
     .send({
       doctor_id: users.doctorProfile.id,
       patient_id: users.patientProfile.id,
+      assignment_reason: "Test reason",
     });
 
   assert.equal(response.status, 409);
@@ -699,6 +912,7 @@ test("assignment creation rejects an inactive patient account", async () => {
     .send({
       doctor_id: users.doctorProfile.id,
       patient_id: users.patientProfile.id,
+      assignment_reason: "Test reason",
     });
 
   assert.equal(response.status, 409);
@@ -719,6 +933,7 @@ test("assignment creation rejects a doctor profile with a non-doctor user role",
     .send({
       doctor_id: users.doctorProfile.id,
       patient_id: users.patientProfile.id,
+      assignment_reason: "Test reason",
     });
 
   assert.equal(response.status, 409);
@@ -741,6 +956,7 @@ test("assignment creation rejects a patient profile with a non-patient user role
     .send({
       doctor_id: users.doctorProfile.id,
       patient_id: users.patientProfile.id,
+      assignment_reason: "Test reason",
     });
 
   assert.equal(response.status, 409);
@@ -768,6 +984,7 @@ test("assignment creation rejects a duplicate active assignment", async () => {
     .send({
       doctor_id: users.doctorProfile.id,
       patient_id: users.patientProfile.id,
+      assignment_reason: "Test reason",
     });
 
   assert.equal(response.status, 409);
@@ -10605,6 +10822,11 @@ test("Role dashboards return 404 when the authenticated role profile is missing"
     ["NGO", "ngos"],
   ]) {
     const currentUser = users[role.toLowerCase()];
+    if (role === "PATIENT") {
+      await db("intake_correction_requests").where({ patient_id: users.patientProfile.id }).del();
+      await db("doctor_diagnoses").where({ patient_id: users.patientProfile.id }).del();
+      await db("patient_intakes").where({ patient_id: users.patientProfile.id }).del();
+    }
     await db(table).where({ user_id: currentUser.id }).del();
     const response = await request(app)
       .get(DASHBOARD_PATHS[role])
@@ -10807,6 +11029,9 @@ test("Reports preserve requested empty-page metadata and create no Activity Logs
 });
 
 test("All reports return the approved zero-total empty state", async () => {
+  await db("intake_correction_requests").del();
+  await db("doctor_diagnoses").del();
+  await db("patient_intakes").del();
   await db("patients").del();
   const authorization = `Bearer ${tokenFor(users.admin)}`;
 

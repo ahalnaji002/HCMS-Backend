@@ -4,6 +4,7 @@ const doctorModel = require("../models/doctorModel");
 const doctorPatientAssignmentModel = require("../models/doctorPatientAssignmentModel");
 const ngoModel = require("../models/ngoModel");
 const patientModel = require("../models/patientModel");
+const patientIntakeModel = require("../models/patientIntakeModel");
 const userModel = require("../models/userModel");
 const notificationService = require("./notificationService");
 const activityLogService = require("./activityLogService");
@@ -105,10 +106,15 @@ async function createForAssignedPatient(
   ipAddress,
 ) {
   await getPatientOrThrow(patientId);
-
   const doctor = await getDoctorOrThrow(user.id);
 
   await requireActiveAssignment(doctor.id, patientId);
+
+  if (!(await patientIntakeModel.findByPatientId(patientId))) {
+    throw new AssistanceRequestConflictError(
+      "Patient intake must be submitted before creating an assistance request",
+    );
+  }
 
   return db.transaction(async (trx) => {
     const assistanceRequest = await assistanceRequestModel.create(
