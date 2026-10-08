@@ -289,7 +289,14 @@ Incorrect credentials return:
 401 Invalid email or password
 ```
 
-Valid credentials for an `INACTIVE` or `SUSPENDED` account return:
+Valid credentials for an `INACTIVE` or `SUSPENDED` account do not create a
+session and return `403`. For an inactive Doctor or NGO applicant with a
+pending or rejected Join Request, the response also returns that application's
+status and (if rejected) its rejection reason, but only after password
+verification. Incorrect credentials still receive the same `401` response.
+The successful-login response remains limited to active accounts.
+
+Other inactive accounts return:
 
 ```text
 403 Account is not active

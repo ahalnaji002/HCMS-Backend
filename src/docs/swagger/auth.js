@@ -361,7 +361,68 @@
  *               message: Invalid email or password
  *
  *       '403':
- *         $ref: '#/components/responses/AccountNotActive'
+ *         description: Credentials are valid but the account is inactive. For Doctor/NGO applicants with a pending or rejected Join Request, the response includes application status without issuing a token.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               required: [success, message]
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: Account is not active
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     application:
+ *                       type: object
+ *                       required: [request_type, status, rejection_reason, submitted_at, reviewed_at]
+ *                       properties:
+ *                         request_type:
+ *                           type: string
+ *                           enum: [DOCTOR, NGO]
+ *                         status:
+ *                           type: string
+ *                           enum: [PENDING, REJECTED]
+ *                         rejection_reason:
+ *                           type: string
+ *                           nullable: true
+ *                           maxLength: 500
+ *                         submitted_at:
+ *                           type: string
+ *                           format: date-time
+ *                         reviewed_at:
+ *                           type: string
+ *                           format: date-time
+ *                           nullable: true
+ *             examples:
+ *               pending:
+ *                 summary: Application is pending review
+ *                 value:
+ *                   success: false
+ *                   message: Account is not active
+ *                   data:
+ *                     application:
+ *                       request_type: DOCTOR
+ *                       status: PENDING
+ *                       rejection_reason: null
+ *                       submitted_at: '2026-10-08T09:30:00.000Z'
+ *                       reviewed_at: null
+ *               rejected:
+ *                 summary: Application was rejected
+ *                 value:
+ *                   success: false
+ *                   message: Account is not active
+ *                   data:
+ *                     application:
+ *                       request_type: NGO
+ *                       status: REJECTED
+ *                       rejection_reason: Registration information could not be verified.
+ *                       submitted_at: '2026-10-01T09:30:00.000Z'
+ *                       reviewed_at: '2026-10-08T09:30:00.000Z'
  *
  *       '500':
  *         $ref: '#/components/responses/InternalServerError'

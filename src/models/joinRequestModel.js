@@ -49,6 +49,21 @@ function findPendingByUserId(userId, connection = db) {
     .first();
 }
 
+function findLatestApplicantStatusByUserId(userId, connection = db) {
+  return connection("join_requests")
+    .select([
+      "request_type",
+      "status",
+      "rejection_reason",
+      "created_at",
+      "reviewed_at",
+    ])
+    .where({ user_id: userId })
+    .orderBy("created_at", "desc")
+    .orderBy("id", "desc")
+    .first();
+}
+
 function listPendingDetailed(connection = db) {
   return detailQuery(connection)
     .where("join_requests.status", "PENDING")
@@ -93,6 +108,7 @@ module.exports = {
   findById,
   findByIdForUpdate,
   findDetailedById,
+  findLatestApplicantStatusByUserId,
   findPendingByUserId,
   listPendingDetailed,
   updateReview,

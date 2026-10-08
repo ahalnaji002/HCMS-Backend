@@ -73,10 +73,35 @@ POST /api/auth/login
 GET  /api/auth/me
 ```
 
-Login requires `email` and `password`. Only `ACTIVE` accounts can log in.
+Login requires `email` and `password`. Only `ACTIVE` accounts receive a session.
 Success returns safe user data and an HS256 JWT containing `user_id`, `role`,
-`iat`, and `exp`. Invalid credentials return `401`; valid credentials for an
-`INACTIVE` or `SUSPENDED` account return `403`.
+`iat`, and `exp`. Invalid credentials return `401`. Valid credentials for an
+`INACTIVE` or `SUSPENDED` account return `403` without a token. If the
+authenticated credentials belong to an inactive Doctor or NGO applicant whose
+latest Join Request is `PENDING` or `REJECTED`, the response also includes:
+
+```json
+{
+  "success": false,
+  "message": "Account is not active",
+  "data": {
+    "application": {
+      "request_type": "DOCTOR",
+      "status": "PENDING",
+      "rejection_reason": null,
+      "submitted_at": "2026-10-08T09:30:00.000Z",
+      "reviewed_at": null
+    }
+  }
+}
+```
+
+For a rejected request, `status` is `REJECTED` and `rejection_reason` contains
+the administrator's recorded reason. This applicant status is returned only
+after the password has been verified. Invalid credentials keep the same `401`
+response and do not reveal whether an account or Join Request exists. No JWT is
+issued until the account is active. This endpoint does not enable application
+updates or re-submission.
 
 `GET /api/auth/me` requires `Authorization: Bearer <token>`. Authentication
 verifies the signature and expiry, reloads the current user from MySQL, and

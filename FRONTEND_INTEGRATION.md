@@ -69,7 +69,7 @@ Common status codes:
 | `201` | Successful creation |
 | `400` | Invalid request / validation |
 | `401` | Authentication required |
-| `403` | Authenticated but not authorized |
+| `403` | Authenticated but not authorized, or valid login credentials for an inactive account |
 | `404` | Resource not found |
 | `409` | Business-rule/uniqueness conflict |
 
@@ -83,7 +83,14 @@ Common status codes:
 POST /api/auth/login
 ```
 
-Use the returned JWT for protected requests.
+Active accounts receive a JWT for protected requests. Doctor and NGO applicants
+whose accounts remain inactive receive `403` and no JWT after valid credentials
+are verified. When their latest Join Request is `PENDING` or `REJECTED`, the
+response includes `data.application` with `request_type`, `status`,
+`rejection_reason`, `submitted_at`, and `reviewed_at`. Invalid credentials
+continue to return the generic `401` response and never disclose application
+status. Applicant status access does not grant protected account access or
+enable application updates/resubmission.
 
 The current backend uses stateless JWT authentication. The configured token lifetime is environment-controlled; current development configuration is `1h`.
 
