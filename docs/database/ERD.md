@@ -332,9 +332,9 @@
 
 **Legend:** PK = Primary Key; FK = Foreign Key; UQ = Unique; NN = Not Null; NULL = Nullable; AI = Auto Increment.
 
-## Approved Data-Model Change Requirements — Not Yet in the Current ERD
+## Implemented Approved Data-Model Extension
 
-The ERD above remains the transcription of the approved baseline ERD PDF. The following requirements have since been approved and require a reviewed ERD/PDF revision before schema implementation:
+The ERD above remains the transcription of the approved baseline ERD PDF. The following approved extension is implemented by migrations `202610080001`–`202610080004`; the baseline PDF remains unchanged:
 
 - Introduce a patient health-intake entity separate from `medical_records` and `medical_notes`. It stores the patient's self-reported answers, workflow status, submission/update timestamps, and the administrator/review-start timestamp and identity. The intake is a single submission per patient in the current scope; the patient may edit it until explicit admin review begins.
 - Model explicit transitions corresponding to **تم تسليم الطلب**, **قيد المراجعة**, and **تم تعيين طبيب**. Viewing an intake does not start review; the admin action to start review locks patient edits. Post-lock correction is a technical-support request routed to an administrator and does not grant support access to intake data.
@@ -342,4 +342,8 @@ The ERD above remains the transcription of the approved baseline ERD PDF. The fo
 - Require an internal `assignment_reason` for new doctor-patient assignments. Keep the existing rule that multiple doctors may be active for one patient while preventing duplicate active assignments for the same pair.
 - Store each doctor's diagnosis with that doctor's clinical documentation, author identity, and timestamp. Do not store a single global diagnosis on the patient's `medical_records` row.
 
-These are logical requirements, not finalized table/column names or migration instructions. Review authorization paths so the patient, administrators, and assigned doctors receive only the access defined in the approved SRS addendum; NGOs and unassigned doctors receive no intake/diagnosis access.
+- `patient_intakes` has one row per patient and stores the approved self-reported answers, status, submission/review timestamps, and reviewing Admin ID.
+- `intake_correction_requests` stores patient-submitted post-lock correction requests; only administrators resolve them.
+- `doctor_diagnoses` stores each diagnosis with the authoring Doctor and documentation timestamp.
+- `doctors.availability` and `doctors.capacity_limit` store admin-managed availability and informational capacity. Active assignments and open assigned emergency alerts are calculated separately; capacity does not block assignment.
+- Authorization remains enforced in API services: Patients read their own intake/diagnoses, Admins review intake, and currently assigned Doctors read the intake/diagnoses. NGOs and unassigned Doctors have no access.

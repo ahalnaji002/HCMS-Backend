@@ -7,6 +7,9 @@ const resourceAllocationController = require("../controllers/resourceAllocationC
 const activityLogController = require("../controllers/activityLogController");
 const systemSettingController = require("../controllers/systemSettingController");
 const dashboardReportController = require("../controllers/dashboardReportController");
+const patientIntakeController = require("../controllers/patientIntakeController");
+const adminDoctorWorkloadController = require("../controllers/adminDoctorWorkloadController");
+const intakeCorrectionRequestController = require("../controllers/intakeCorrectionRequestController");
 const authenticate = require("../middleware/authenticate");
 const authorizeRoles = require("../middleware/authorizeRoles");
 
@@ -24,6 +27,17 @@ const {
   validateAssignmentStatusUpdate,
   validateCreateAssignment,
 } = require("../middleware/validateDoctorPatientAssignment");
+const {
+  validateIntakeId,
+} = require("../middleware/validatePatientIntake");
+const {
+  validateCorrectionRequestId,
+  validateResolveCorrectionRequest,
+} = require("../middleware/validateIntakeCorrectionRequest");
+const {
+  validateDoctorId,
+  validateDoctorWorkloadUpdate,
+} = require("../middleware/validateDoctorWorkload");
 const {
   validateAssignNgo,
   validateRequestId,
@@ -121,6 +135,32 @@ router.patch(
 // ==============================
 // Doctor-Patient Assignments
 // ==============================
+
+router.get("/patient-intakes", patientIntakeController.listForAdmin);
+router.patch(
+  "/patient-intakes/:intakeId/start-review",
+  validateIntakeId,
+  patientIntakeController.startReview,
+);
+
+router.get("/active-doctors", adminDoctorWorkloadController.listActive);
+router.patch(
+  "/doctors/:doctorId/workload",
+  validateDoctorId,
+  validateDoctorWorkloadUpdate,
+  adminDoctorWorkloadController.updateWorkload,
+);
+
+router.get(
+  "/intake-correction-requests",
+  intakeCorrectionRequestController.listForAdmin,
+);
+router.patch(
+  "/intake-correction-requests/:requestId/resolve",
+  validateCorrectionRequestId,
+  validateResolveCorrectionRequest,
+  intakeCorrectionRequestController.resolveForAdmin,
+);
 
 router.get("/doctor-patient-assignments", assignmentController.list);
 router.get(

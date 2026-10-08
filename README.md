@@ -108,7 +108,7 @@ Rollback the latest migration batch:
 npm run migrate:rollback
 ```
 
-The project includes dependency-ordered Knex migrations for the approved 19-table HCMS schema.
+The project includes dependency-ordered Knex migrations for the HCMS schema and approved intake/care-coordination extensions.
 
 ## Database Access
 
@@ -144,7 +144,7 @@ http://localhost:3000
 
 - Express-based REST API foundation.
 - Reusable Knex runtime database connection.
-- Dependency-ordered migrations for the approved 19-table HCMS schema.
+- Dependency-ordered migrations for the HCMS baseline and approved schema extensions.
 - Data-access modules for users, patients, doctors, NGOs, and Join Requests.
 - Transactional Patient Registration.
 - Transactional Doctor Registration with Join Request creation.
@@ -163,6 +163,18 @@ http://localhost:3000
 - Doctor-owned Medical Notes for actively assigned Patients.
 - Continuing-care Treatment Plans with Patient read-only access.
 - Treatment Medication and Appointment management scoped to Treatment Plans.
+- Patient self-reported intake submission, pre-review editing, and administrator review locking.
+- Admin-managed doctor availability and capacity warnings, with separate assignment and emergency workload counts.
+- Multiple doctor assignments per patient, required internal assignment reasons, and per-doctor diagnoses.
+- Patient correction requests routed to administrators after review begins.
+
+## Patient Intake and Care Coordination
+
+After login, a Patient can submit one self-reported intake using `POST /api/patient/intake`; the Patient can edit it with `PUT` only until an Admin starts review. Admins review submissions through `GET /api/admin/patient-intakes` and lock one with `PATCH /api/admin/patient-intakes/:intakeId/start-review`. Doctors can read an assigned Patient's intake at `GET /api/doctor/patients/:patientId/intake`.
+
+Doctor assignments require the reviewed intake and an internal `assignment_reason`. Routine assignments to unavailable doctors are rejected. Capacity only produces an administrative warning and never blocks an assignment. Emergency alert assignment stays on its separate route and remains possible for unavailable doctors when they meet the existing emergency eligibility rules.
+
+See [API documentation](docs/api/README.md) and [approved intake requirements](docs/requirements/PATIENT_INTAKE_AND_CARE_COORDINATION.md) for authorization and payload details.
 
 ## API
 

@@ -289,9 +289,9 @@ This data dictionary defines the fields, data types, keys, constraints, nullabil
 - Only the originating authenticated Patient may cancel their own Emergency Alert while it is `PENDING_ASSIGNMENT`.
 - Emergency Alert assignment is Admin-only. The assigned Doctor must have an `ACTIVE` account and specialization `General Medicine` or `Emergency Medicine`.
 
-## Approved Schema Requirements Addendum — Pending ERD/PDF and Implementation Revision
+## Implemented Approved Schema Extension
 
-The following data requirements are approved, but are not part of the current implemented schema described above. Do not treat this proposal as a migration specification; finalize physical types, constraints, and migration after updating the authoritative ERD and reviewing privacy/access requirements.
+The baseline dictionary above remains the transcription of the approved ERD PDF. The following approved extension is implemented by migrations `202610080001`–`202610080004`; the baseline PDF remains unchanged.
 
 - Add a patient health-intake submission, separate from `medical_records` and `medical_notes`, containing the patient's self-reported current problem, symptoms/onset, chronic-condition answer/details, medication answer/details, allergy answer/details, optional additional information, submitted/updated timestamps, and workflow state.
 - Support the patient-facing workflow **تم تسليم الطلب** → **قيد المراجعة** → **تم تعيين طبيب**. Store the explicit administrator review-start event/time and reviewer identity. The review-start action locks patient edits; simply viewing the submission does not. Corrections after lock are handled as support requests forwarded to an administrator, not by support editing the intake.
@@ -299,3 +299,7 @@ The following data requirements are approved, but are not part of the current im
 - Make `doctor_patient_assignments.assignment_reason` required for new assignments and treat it as internal administrative/clinical coordination data.
 - Add a diagnosis field to each doctor's clinical documentation, tied to the author doctor and documentation timestamp. Do not add a single shared diagnosis field to `medical_records`.
 - A patient can have active assignments to multiple doctors, but at most one active assignment for each doctor-patient pair.
+- `patient_intakes.review_started_by_admin_id` references the Admin user who explicitly started review.
+- `intake_correction_requests` records the patient's message, OPEN/RESOLVED state, administrator response, resolver, and resolution time.
+- `doctor_diagnoses` records patient, authoring doctor, diagnosis text, and documentation time.
+- `doctors.availability` is `AVAILABLE`/`UNAVAILABLE`; nullable `capacity_limit` is informational. Workload counts are query-derived, not stored.

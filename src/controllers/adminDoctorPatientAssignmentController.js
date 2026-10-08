@@ -1,9 +1,12 @@
 const {
   ActiveAssignmentExistsError,
+  AssignmentReasonRequiredError,
   AssignmentNotFoundError,
   AssignmentStatusConflictError,
   DoctorNotActiveError,
   DoctorNotFoundError,
+  DoctorUnavailableError,
+  PatientIntakeRequiredError,
   PatientNotActiveError,
   PatientNotFoundError,
   createDoctorPatientAssignment,
@@ -28,7 +31,10 @@ function assignmentErrorResponse(error, res) {
     error instanceof DoctorNotActiveError ||
     error instanceof PatientNotActiveError ||
     error instanceof ActiveAssignmentExistsError ||
-    error instanceof AssignmentStatusConflictError
+    error instanceof AssignmentStatusConflictError ||
+    error instanceof PatientIntakeRequiredError ||
+    error instanceof DoctorUnavailableError ||
+    error instanceof AssignmentReasonRequiredError
   ) {
     return res.status(409).json({
       success: false,
