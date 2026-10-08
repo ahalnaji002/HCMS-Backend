@@ -4641,7 +4641,10 @@ test("login safely rejects a wrong password and an unknown account", async () =>
 
 test("login rejects inactive unapproved accounts", async () => {
   const payload = doctorRegistration();
-  await request(app).post("/api/auth/register/doctor").send(payload);
+  const registration = await request(app)
+    .post("/api/auth/register/doctor")
+    .send(payload);
+  const joinRequestId = registration.body.data.join_request.id;
 
   const response = await request(app)
     .post("/api/auth/login")
@@ -4650,6 +4653,58 @@ test("login rejects inactive unapproved accounts", async () => {
   assert.equal(response.status, 403);
   assert.equal(response.body.success, false);
   assert.equal(response.body.message, "Account is not active");
+  assert.deepEqual(response.body.data.application, {
+    request_type: "DOCTOR",
+    status: "PENDING",
+    rejection_reason: null,
+    submitted_at: response.body.data.application.submitted_at,
+    reviewed_at: null,
+  });
+  assert.ok(response.body.data.application.submitted_at);
+  assert.equal("token" in response.body.data, false);
+
+  const wrongPassword = await request(app)
+    .post("/api/auth/login")
+    .send({ email: payload.email, password: "Wrong123" });
+  assert.equal(wrongPassword.status, 401);
+  assert.equal("data" in wrongPassword.body, false);
+
+  const joinRequest = await db("join_requests")
+    .where({ id: joinRequestId })
+    .first();
+  assert.equal(joinRequest.status, "PENDING");
+});
+
+test("login returns the rejection reason to an authenticated inactive applicant", async () => {
+  const payload = ngoRegistration();
+  const registration = await request(app)
+    .post("/api/auth/register/ngo")
+    .send(payload);
+  const joinRequestId = registration.body.data.join_request.id;
+  const rejectionReason = "Organization registration could not be verified.";
+
+  await db("join_requests").where({ id: joinRequestId }).update({
+    status: "REJECTED",
+    rejection_reason: rejectionReason,
+    reviewed_by_admin_id: users.admin.id,
+    reviewed_at: db.fn.now(),
+  });
+
+  const response = await request(app)
+    .post("/api/auth/login")
+    .send({ email: payload.email, password: payload.password });
+
+  assert.equal(response.status, 403);
+  assert.deepEqual(response.body.data.application, {
+    request_type: "NGO",
+    status: "REJECTED",
+    rejection_reason: rejectionReason,
+    submitted_at: response.body.data.application.submitted_at,
+    reviewed_at: response.body.data.application.reviewed_at,
+  });
+  assert.ok(response.body.data.application.submitted_at);
+  assert.ok(response.body.data.application.reviewed_at);
+  assert.equal("token" in response.body.data, false);
 });
 
 test("protected routes reject malformed invalid and expired JWTs", async () => {
