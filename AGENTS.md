@@ -311,18 +311,20 @@ Do not change dependency versions unless required and approved.
 
 ## Source of Truth
 
-The following files are the authoritative project reference documents for
+The following maintained Markdown files are the current project references for
 HCMS backend requirements and database design:
 
-- `docs/requirements/SRS.pdf`
-- `docs/database/ERD.pdf`
-- `docs/database/Data-Dictionary.pdf`
+- `docs/requirements/SRS.md`
+- `docs/requirements/PATIENT_INTAKE_AND_CARE_COORDINATION.md`
+- `docs/database/ERD.md`
+- `docs/database/Data-Dictionary.md`
+- `docs/api/README.md` for current API contracts
 - Approved project decisions
 
 Review the relevant sections of these documents before implementing or
-auditing backend requirements. Do not rely only on memory, README content, API
-documentation, GitHub issue text, or the current implementation when an
-authoritative reference is available.
+auditing backend requirements. Do not rely only on memory, README content,
+GitHub issue text, or the current implementation when an approved reference is
+available.
 
 If the authoritative documents, current code, root README, detailed API
 documentation, or GitHub issues conflict, stop and report the inconsistency.

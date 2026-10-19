@@ -1,8 +1,8 @@
 # Patient Intake and Care Coordination
 
-**Decision status:** Approved product requirements; backend implementation is in progress on `feature/close-patient-intake-gaps`.
+**Decision status:** Approved product requirements; backend implementation merged into `develop` through PR #95 and frontend implementation merged into `develop` through PR #46.
 **Scope:** Approved product behavior for patient intake, assignment coordination, and clinical diagnosis records.
-**Authority note:** This approved addendum supplements the current SRS/API/ERD transcriptions. The baseline ERD and SRS PDFs remain unchanged and authoritative for the implemented baseline until formally revised. These requirements do not claim that the current software already supports them.
+**Authority note:** This addendum supplements the maintained Markdown SRS, ERD, Data Dictionary, and API documentation. These Markdown files are the current project references; no PDF copy is treated as authoritative. The requirements describe approved behavior, while implementation status is recorded above.
 
 ## Platform scope
 

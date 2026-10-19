@@ -1,4 +1,4 @@
-<!-- Markdown transcription of docs/requirements/SRS.pdf (Version 1.1, September 2026). The PDF remains the authoritative original. -->
+<!-- Maintained Markdown SRS containing the baseline requirements and approved addenda. Use this file as the current requirements reference. -->
 
 # Software Requirements Specification (SRS)
 
@@ -423,7 +423,7 @@ The Healthcare Conflict Management System (HCMS) has been designed to support fu
 
 ## Approved Requirements Addendum — Patient Intake and Care Coordination
 
-**Status:** Approved product requirements; implementation and the authoritative SRS PDF have not yet been updated. This addendum supplements the transcribed SRS and takes precedence where they conflict, pending formal revision of the source PDF.
+**Status:** Approved requirements; backend implementation merged into `develop` through PR #95 and frontend implementation merged into `develop` through PR #46. This addendum is part of the maintained SRS Markdown and takes precedence where it conflicts with baseline requirements.
 
 ### Platform scope and patient intake
 
