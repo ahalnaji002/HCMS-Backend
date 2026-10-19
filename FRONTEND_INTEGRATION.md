@@ -718,11 +718,12 @@ Before marking a screen integrated:
 
 When this guide and backend behavior appear to differ, check in this order:
 
-1. `docs/requirements/SRS.pdf` — required system behavior.
-2. `docs/database/ERD.pdf` — approved entities and relationships.
-3. `docs/database/Data-Dictionary.pdf` — fields and constraints.
-4. `docs/api/README.md` — detailed current backend API behavior.
-5. `FRONTEND_INTEGRATION.md` — frontend-oriented integration summary.
+1. `docs/requirements/SRS.md` — required system behavior and approved addenda.
+2. `docs/requirements/PATIENT_INTAKE_AND_CARE_COORDINATION.md` — approved intake and care-coordination decisions.
+3. `docs/database/ERD.md` — approved entities and relationships.
+4. `docs/database/Data-Dictionary.md` — fields and constraints.
+5. `docs/api/README.md` — detailed current backend API behavior.
+6. `FRONTEND_INTEGRATION.md` — frontend-oriented integration summary.
 
 Do not silently invent a request field, response field, endpoint, permission, or workflow. Raise the mismatch with the backend team first.
 

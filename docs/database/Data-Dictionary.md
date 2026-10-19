@@ -3,9 +3,9 @@
 **Healthcare Conflict Management System (HCMS)**  
 Sprint 3 — Database Design | Updated for Sprint 7 | Final v1.1 | September 2026
 
-This data dictionary defines the fields, data types, keys, constraints, nullability, defaults, and descriptions for the 19 HCMS database tables.
+This maintained Markdown data dictionary defines the fields, data types, keys, constraints, nullability, defaults, and descriptions for the HCMS database schema, including approved extensions.
 
-> Markdown transcription of the approved `Data-Dictionary.pdf`. Schema names, data types, constraints, nullability, and defaults are preserved from the source document.
+> Use this file as the current reference for the approved database fields and constraints.
 
 ## 1. users
 
@@ -291,7 +291,7 @@ This data dictionary defines the fields, data types, keys, constraints, nullabil
 
 ## Implemented Approved Schema Extension
 
-The baseline dictionary above remains the transcription of the approved ERD PDF. The following approved extension is implemented by migrations `202610080001`–`202610080004`; the baseline PDF remains unchanged.
+The dictionary includes the approved patient-intake and care-coordination schema extension implemented by migrations `202610080001`–`202610080004`.
 
 - Add a patient health-intake submission, separate from `medical_records` and `medical_notes`, containing the patient's self-reported current problem, symptoms/onset, chronic-condition answer/details, medication answer/details, allergy answer/details, optional additional information, submitted/updated timestamps, and workflow state.
 - Support the patient-facing workflow **تم تسليم الطلب** → **قيد المراجعة** → **تم تعيين طبيب**. Store the explicit administrator review-start event/time and reviewer identity. The review-start action locks patient edits; simply viewing the submission does not. Corrections after lock are handled as support requests forwarded to an administrator, not by support editing the intake.

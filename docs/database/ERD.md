@@ -2,7 +2,7 @@
 
 **Sprint 7 reconciliation — Version 1.2**
 
-> Markdown transcription of the approved `ERD.pdf`. It preserves the entities, fields, constraints, foreign-key relationships, and approved Sprint 7 reconciliation rules in a searchable text format. The PDF remains the visual ERD.
+> This maintained Markdown ERD is the current project reference for entities, fields, constraints, foreign-key relationships, and approved reconciliation rules.
 
 ## Identity and access
 
@@ -334,7 +334,7 @@
 
 ## Implemented Approved Data-Model Extension
 
-The ERD above remains the transcription of the approved baseline ERD PDF. The following approved extension is implemented by migrations `202610080001`–`202610080004`; the baseline PDF remains unchanged:
+This ERD includes the baseline model and the approved patient-intake and care-coordination extension implemented by migrations `202610080001`–`202610080004`:
 
 - Introduce a patient health-intake entity separate from `medical_records` and `medical_notes`. It stores the patient's self-reported answers, workflow status, submission/update timestamps, and the administrator/review-start timestamp and identity. The intake is a single submission per patient in the current scope; the patient may edit it until explicit admin review begins.
 - Model explicit transitions corresponding to **تم تسليم الطلب**, **قيد المراجعة**, and **تم تعيين طبيب**. Viewing an intake does not start review; the admin action to start review locks patient edits. Post-lock correction is a technical-support request routed to an administrator and does not grant support access to intake data.
