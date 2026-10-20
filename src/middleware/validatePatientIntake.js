@@ -1,5 +1,6 @@
 const MAX_ID = 18446744073709551615n;
 const MAX_TEXT_BYTES = 65535;
+const MAX_SYMPTOM_ONSET_LENGTH = 255;
 const ANSWERS = new Set(["YES", "NO", "UNKNOWN"]);
 
 const TEXT_FIELDS = [
@@ -80,6 +81,11 @@ function validateIntakePayload(req, res, next) {
     if (nullable && value === null) continue;
     if (typeof value !== "string") {
       errors[field] = `${field} must be a string${nullable ? " or null" : ""}`;
+    } else if (
+      field === "symptom_onset" &&
+      Array.from(value).length > MAX_SYMPTOM_ONSET_LENGTH
+    ) {
+      errors[field] = `symptom_onset must not exceed ${MAX_SYMPTOM_ONSET_LENGTH} characters`;
     } else if (Buffer.byteLength(value, "utf8") > MAX_TEXT_BYTES) {
       errors[field] = `${field} must not exceed ${MAX_TEXT_BYTES} UTF-8 bytes`;
     } else if (!nullable && value.trim().length === 0) {

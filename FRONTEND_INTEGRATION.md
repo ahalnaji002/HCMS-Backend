@@ -770,7 +770,7 @@ This section records approved behavior and the current backend contract. See `do
 ### Patient intake workflow
 
 - Registration remains account/identity-only. After login, the patient completes one required self-reported health-intake form; it must not be presented as a diagnosis.
-- Required information: current health problem (free text), symptoms and onset (allow unknown onset), chronic conditions, current medications, and known allergies. Ask conditional detail for “yes” answers; provide optional additional information. The patient's free text can mention several concerns.
+- Required information: current health problem (free text), symptoms and onset (allow unknown onset; onset is limited to 255 characters), chronic conditions, current medications, and known allergies. Ask conditional detail for “yes” answers; provide optional additional information. The patient's free text can mention several concerns.
 - Keep profile navigation and emergency alerts available before intake completion. Do not allow a doctor assignment or a new assistance request on the patient's behalf until the intake has been submitted.
 - Patient-visible statuses are exactly **تم تسليم الطلب**, **قيد المراجعة**, and **تم تعيين طبيب**. The patient may edit after submission until an administrator explicitly starts review; opening the form alone does not lock it. Starting review locks patient edits. Assignment status follows a saved doctor assignment.
 - After lock, the patient sends correction/addition requests directly to the administration through the system. An authorized administrator reviews and responds; there is no separate technical-support intermediary in this workflow.

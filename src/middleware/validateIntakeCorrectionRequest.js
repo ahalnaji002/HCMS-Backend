@@ -58,24 +58,16 @@ function validateResolveCorrectionRequest(req, res, next) {
   for (const field of Object.keys(input)) {
     if (field !== "admin_response") errors[field] = `${field} is not allowed`;
   }
-  if (
-    input.admin_response !== undefined &&
-    input.admin_response !== null &&
-    typeof input.admin_response !== "string"
-  ) {
-    errors.admin_response = "admin_response must be a string or null";
-  } else if (
-    typeof input.admin_response === "string" &&
-    Buffer.byteLength(input.admin_response, "utf8") > MAX_TEXT_BYTES
-  ) {
+  if (typeof input.admin_response !== "string") {
+    errors.admin_response = "admin_response is required and must be a string";
+  } else if (input.admin_response.trim().length === 0) {
+    errors.admin_response = "admin_response must not be empty";
+  } else if (Buffer.byteLength(input.admin_response, "utf8") > MAX_TEXT_BYTES) {
     errors.admin_response = `admin_response must not exceed ${MAX_TEXT_BYTES} UTF-8 bytes`;
   }
   if (Object.keys(errors).length > 0) return validationFailure(res, errors);
 
-  req.validatedAdminResponse =
-    typeof input.admin_response === "string" && input.admin_response.trim()
-      ? input.admin_response.trim()
-      : null;
+  req.validatedAdminResponse = input.admin_response.trim();
   return next();
 }
 

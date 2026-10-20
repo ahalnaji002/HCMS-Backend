@@ -80,6 +80,10 @@ Set `JWT_SECRET` to a strong private random value.
 
 `ADMIN_PASSWORD` must also be configured locally before running the Admin seed.
 
+### Test database isolation
+
+`npm test` creates a uniquely named temporary schema using the `TEST_DB_*` connection settings, applies all migrations to that schema, runs the tests there, and drops only that schema afterward. The configured `TEST_DB_NAME` must be `hcms_test_db`, must differ from `DB_NAME`, and the test MySQL account needs permission to create and drop databases. The test suite is guarded so it cannot clean a shared test database directly.
+
 > Do not commit the `.env` file, real passwords, JWT secrets, or tokens to GitHub.
 
 ## Database Setup

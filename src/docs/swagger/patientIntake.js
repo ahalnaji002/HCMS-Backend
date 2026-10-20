@@ -54,7 +54,7 @@
  *         required: true
  *         schema: { type: integer, minimum: 1 }
  *     responses:
- *       '200': { description: Status UNDER_REVIEW, reviewer ID, and review time are stored }
+ *       '200': { description: 'Status UNDER_REVIEW, reviewer ID, and review time are stored' }
  *       '404': { description: Intake not found }
  *       '409': { description: Intake is not SUBMITTED }
  * /api/doctor/patients/{patientId}/intake:
@@ -82,7 +82,7 @@
  *         required: true
  *         schema: { type: integer, minimum: 1 }
  *     responses:
- *       '200': { description: Diagnoses with author, specialization, and time }
+ *       '200': { description: 'Diagnoses with author, specialization, and time' }
  *       '403': { description: Doctor has no ACTIVE assignment to Patient }
  *   post:
  *     tags: [Patient Intake and Care Coordination]
@@ -164,7 +164,7 @@
  *             additionalProperties: false
  *             required: [admin_response]
  *             properties:
- *               admin_response: { type: string, minLength: 1, maxLength: 5000 }
+ *               admin_response: { type: string, minLength: 1, description: Whitespace-only values are rejected; maximum 65535 UTF-8 bytes }
  *     responses:
  *       '200': { description: Resolved with Admin ID and timestamp }
  *       '409': { description: Request is already resolved }
@@ -175,7 +175,7 @@
  *     description: Capacity warning is informational and never blocks assignment.
  *     security: [{ bearerAuth: [] }]
  *     responses:
- *       '200': { description: Doctors with active_assignment_count, open_emergency_alert_count, and capacity_warning }
+ *       '200': { description: 'Doctors with active_assignment_count, open_emergency_alert_count, and capacity_warning' }
  * /api/admin/doctors/{doctorId}/workload:
  *   patch:
  *     tags: [Patient Intake and Care Coordination]
@@ -207,7 +207,7 @@
  *       properties:
  *         current_problem: { type: string, minLength: 1 }
  *         symptoms: { type: string, minLength: 1 }
- *         symptom_onset: { type: string, minLength: 1, description: Unknown onset is allowed }
+ *         symptom_onset: { type: string, minLength: 1, maxLength: 255, description: Unknown onset is allowed; maximum 255 characters }
  *         chronic_conditions_answer: { type: string, enum: [YES, NO, UNKNOWN] }
  *         chronic_conditions_details: { type: string, description: Required for YES }
  *         medications_answer: { type: string, enum: [YES, NO, UNKNOWN] }

@@ -31,6 +31,15 @@ async function verifyTestDatabase() {
     throw new Error("TEST_DB_NAME must differ from DB_NAME");
   }
 
+  if (
+    process.env.HCMS_ISOLATED_TEST_DB !== "1" ||
+    !/^hcms_test_run_[0-9]+_[a-f0-9]{12}$/.test(process.env.TEST_DB_NAME)
+  ) {
+    throw new Error(
+      "Refusing to run database tests without the isolated temporary test runner",
+    );
+  }
+
   const result = await db.raw("SELECT DATABASE() AS database_name");
   const databaseName = result[0][0].database_name;
 
@@ -658,9 +667,16 @@ test("Patient intake submission, edit, review lock, correction, and assignment f
   const submission = await request(app)
     .post("/api/patient/intake")
     .set("Authorization", patientAuthorization)
-    .send(patientIntakePayload());
+    .send(patientIntakePayload({ symptom_onset: "x".repeat(255) }));
   assert.equal(submission.status, 201);
   assert.equal(submission.body.data.intake.status, "SUBMITTED");
+
+  const longOnset = await request(app)
+    .post("/api/patient/intake")
+    .set("Authorization", patientAuthorization)
+    .send(patientIntakePayload({ symptom_onset: "x".repeat(256) }));
+  assert.equal(longOnset.status, 400);
+  assert.ok(longOnset.body.errors.symptom_onset);
 
   const edit = await request(app)
     .put("/api/patient/intake")
@@ -694,6 +710,23 @@ test("Patient intake submission, edit, review lock, correction, and assignment f
     .send({ message: "Please add my newly reported symptom." });
   assert.equal(correction.status, 201);
   assert.equal(correction.body.data.request.status, "OPEN");
+
+  for (const invalidResponse of [{}, { admin_response: "" }, { admin_response: "   " }]) {
+    const rejectedResolution = await request(app)
+      .patch(
+        `/api/admin/intake-correction-requests/${correction.body.data.request.id}/resolve`,
+      )
+      .set("Authorization", adminAuthorization)
+      .send(invalidResponse);
+    assert.equal(rejectedResolution.status, 400);
+    assert.ok(rejectedResolution.body.errors.admin_response);
+  }
+
+  const stillOpen = await request(app)
+    .get("/api/admin/intake-correction-requests")
+    .set("Authorization", adminAuthorization);
+  assert.equal(stillOpen.status, 200);
+  assert.equal(stillOpen.body.data.requests[0].status, "OPEN");
 
   const resolve = await request(app)
     .patch(
