@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "test": "cross-env NODE_ENV=test node --test",
+    "test": "node scripts/runIsolatedTests.js",
     "migrate": "knex migrate:latest --env development",
     "migrate:rollback": "knex migrate:rollback --env development",
     "seed": "knex seed:run --env development"
@@ -34,6 +34,7 @@
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
+    "@apidevtools/swagger-parser": "^12.1.0",
     "cross-env": "^10.1.0",
     "nodemon": "^3.1.14",
     "supertest": "^7.2.2"
