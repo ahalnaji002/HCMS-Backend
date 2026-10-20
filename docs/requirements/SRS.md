@@ -432,7 +432,7 @@ The Healthcare Conflict Management System (HCMS) has been designed to support fu
 - The form asks about the current health problem (required free text), symptoms and onset (required; “I don't know” is valid for onset), chronic conditions, current medications, known allergies, and optional additional information. Conditional details are requested when the patient answers yes. The free-text description may mention more than one concern.
 - The patient can navigate their profile before completing the form. Until it is completed, the system shall not permit doctor assignment or creation of a new assistance request on the patient's behalf. Emergency-alert access remains available.
 - After submission, the patient sees **تم تسليم الطلب** and may edit the form until an administrator explicitly starts review. Merely opening or viewing the form does not start review. The start-review action changes the status to **قيد المراجعة** and makes the form read-only to the patient. After assignment is saved, the status is **تم تعيين طبيب**. The patient is prompted after submission to review answers and is told that editing closes when review begins.
-- After the form is locked, the patient may submit a correction/addition through the technical-support channel. Support staff forward it to an authorized administrator and do not access or edit the health form themselves.
+- After the form is locked, the patient may submit a correction/addition request directly to the administration through the system. An authorized administrator reviews and responds to it. This workflow has no separate technical-support intermediary; only authorized administrators may access and resolve the request, subject to the intake access rules.
 
 ### Assignment and workload
 

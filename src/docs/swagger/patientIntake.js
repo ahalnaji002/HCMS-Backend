@@ -123,7 +123,7 @@
  *   post:
  *     tags: [Patient Intake and Care Coordination]
  *     summary: Send an intake correction request to administration
- *     description: Available after review starts; support receives no intake access.
+ *     description: Available after review starts; requests are submitted directly to administration, with no separate technical-support intermediary.
  *     security: [{ bearerAuth: [] }]
  *     requestBody:
  *       required: true

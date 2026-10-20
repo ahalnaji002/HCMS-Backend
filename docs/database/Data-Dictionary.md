@@ -1,7 +1,7 @@
 # 2.2.3 Data Dictionary
 
 **Healthcare Conflict Management System (HCMS)**  
-Sprint 3 — Database Design | Updated for Sprint 7 | Final v1.1 | September 2026
+Maintained database schema reference | Updated October 2026 | Markdown
 
 This maintained Markdown data dictionary defines the fields, data types, keys, constraints, nullability, defaults, and descriptions for the HCMS database schema, including approved extensions.
 
@@ -42,6 +42,8 @@ This maintained Markdown data dictionary defines the fields, data types, keys, c
 | user_id | BIGINT UNSIGNED | FK → users.id, UNIQUE | No | — | Linked user account |
 | specialization | VARCHAR(100) | — | No | — | Doctor specialization |
 | license_number | VARCHAR(100) | UNIQUE | No | — | License number |
+| availability | ENUM | AVAILABLE, UNAVAILABLE | No | AVAILABLE | Admin-managed routine-assignment availability |
+| capacity_limit | INT UNSIGNED | — | Yes | NULL | Informational assignment capacity; does not block assignment |
 | created_at | TIMESTAMP | — | No | CURRENT_TIMESTAMP | Doctor profile creation |
 | updated_at | TIMESTAMP | — | No | CURRENT_TIMESTAMP | Last update |
 
@@ -294,7 +296,7 @@ This maintained Markdown data dictionary defines the fields, data types, keys, c
 The dictionary includes the approved patient-intake and care-coordination schema extension implemented by migrations `202610080001`–`202610080004`.
 
 - Add a patient health-intake submission, separate from `medical_records` and `medical_notes`, containing the patient's self-reported current problem, symptoms/onset, chronic-condition answer/details, medication answer/details, allergy answer/details, optional additional information, submitted/updated timestamps, and workflow state.
-- Support the patient-facing workflow **تم تسليم الطلب** → **قيد المراجعة** → **تم تعيين طبيب**. Store the explicit administrator review-start event/time and reviewer identity. The review-start action locks patient edits; simply viewing the submission does not. Corrections after lock are handled as support requests forwarded to an administrator, not by support editing the intake.
+- Support the patient-facing workflow **تم تسليم الطلب** → **قيد المراجعة** → **تم تعيين طبيب**. Store the explicit administrator review-start event/time and reviewer identity. The review-start action locks patient edits; simply viewing the submission does not. After lock, patients submit correction requests directly to administration, and authorized administrators review and resolve them without a separate technical-support intermediary.
 - Store doctor availability (`متاح/غير متاح`) and admin-configured capacity. Derive active assignment count from `doctor_patient_assignments`; derive assigned open emergency alert count separately. Capacity is informational and must not be a constraint that prevents assignment.
 - Make `doctor_patient_assignments.assignment_reason` required for new assignments and treat it as internal administrative/clinical coordination data.
 - Add a diagnosis field to each doctor's clinical documentation, tied to the author doctor and documentation timestamp. Do not add a single shared diagnosis field to `medical_records`.
@@ -303,3 +305,60 @@ The dictionary includes the approved patient-intake and care-coordination schema
 - `intake_correction_requests` records the patient's message, OPEN/RESOLVED state, administrator response, resolver, and resolution time.
 - `doctor_diagnoses` records patient, authoring doctor, diagnosis text, and documentation time.
 - `doctors.availability` is `AVAILABLE`/`UNAVAILABLE`; nullable `capacity_limit` is informational. Workload counts are query-derived, not stored.
+
+The following sections define the added table columns and database constraints. The `assignment_reason` requirement applies to new assignments at the application layer; the existing database column remains nullable for compatibility with historical rows.
+
+## 20. patient_intakes
+
+| Field | Data Type | Key / Constraint | Null | Default | Description |
+|---|---|---|---|---|---|
+| id | BIGINT UNSIGNED | PK, AUTO_INCREMENT | No | — | Unique intake identifier |
+| patient_id | BIGINT UNSIGNED | FK → patients.id, UNIQUE | No | — | Patient; one intake per patient |
+| current_problem | TEXT | — | No | — | Patient-reported current problem |
+| symptoms | TEXT | — | No | — | Patient-reported symptoms |
+| symptom_onset | VARCHAR(255) | — | No | — | Reported symptom onset; may express unknown timing |
+| chronic_conditions_answer | ENUM | YES, NO, UNKNOWN | No | — | Patient answer about chronic conditions |
+| chronic_conditions_details | TEXT | — | Yes | NULL | Details when supplied |
+| medications_answer | ENUM | YES, NO, UNKNOWN | No | — | Patient answer about current medications |
+| medications_details | TEXT | — | Yes | NULL | Medication details when supplied |
+| allergies_answer | ENUM | YES, NO, UNKNOWN | No | — | Patient answer about known allergies |
+| allergies_details | TEXT | — | Yes | NULL | Allergy details when supplied |
+| additional_information | TEXT | — | Yes | NULL | Optional patient-provided information |
+| status | ENUM | SUBMITTED, UNDER_REVIEW, DOCTOR_ASSIGNED | No | SUBMITTED | Intake workflow status |
+| submitted_at | TIMESTAMP | — | No | CURRENT_TIMESTAMP | Submission time |
+| review_started_at | TIMESTAMP | — | Yes | NULL | Time an Admin explicitly started review |
+| review_started_by_admin_id | BIGINT UNSIGNED | FK → users.id | Yes | NULL | Admin who started review |
+| created_at | TIMESTAMP | — | No | CURRENT_TIMESTAMP | Record creation time |
+| updated_at | TIMESTAMP | — | No | CURRENT_TIMESTAMP | Last update time |
+
+Index: `(status, submitted_at)`.
+
+## 21. intake_correction_requests
+
+| Field | Data Type | Key / Constraint | Null | Default | Description |
+|---|---|---|---|---|---|
+| id | BIGINT UNSIGNED | PK, AUTO_INCREMENT | No | — | Unique correction request identifier |
+| patient_id | BIGINT UNSIGNED | FK → patients.id, INDEX | No | — | Patient who submitted the request |
+| message | TEXT | — | No | — | Patient's correction or additional information |
+| status | ENUM | OPEN, RESOLVED | No | OPEN | Request workflow status |
+| admin_response | TEXT | — | Yes | NULL | Administrator response |
+| resolved_by_admin_id | BIGINT UNSIGNED | FK → users.id | Yes | NULL | Admin who resolved the request |
+| resolved_at | TIMESTAMP | — | Yes | NULL | Resolution time |
+| created_at | TIMESTAMP | — | No | CURRENT_TIMESTAMP | Request creation time |
+| updated_at | TIMESTAMP | — | No | CURRENT_TIMESTAMP | Last update time |
+
+Index: `(status, created_at)`.
+
+## 22. doctor_diagnoses
+
+| Field | Data Type | Key / Constraint | Null | Default | Description |
+|---|---|---|---|---|---|
+| id | BIGINT UNSIGNED | PK, AUTO_INCREMENT | No | — | Unique diagnosis identifier |
+| patient_id | BIGINT UNSIGNED | FK → patients.id | No | — | Patient the diagnosis belongs to |
+| doctor_id | BIGINT UNSIGNED | FK → doctors.id | No | — | Doctor who documented the diagnosis |
+| diagnosis | TEXT | — | No | — | Doctor-authored diagnosis |
+| documented_at | TIMESTAMP | — | No | CURRENT_TIMESTAMP | Clinical documentation time |
+| created_at | TIMESTAMP | — | No | CURRENT_TIMESTAMP | Record creation time |
+| updated_at | TIMESTAMP | — | No | CURRENT_TIMESTAMP | Last update time |
+
+Indexes: `(patient_id, documented_at)` and `(doctor_id, patient_id)`.
