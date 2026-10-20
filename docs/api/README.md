@@ -1087,7 +1087,7 @@ list or detail route is exposed.
 
 ## Patient Intake and Care Coordination
 
-The approved intake extension is implemented on this branch. Patient intake is one self-reported submission, separate from diagnoses and assistance requests. Patient registration remains unchanged and does not collect condition details.
+The approved intake extension is implemented in backend `develop` and was merged through PR #95. Patient intake is one self-reported submission, separate from diagnoses and assistance requests. Patient registration remains unchanged and does not collect condition details.
 
 ### Patient intake
 
@@ -1134,12 +1134,13 @@ PATCH /api/admin/intake-correction-requests/:requestId/resolve
 
 Doctors with an active assignment may create diagnoses using `{ "diagnosis": "..." }`; doctor identity and documentation time come from the server. A Patient may read their own diagnoses, and assigned Doctors may read the Patient's diagnoses. This diagnosis is distinct from author-only medical notes. NGOs and unassigned Doctors have no diagnosis access.
 
-After review starts, a Patient may send a correction/addition request using `{ "message": "..." }`; before review starts the endpoint returns `409`. Support is within administration and does not receive intake access or edit capability. Admins list requests and resolve an open request using `{ "admin_response": "..." }`; resolver identity and time are stored. Successful creation returns `201`, other successful reads/updates return `200`. Invalid payloads/identifiers return `400`, missing resources return `404`, role or assignment failures return `403`, and duplicate intake, locked edits, invalid state transitions, unavailable routine assignment, or premature correction requests return `409`.
+After review starts, a Patient may send a correction/addition request directly to administration using `{ "message": "..." }`; before review starts the endpoint returns `409`. There is no separate technical-support intermediary in this workflow. Admins list requests and resolve an open request using `{ "admin_response": "..." }`; resolver identity and time are stored. Successful creation returns `201`, other successful reads/updates return `200`. Invalid payloads/identifiers return `400`, missing resources return `404`, role or assignment failures return `403`, and duplicate intake, locked edits, invalid state transitions, unavailable routine assignment, or premature correction requests return `409`.
 
-## Sprint 7 verification and handoff
+## Sprint 7 verification record
 
 Sprint 7 cross-role workflows are covered by the repository integration suite.
 The final documentation was reviewed against the SRS, ERD, Data Dictionary,
 and implemented API behavior. The Issue #52 review required no production-code
-or database-schema correction. Final Sprint 7 closure and verification are
-handed to Issue #53.
+or database-schema correction. Sprint 7 final verification was tracked through
+Issue #53; the implementation described in this API reference was later merged
+into backend `develop` through PR #95.

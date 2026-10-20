@@ -474,10 +474,10 @@ assignments in deterministic newest-first order. The details endpoint returns
 one assignment by ID. Responses contain only fields from the approved
 `doctor_patient_assignments` schema.
 
-Creating an assignment requires `doctor_id` and `patient_id`; optional fields
-are `assignment_reason` and `notes`. The referenced Doctor and Patient profiles
-must exist and belong to active users with the matching roles. New assignments
-are created as `ACTIVE` and return `201`.
+Creating an assignment requires `doctor_id`, `patient_id`, and a non-empty
+`assignment_reason`; `notes` are optional. The referenced Doctor and Patient
+profiles must exist and belong to active users with the matching roles. New
+assignments are created as `ACTIVE` and return `201`.
 
 The status endpoint accepts only `ACTIVE` or `INACTIVE`. Deactivation sets
 `ended_at`; reactivation clears it and is rejected when another active

@@ -17,7 +17,7 @@ HCMS is a multi-organization coordination network. Current participants are pati
 5. After submission, show **تم تسليم الطلب** and prompt the patient to review answers, explaining that editing remains possible until administration starts its review.
 6. An explicit administrator **start review** action changes the status to **قيد المراجعة** and locks patient editing. Merely opening or viewing the form does not lock it.
 7. After an administrator saves a doctor assignment, the patient-facing status is **تم تعيين طبيب**. Show the doctor's name, specialization, assignment status, and next step.
-8. After lock, the patient may send a correction/addition request through the technical-support channel. Support forwards it to an authorized administrator; support staff do not read or edit the health form.
+8. After lock, the patient may submit a correction/addition request directly to the administration through the system. An authorized administrator reviews and responds to the request. This workflow has no separate technical-support intermediary; only authorized administrators may access and resolve the request, subject to the intake access rules.
 
 ## Assignment, availability, and workload
 
@@ -37,4 +37,4 @@ HCMS is a multi-organization coordination network. Current participants are pati
 
 ## Current implementation versus approved target
 
-The baseline SRS/ERD PDFs remain unchanged. The backend implementation adds reviewed migrations and API contracts for these approved requirements; the authoritative Markdown ERD and Data Dictionary now include the implementation extension. The work must be treated as complete only after migrations and integration behavior have been verified against a dedicated test database.
+The maintained Markdown SRS, ERD, and Data Dictionary are the current references for the approved baseline and this extension. The backend implementation and migrations `202610080001`–`202610080004` are merged into backend `develop` through PR #95; the frontend implementation is merged into frontend `develop` through PR #46. Current API contracts are documented in [`docs/api/README.md`](../api/README.md). Verify migration execution and cross-role integration behavior against a dedicated test database before release verification.

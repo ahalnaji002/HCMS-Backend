@@ -65,10 +65,6 @@ const options = {
         description: "Patient self-reported intake, administrative review, workload, correction requests, and per-doctor diagnoses.",
       },
       {
-        name: "Patient Intake and Care Coordination",
-        description: "Patient self-reported intake, administrative review, workload, correction requests, and per-doctor diagnoses.",
-      },
-      {
         name: "Emergency Alerts",
         description: "Emergency alert management and Doctor assignment.",
       },
