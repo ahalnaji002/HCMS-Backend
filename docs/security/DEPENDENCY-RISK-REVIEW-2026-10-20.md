@@ -1,7 +1,7 @@
 # HCMS Backend — Dependency Risk Review
 
-**Review date:** 2026-10-20  
-**Branch:** `fix/sprint8-backend-readiness`  
+**Review date:** 2026-10-20
+**Branch:** `fix/sprint8-backend-readiness`
 **Scope:** npm dependency advisories and current repository execution paths
 
 ## Residual advisory
