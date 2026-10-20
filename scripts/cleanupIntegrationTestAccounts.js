@@ -111,8 +111,9 @@ function isLoopbackAddress(address) {
 async function verifyConnectedTestDatabase(database, expectedPort) {
   const connection = await database.client.acquireConnection();
   try {
+    // This validates the TCP peer only; a local tunnel may still relay to a remote server.
     if (!isLoopbackAddress(connection?.stream?.remoteAddress)) {
-      throw new Error("Connected MySQL server is not reached through a local loopback interface");
+      throw new Error("Connected MySQL TCP peer is not a local loopback address");
     }
 
     const rows = await new Promise((resolve, reject) => {
@@ -129,7 +130,7 @@ async function verifyConnectedTestDatabase(database, expectedPort) {
       Number(identity.server_port) !== expectedPort
     ) {
       throw new Error(
-        "Connected MySQL schema or server identity does not match the authorized local test database",
+        "Connected MySQL schema or server settings do not match the expected test database",
       );
     }
   } finally {

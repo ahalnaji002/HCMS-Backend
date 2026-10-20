@@ -135,7 +135,7 @@ test("cleanup refuses a connection whose actual schema is not hcms_test_db", asy
   assert.equal(connectionsCreated, 1);
 });
 
-test("cleanup refuses a loopback endpoint forwarded to a remote MySQL server", async () => {
+test("cleanup refuses a MySQL TCP connection with a non-loopback peer address", async () => {
   const connectionsCreated = await assertRejectedWithoutDeletes({
     environment: safeEnvironment(),
     config: safeConfig(),
