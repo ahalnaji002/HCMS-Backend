@@ -69,7 +69,7 @@ Common status codes:
 | `201` | Successful creation |
 | `400` | Invalid request / validation |
 | `401` | Authentication required |
-| `403` | Authenticated but not authorized |
+| `403` | Authenticated but not authorized, or valid login credentials for an inactive account |
 | `404` | Resource not found |
 | `409` | Business-rule/uniqueness conflict |
 
@@ -83,7 +83,14 @@ Common status codes:
 POST /api/auth/login
 ```
 
-Use the returned JWT for protected requests.
+Active accounts receive a JWT for protected requests. Doctor and NGO applicants
+whose accounts remain inactive receive `403` and no JWT after valid credentials
+are verified. When their latest Join Request is `PENDING` or `REJECTED`, the
+response includes `data.application` with `request_type`, `status`,
+`rejection_reason`, `submitted_at`, and `reviewed_at`. Invalid credentials
+continue to return the generic `401` response and never disclose application
+status. Applicant status access does not grant protected account access or
+enable application updates/resubmission.
 
 The current backend uses stateless JWT authentication. The configured token lifetime is environment-controlled; current development configuration is `1h`.
 
@@ -264,7 +271,7 @@ Request:
 }
 ```
 
-`assignment_reason` and `notes` are optional.
+`assignment_reason` is required and `notes` are optional.
 
 The backend creates the assignment as `ACTIVE`.
 
@@ -694,6 +701,7 @@ Before marking a screen integrated:
 - [ ] Do not implement Forgot/Reset Password in the current release.
 - [ ] On logout, remove local JWT/auth state.
 - [ ] Never assume an inactive Doctor–Patient assignment grants access.
+
 - [ ] Keep frontend models/types aligned with the backend response rather than inventing fields.
 
 ---
@@ -710,11 +718,12 @@ Before marking a screen integrated:
 
 When this guide and backend behavior appear to differ, check in this order:
 
-1. `docs/requirements/SRS.pdf` — required system behavior.
-2. `docs/database/ERD.pdf` — approved entities and relationships.
-3. `docs/database/Data-Dictionary.pdf` — fields and constraints.
-4. `docs/api/README.md` — detailed current backend API behavior.
-5. `FRONTEND_INTEGRATION.md` — frontend-oriented integration summary.
+1. `docs/requirements/SRS.md` — required system behavior and approved addenda.
+2. `docs/requirements/PATIENT_INTAKE_AND_CARE_COORDINATION.md` — approved intake and care-coordination decisions.
+3. `docs/database/ERD.md` — approved entities and relationships.
+4. `docs/database/Data-Dictionary.md` — fields and constraints.
+5. `docs/api/README.md` — detailed current backend API behavior.
+6. `FRONTEND_INTEGRATION.md` — frontend-oriented integration summary.
 
 Do not silently invent a request field, response field, endpoint, permission, or workflow. Raise the mismatch with the backend team first.
 
@@ -754,3 +763,24 @@ Join requests may be reviewed only according to the backend's current pending/re
 
 ---
 
+## Approved Product Requirements — Intake and Care Coordination
+
+This section records approved behavior and the current backend contract. See `docs/api/README.md` for detailed validation, status codes, and response shapes. Where older sections conflict, this approved target behavior applies.
+
+### Patient intake workflow
+
+- Registration remains account/identity-only. After login, the patient completes one required self-reported health-intake form; it must not be presented as a diagnosis.
+- Required information: current health problem (free text), symptoms and onset (allow unknown onset; onset is limited to 255 characters), chronic conditions, current medications, and known allergies. Ask conditional detail for “yes” answers; provide optional additional information. The patient's free text can mention several concerns.
+- Keep profile navigation and emergency alerts available before intake completion. Do not allow a doctor assignment or a new assistance request on the patient's behalf until the intake has been submitted.
+- Patient-visible statuses are exactly **تم تسليم الطلب**, **قيد المراجعة**, and **تم تعيين طبيب**. The patient may edit after submission until an administrator explicitly starts review; opening the form alone does not lock it. Starting review locks patient edits. Assignment status follows a saved doctor assignment.
+- After lock, the patient sends correction/addition requests directly to the administration through the system. An authorized administrator reviews and responds; there is no separate technical-support intermediary in this workflow.
+- Backend authorization: patient reads/edits only their own intake while editable; admin can review it; assigned doctors can read it for care; other doctors and NGOs cannot.
+
+### Assignments, capacity, and clinical information
+
+- A patient may have multiple active assignments to different doctors for different concerns. Require a non-empty internal assignment reason describing the concern followed. Reject a duplicate active assignment for the same doctor-patient pair. Do not expose the internal reason to the patient; show the assigned doctor's name, specialization, assignment status, and next step.
+- Admin-managed availability is **متاح/غير متاح**. Capacity is used to display workload warnings only and never blocks routine or emergency assignment. Routine assignment to an unavailable doctor is disallowed; emergency assignment remains possible and the admin makes the final decision after seeing availability and workload. Count active patient assignments and open assigned emergency alerts separately.
+- Each doctor's diagnosis is separate clinical documentation tied to that doctor and documentation time. Patient and currently assigned doctors may read diagnoses; detailed note text remains author-only. NGO and unassigned doctors cannot read diagnoses.
+- Keep assistance requests and emergency alerts as separate workflows. Doctors create assistance requests on behalf of patients; NGOs receive only the information needed for their assigned request, not the intake or complete medical record.
+
+Implemented route families: Patient intake and correction requests under `/api/patient`; admin intake review, doctor workload, and correction-request resolution under `/api/admin`; assigned-doctor intake and diagnosis reads/writes under `/api/doctor`. Capacity is returned as a warning signal only. Enforce permissions and transition rules server-side; do not rely on hidden UI controls.

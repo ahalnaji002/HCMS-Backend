@@ -1,8 +1,8 @@
-# HCMS Corrected ERD
+# HCMS Entity Relationship Diagram (ERD)
 
-**Sprint 7 reconciliation — Version 1.2**
+**Maintained database schema reference | Updated October 2026 | Markdown**
 
-> Markdown transcription of the approved `ERD.pdf`. It preserves the entities, fields, constraints, foreign-key relationships, and approved Sprint 7 reconciliation rules in a searchable text format. The PDF remains the visual ERD.
+> This maintained Markdown ERD is the current project reference for entities, fields, constraints, foreign-key relationships, and approved reconciliation rules.
 
 ## Identity and access
 
@@ -41,6 +41,8 @@
 | user_id | BIGINT UNSIGNED | FK users.id, UQ, NN |
 | specialization | VARCHAR(100) | NN |
 | license_number | VARCHAR(100) | UQ, NN |
+| availability | ENUM | AVAILABLE / UNAVAILABLE; NN; default AVAILABLE |
+| capacity_limit | INT UNSIGNED | NULL; informational only |
 | created_at | TIMESTAMP | NN |
 | updated_at | TIMESTAMP | NN |
 
@@ -112,6 +114,63 @@
 | note | TEXT | NN |
 | created_at | TIMESTAMP | NN |
 | updated_at | TIMESTAMP | NN |
+
+## Intake and care coordination
+
+### patient_intakes
+
+| Field | Data type | Constraint / values |
+|---|---|---|
+| id | BIGINT UNSIGNED | PK, AI, NN |
+| patient_id | BIGINT UNSIGNED | FK patients.id, UQ, NN; one intake per Patient |
+| current_problem | TEXT | NN |
+| symptoms | TEXT | NN |
+| symptom_onset | VARCHAR(255) | NN |
+| chronic_conditions_answer | ENUM | YES / NO / UNKNOWN; NN |
+| chronic_conditions_details | TEXT | NULL |
+| medications_answer | ENUM | YES / NO / UNKNOWN; NN |
+| medications_details | TEXT | NULL |
+| allergies_answer | ENUM | YES / NO / UNKNOWN; NN |
+| allergies_details | TEXT | NULL |
+| additional_information | TEXT | NULL |
+| status | ENUM | SUBMITTED / UNDER_REVIEW / DOCTOR_ASSIGNED; NN; default SUBMITTED |
+| submitted_at | TIMESTAMP | NN; default CURRENT_TIMESTAMP |
+| review_started_at | TIMESTAMP | NULL |
+| review_started_by_admin_id | BIGINT UNSIGNED | FK users.id, NULL |
+| created_at | TIMESTAMP | NN; default CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | NN; default CURRENT_TIMESTAMP |
+
+Index: `(status, submitted_at)`.
+
+### intake_correction_requests
+
+| Field | Data type | Constraint / values |
+|---|---|---|
+| id | BIGINT UNSIGNED | PK, AI, NN |
+| patient_id | BIGINT UNSIGNED | FK patients.id, NN; indexed |
+| message | TEXT | NN |
+| status | ENUM | OPEN / RESOLVED; NN; default OPEN |
+| admin_response | TEXT | NULL |
+| resolved_by_admin_id | BIGINT UNSIGNED | FK users.id, NULL |
+| resolved_at | TIMESTAMP | NULL |
+| created_at | TIMESTAMP | NN; default CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | NN; default CURRENT_TIMESTAMP |
+
+Index: `(status, created_at)`.
+
+### doctor_diagnoses
+
+| Field | Data type | Constraint / values |
+|---|---|---|
+| id | BIGINT UNSIGNED | PK, AI, NN |
+| patient_id | BIGINT UNSIGNED | FK patients.id, NN |
+| doctor_id | BIGINT UNSIGNED | FK doctors.id, NN |
+| diagnosis | TEXT | NN |
+| documented_at | TIMESTAMP | NN; default CURRENT_TIMESTAMP |
+| created_at | TIMESTAMP | NN; default CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | NN; default CURRENT_TIMESTAMP |
+
+Indexes: `(patient_id, documented_at)` and `(doctor_id, patient_id)`.
 
 ### treatment_plans
 
@@ -286,6 +345,12 @@
 - `join_requests.reviewed_by_admin_id` → `users.id`
 - `doctor_patient_assignments.doctor_id` → `doctors.id`
 - `doctor_patient_assignments.patient_id` → `patients.id`
+- `patient_intakes.patient_id` → `patients.id`
+- `patient_intakes.review_started_by_admin_id` → `users.id`
+- `intake_correction_requests.patient_id` → `patients.id`
+- `intake_correction_requests.resolved_by_admin_id` → `users.id`
+- `doctor_diagnoses.patient_id` → `patients.id`
+- `doctor_diagnoses.doctor_id` → `doctors.id`
 - `medical_records.patient_id` → `patients.id`
 - `medical_notes.medical_record_id` → `medical_records.id`
 - `medical_notes.doctor_id` → `doctors.id`
@@ -323,6 +388,7 @@
 1. Removed undocumented `emergency_alerts` fields: `alert_type`, `latitude`, `longitude`, and `cancelled_at`.
 2. Emergency `phone` is `VARCHAR(30)`; `patient_id` and `description` are nullable; `assigned_by_admin_id` and `assigned_at` are retained.
 3. Assistance Requests use `doctor_id` and `request_type VARCHAR(100)`.
+
 4. Notifications use `title VARCHAR(150)` and `type VARCHAR(50)`; no `sent_at` column is defined.
 5. Reminders require both `reference_type` and `reference_id`; `sent_at` remains nullable.
 6. Activity Logs use `action VARCHAR(50)` and `description TEXT NOT NULL`.
@@ -330,3 +396,19 @@
 8. Resource Allocation `resource_name` is `VARCHAR(150)`, is not an FK, and no resources table exists.
 
 **Legend:** PK = Primary Key; FK = Foreign Key; UQ = Unique; NN = Not Null; NULL = Nullable; AI = Auto Increment.
+
+## Implemented Approved Data-Model Extension
+
+This ERD includes the baseline model and the approved patient-intake and care-coordination extension implemented by migrations `202610080001`–`202610080004`:
+
+- Introduce a patient health-intake entity separate from `medical_records` and `medical_notes`. It stores the patient's self-reported answers, workflow status, submission/update timestamps, and the administrator/review-start timestamp and identity. The intake is a single submission per patient in the current scope; the patient may edit it until explicit admin review begins.
+- Model explicit transitions corresponding to **تم تسليم الطلب**, **قيد المراجعة**, and **تم تعيين طبيب**. Viewing an intake does not start review; the admin action to start review locks patient edits. After lock, the patient submits correction requests directly to administration; authorized administrators review and resolve them, with no separate technical-support intermediary.
+- Add doctor availability and admin-configured capacity attributes. Assignment and emergency workload counts are derived from existing assignments and alerts; capacity is informational, not a database or application assignment limit.
+- Require an internal `assignment_reason` for new doctor-patient assignments. Keep the existing rule that multiple doctors may be active for one patient while preventing duplicate active assignments for the same pair.
+- Store each doctor's diagnosis with that doctor's clinical documentation, author identity, and timestamp. Do not store a single global diagnosis on the patient's `medical_records` row.
+
+- `patient_intakes` has one row per patient and stores the approved self-reported answers, status, submission/review timestamps, and reviewing Admin ID.
+- `intake_correction_requests` stores patient-submitted post-lock correction requests; only administrators resolve them.
+- `doctor_diagnoses` stores each diagnosis with the authoring Doctor and documentation timestamp.
+- `doctors.availability` and `doctors.capacity_limit` store admin-managed availability and informational capacity. Active assignments and open assigned emergency alerts are calculated separately; capacity does not block assignment.
+- Authorization remains enforced in API services: Patients read their own intake/diagnoses, Admins review intake, and currently assigned Doctors read the intake/diagnoses. NGOs and unassigned Doctors have no access.

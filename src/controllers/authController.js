@@ -140,7 +140,11 @@ async function loginHandler(req, res) {
     }
 
     if (error instanceof AccountNotActiveError) {
-      return res.status(403).json({ success: false, message: error.message });
+      const response = { success: false, message: error.message };
+      if (error.application) {
+        response.data = { application: error.application };
+      }
+      return res.status(403).json(response);
     }
 
     return res.status(500).json({

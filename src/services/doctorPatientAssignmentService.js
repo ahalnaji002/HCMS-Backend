@@ -3,6 +3,7 @@ const doctorModel = require("../models/doctorModel");
 const patientModel = require("../models/patientModel");
 const userModel = require("../models/userModel");
 const doctorPatientAssignmentModel = require("../models/doctorPatientAssignmentModel");
+const patientIntakeModel = require("../models/patientIntakeModel");
 
 class DoctorNotFoundError extends Error {
   constructor() {
@@ -53,6 +54,38 @@ class AssignmentStatusConflictError extends Error {
   }
 }
 
+class PatientIntakeRequiredError extends Error {
+  constructor(message = "Patient intake must be under review before assignment") {
+    super(message);
+    this.name = "PatientIntakeRequiredError";
+  }
+}
+
+class DoctorUnavailableError extends Error {
+  constructor() {
+    super("Unavailable doctors cannot receive routine assignments");
+    this.name = "DoctorUnavailableError";
+  }
+}
+
+class AssignmentReasonRequiredError extends Error {
+  constructor() {
+    super("A non-empty internal assignment reason is required");
+    this.name = "AssignmentReasonRequiredError";
+  }
+}
+
+async function requireAssignableIntake(patientId, connection) {
+  const intake = await patientIntakeModel.findByPatientIdForUpdate(
+    patientId,
+    connection,
+  );
+  if (!intake || !["UNDER_REVIEW", "DOCTOR_ASSIGNED"].includes(intake.status)) {
+    throw new PatientIntakeRequiredError();
+  }
+  return intake;
+}
+
 function listDoctorPatientAssignments() {
   return doctorPatientAssignmentModel.listAll();
 }
@@ -92,6 +125,21 @@ async function updateDoctorPatientAssignmentStatus(id, status) {
     }
 
     if (status === "ACTIVE") {
+      if (
+        typeof assignment.assignment_reason !== "string" ||
+        assignment.assignment_reason.trim().length === 0
+      ) {
+        throw new AssignmentReasonRequiredError();
+      }
+      const doctor = await doctorModel.findByIdForUpdate(
+        assignment.doctor_id,
+        trx,
+      );
+      if (doctor.availability === "UNAVAILABLE") {
+        throw new DoctorUnavailableError();
+      }
+      await requireAssignableIntake(assignment.patient_id, trx);
+
       const activeAssignment =
         await doctorPatientAssignmentModel.findActiveByDoctorAndPatient(
           assignment.doctor_id,
@@ -104,16 +152,27 @@ async function updateDoctorPatientAssignmentStatus(id, status) {
       }
     }
 
-    return doctorPatientAssignmentModel.updateStatus(
+    const updated = await doctorPatientAssignmentModel.updateStatus(
       assignment.id,
       status,
       status === "INACTIVE" ? trx.fn.now() : null,
       trx,
     );
+    if (status === "ACTIVE") {
+      await patientIntakeModel.markDoctorAssigned(assignment.patient_id, trx);
+    }
+    return updated;
   });
 }
 
 async function createDoctorPatientAssignment(input) {
+  if (
+    typeof input.assignment_reason !== "string" ||
+    input.assignment_reason.trim().length === 0
+  ) {
+    throw new AssignmentReasonRequiredError();
+  }
+
   return db.transaction(async (trx) => {
     /*
      * Lock the doctor and patient rows before checking for an existing
@@ -145,6 +204,10 @@ async function createDoctorPatientAssignment(input) {
       throw new DoctorNotActiveError();
     }
 
+    if (doctor.availability === "UNAVAILABLE") {
+      throw new DoctorUnavailableError();
+    }
+
     const patientUser = await userModel.findById(patient.user_id, trx);
 
     if (
@@ -154,6 +217,8 @@ async function createDoctorPatientAssignment(input) {
     ) {
       throw new PatientNotActiveError();
     }
+
+    const intake = await requireAssignableIntake(patient.id, trx);
 
     const activeAssignment =
       await doctorPatientAssignmentModel.findActiveByDoctorAndPatient(
@@ -166,7 +231,7 @@ async function createDoctorPatientAssignment(input) {
       throw new ActiveAssignmentExistsError();
     }
 
-    return doctorPatientAssignmentModel.create(
+    const assignment = await doctorPatientAssignmentModel.create(
       {
         doctor_id: doctor.id,
         patient_id: patient.id,
@@ -175,6 +240,10 @@ async function createDoctorPatientAssignment(input) {
       },
       trx,
     );
+    if (intake.status !== "DOCTOR_ASSIGNED") {
+      await patientIntakeModel.markDoctorAssigned(patient.id, trx);
+    }
+    return assignment;
   });
 }
 
@@ -182,10 +251,13 @@ module.exports = {
   ActiveAssignmentExistsError,
   AssignmentNotFoundError,
   AssignmentStatusConflictError,
+  AssignmentReasonRequiredError,
+  DoctorUnavailableError,
   DoctorNotActiveError,
   DoctorNotFoundError,
   PatientNotActiveError,
   PatientNotFoundError,
+  PatientIntakeRequiredError,
   createDoctorPatientAssignment,
   getDoctorPatientAssignment,
   listDoctorPatientAssignments,

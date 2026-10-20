@@ -31,6 +31,15 @@ async function verifyTestDatabase() {
     throw new Error("TEST_DB_NAME must differ from DB_NAME");
   }
 
+  if (
+    process.env.HCMS_ISOLATED_TEST_DB !== "1" ||
+    !/^hcms_test_run_[0-9]+_[a-f0-9]{12}$/.test(process.env.TEST_DB_NAME)
+  ) {
+    throw new Error(
+      "Refusing to run database tests without the isolated temporary test runner",
+    );
+  }
+
   const result = await db.raw("SELECT DATABASE() AS database_name");
   const databaseName = result[0][0].database_name;
 
@@ -183,6 +192,20 @@ function ngoRegistration(overrides = {}) {
   };
 }
 
+function patientIntakePayload(overrides = {}) {
+  return {
+    current_problem: "Recurring headaches",
+    symptoms: "Headache and nausea",
+    symptom_onset: "About two weeks ago",
+    chronic_conditions_answer: "NO",
+    medications_answer: "YES",
+    medications_details: "Paracetamol",
+    allergies_answer: "UNKNOWN",
+    additional_information: "Symptoms are worse in the evening",
+    ...overrides,
+  };
+}
+
 before(async () => {
   await verifyTestDatabase();
 });
@@ -192,6 +215,9 @@ beforeEach(async () => {
 
   await db("activity_logs").del();
   await db("system_settings").del();
+  await db("intake_correction_requests").del();
+  await db("doctor_diagnoses").del();
+  await db("patient_intakes").del();
   await db("notifications").del();
   await db("reminders").del();
   await db("messages").del();
@@ -211,6 +237,18 @@ beforeEach(async () => {
   await db("users").del();
 
   users = await createFixtures();
+  await db("patient_intakes").insert({
+    patient_id: users.patientProfile.id,
+    current_problem: "Test intake",
+    symptoms: "Test symptoms",
+    symptom_onset: "Unknown",
+    chronic_conditions_answer: "NO",
+    medications_answer: "NO",
+    allergies_answer: "NO",
+    status: "UNDER_REVIEW",
+    review_started_at: db.fn.now(),
+    review_started_by_admin_id: users.admin.id,
+  });
 });
 
 after(async () => {
@@ -218,6 +256,9 @@ after(async () => {
     if (testDatabaseVerified) {
       await db("activity_logs").del();
       await db("system_settings").del();
+      await db("intake_correction_requests").del();
+      await db("doctor_diagnoses").del();
+      await db("patient_intakes").del();
       await db("notifications").del();
       await db("reminders").del();
       await db("messages").del();
@@ -365,6 +406,7 @@ test("authorization uses current database account status", async () => {
 test("authorization uses current database role instead of stale token role", async () => {
   const token = tokenFor(users.patient);
 
+  await db("patient_intakes").where({ patient_id: users.patientProfile.id }).del();
   await db("patients").where({ user_id: users.patient.id }).del();
 
   await db("users").where({ id: users.patient.id }).update({ role: "ADMIN" });
@@ -584,20 +626,221 @@ test("admin can create an active doctor-patient assignment", async () => {
   assert.ok(storedAssignment);
 });
 
-test("assignment_reason and notes are optional", async () => {
+test("assignment reason is required while notes remain optional", async () => {
   const response = await request(app)
     .post("/api/admin/doctor-patient-assignments")
     .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
     .send({
       doctor_id: users.doctorProfile.id,
       patient_id: users.patientProfile.id,
+      assignment_reason: "Routine follow-up",
     });
 
   assert.equal(response.status, 201);
   assert.equal(response.body.success, true);
   assert.equal(response.body.data.assignment.status, "ACTIVE");
-  assert.equal(response.body.data.assignment.assignment_reason, null);
+  assert.equal(response.body.data.assignment.assignment_reason, "Routine follow-up");
   assert.equal(response.body.data.assignment.notes, null);
+
+  const missingReason = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+    });
+  assert.equal(missingReason.status, 400);
+  assert.ok(missingReason.body.errors.assignment_reason);
+});
+
+test("Patient intake submission, edit, review lock, correction, and assignment flow", async () => {
+  await db("patient_intakes").where({ patient_id: users.patientProfile.id }).del();
+  const patientAuthorization = `Bearer ${tokenFor(users.patient)}`;
+  const adminAuthorization = `Bearer ${tokenFor(users.admin)}`;
+
+  const beforeSubmission = await request(app)
+    .get("/api/patient/intake")
+    .set("Authorization", patientAuthorization);
+  assert.equal(beforeSubmission.status, 200);
+  assert.equal(beforeSubmission.body.data.intake, null);
+
+  const submission = await request(app)
+    .post("/api/patient/intake")
+    .set("Authorization", patientAuthorization)
+    .send(patientIntakePayload({ symptom_onset: "x".repeat(255) }));
+  assert.equal(submission.status, 201);
+  assert.equal(submission.body.data.intake.status, "SUBMITTED");
+
+  const longOnset = await request(app)
+    .post("/api/patient/intake")
+    .set("Authorization", patientAuthorization)
+    .send(patientIntakePayload({ symptom_onset: "x".repeat(256) }));
+  assert.equal(longOnset.status, 400);
+  assert.ok(longOnset.body.errors.symptom_onset);
+
+  const edit = await request(app)
+    .put("/api/patient/intake")
+    .set("Authorization", patientAuthorization)
+    .send(patientIntakePayload({ current_problem: "Updated headache report" }));
+  assert.equal(edit.status, 200);
+  assert.equal(edit.body.data.intake.current_problem, "Updated headache report");
+  assert.equal(edit.body.data.intake.status, "SUBMITTED");
+
+  const intakeId = edit.body.data.intake.id;
+  const review = await request(app)
+    .patch(`/api/admin/patient-intakes/${intakeId}/start-review`)
+    .set("Authorization", adminAuthorization);
+  assert.equal(review.status, 200);
+  assert.equal(review.body.data.intake.status, "UNDER_REVIEW");
+  assert.equal(
+    Number(review.body.data.intake.review_started_by_admin_id),
+    users.admin.id,
+  );
+  assert.ok(review.body.data.intake.review_started_at);
+
+  const lockedEdit = await request(app)
+    .put("/api/patient/intake")
+    .set("Authorization", patientAuthorization)
+    .send(patientIntakePayload());
+  assert.equal(lockedEdit.status, 409);
+
+  const correction = await request(app)
+    .post("/api/patient/intake-correction-requests")
+    .set("Authorization", patientAuthorization)
+    .send({ message: "Please add my newly reported symptom." });
+  assert.equal(correction.status, 201);
+  assert.equal(correction.body.data.request.status, "OPEN");
+
+  for (const invalidResponse of [{}, { admin_response: "" }, { admin_response: "   " }]) {
+    const rejectedResolution = await request(app)
+      .patch(
+        `/api/admin/intake-correction-requests/${correction.body.data.request.id}/resolve`,
+      )
+      .set("Authorization", adminAuthorization)
+      .send(invalidResponse);
+    assert.equal(rejectedResolution.status, 400);
+    assert.ok(rejectedResolution.body.errors.admin_response);
+  }
+
+  const stillOpen = await request(app)
+    .get("/api/admin/intake-correction-requests")
+    .set("Authorization", adminAuthorization);
+  assert.equal(stillOpen.status, 200);
+  assert.equal(stillOpen.body.data.requests[0].status, "OPEN");
+
+  const resolve = await request(app)
+    .patch(
+      `/api/admin/intake-correction-requests/${correction.body.data.request.id}/resolve`,
+    )
+    .set("Authorization", adminAuthorization)
+    .send({ admin_response: "The correction has been recorded for review." });
+  assert.equal(resolve.status, 200);
+  assert.equal(resolve.body.data.request.status, "RESOLVED");
+  assert.equal(
+    Number(resolve.body.data.request.resolved_by_admin_id),
+    users.admin.id,
+  );
+
+  const assignment = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", adminAuthorization)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+      assignment_reason: "Follow up the headache concern",
+    });
+  assert.equal(assignment.status, 201);
+  assert.equal(assignment.body.data.assignment.status, "ACTIVE");
+  const assignedIntake = await request(app)
+    .get("/api/patient/intake")
+    .set("Authorization", patientAuthorization);
+  assert.equal(assignedIntake.body.data.intake.status, "DOCTOR_ASSIGNED");
+});
+
+test("Doctor availability blocks routine assignment while capacity remains advisory", async () => {
+  const adminAuthorization = `Bearer ${tokenFor(users.admin)}`;
+  await request(app)
+    .patch(`/api/admin/doctors/${users.doctorProfile.id}/workload`)
+    .set("Authorization", adminAuthorization)
+    .send({ availability: "UNAVAILABLE", capacity_limit: 0 });
+
+  const blockedRoutine = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", adminAuthorization)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+      assignment_reason: "Unavailable check",
+    });
+  assert.equal(blockedRoutine.status, 409);
+  assert.match(blockedRoutine.body.message, /Unavailable/);
+
+  const alert = await insertDoctorEmergencyAlert({
+    patient_id: users.patientProfile.id,
+    assigned_doctor_id: null,
+    assigned_by_admin_id: null,
+    assigned_at: null,
+    status: "PENDING_ASSIGNMENT",
+  });
+  const emergency = await request(app)
+    .patch(`/api/admin/emergency-alerts/${alert.id}/assign`)
+    .set("Authorization", adminAuthorization)
+    .send({ doctor_id: users.doctorProfile.id });
+  assert.equal(emergency.status, 200);
+
+  await request(app)
+    .patch(`/api/admin/doctors/${users.doctorProfile.id}/workload`)
+    .set("Authorization", adminAuthorization)
+    .send({ availability: "AVAILABLE" });
+  const allowedAtCapacity = await request(app)
+    .post("/api/admin/doctor-patient-assignments")
+    .set("Authorization", adminAuthorization)
+    .send({
+      doctor_id: users.doctorProfile.id,
+      patient_id: users.patientProfile.id,
+      assignment_reason: "Capacity warning must not block assignment",
+    });
+  assert.equal(allowedAtCapacity.status, 201);
+
+  const workload = await request(app)
+    .get("/api/admin/active-doctors")
+    .set("Authorization", adminAuthorization);
+  assert.equal(workload.status, 200);
+  const doctor = workload.body.data.doctors.find(
+    (item) => Number(item.id) === users.doctorProfile.id,
+  );
+  assert.equal(Number(doctor.active_assignment_count), 1);
+  assert.equal(Number(doctor.open_emergency_alert_count), 1);
+  assert.equal(doctor.capacity_warning, true);
+});
+
+test("Diagnosis APIs expose records only to the Patient and actively assigned Doctors", async () => {
+  await insertAssignment();
+  const doctorAuthorization = `Bearer ${tokenFor(users.doctor)}`;
+  const patientAuthorization = `Bearer ${tokenFor(users.patient)}`;
+  const diagnosis = await request(app)
+    .post(`/api/doctor/patients/${users.patientProfile.id}/diagnoses`)
+    .set("Authorization", doctorAuthorization)
+    .send({ diagnosis: "Migraine under evaluation" });
+  assert.equal(diagnosis.status, 201);
+  assert.equal(Number(diagnosis.body.data.diagnosis.doctor_id), users.doctorProfile.id);
+
+  const patientRead = await request(app)
+    .get("/api/patient/diagnoses")
+    .set("Authorization", patientAuthorization);
+  assert.equal(patientRead.status, 200);
+  assert.equal(patientRead.body.data.diagnoses.length, 1);
+
+  const assignedDoctorRead = await request(app)
+    .get(`/api/doctor/patients/${users.patientProfile.id}/diagnoses`)
+    .set("Authorization", doctorAuthorization);
+  assert.equal(assignedDoctorRead.status, 200);
+  assert.equal(assignedDoctorRead.body.data.diagnoses.length, 1);
+
+  const ngoRead = await request(app)
+    .get(`/api/doctor/patients/${users.patientProfile.id}/diagnoses`)
+    .set("Authorization", `Bearer ${tokenFor(users.ngo)}`);
+  assert.equal(ngoRead.status, 403);
 });
 
 test("assignment creation rejects invalid doctor and patient ids", async () => {
@@ -645,6 +888,7 @@ test("assignment creation returns 404 when doctor does not exist", async () => {
     .send({
       doctor_id: "999999999",
       patient_id: users.patientProfile.id,
+      assignment_reason: "Test reason",
     });
 
   assert.equal(response.status, 404);
@@ -659,6 +903,7 @@ test("assignment creation returns 404 when patient does not exist", async () => 
     .send({
       doctor_id: users.doctorProfile.id,
       patient_id: "999999999",
+      assignment_reason: "Test reason",
     });
 
   assert.equal(response.status, 404);
@@ -677,6 +922,7 @@ test("assignment creation rejects an inactive doctor account", async () => {
     .send({
       doctor_id: users.doctorProfile.id,
       patient_id: users.patientProfile.id,
+      assignment_reason: "Test reason",
     });
 
   assert.equal(response.status, 409);
@@ -699,6 +945,7 @@ test("assignment creation rejects an inactive patient account", async () => {
     .send({
       doctor_id: users.doctorProfile.id,
       patient_id: users.patientProfile.id,
+      assignment_reason: "Test reason",
     });
 
   assert.equal(response.status, 409);
@@ -719,6 +966,7 @@ test("assignment creation rejects a doctor profile with a non-doctor user role",
     .send({
       doctor_id: users.doctorProfile.id,
       patient_id: users.patientProfile.id,
+      assignment_reason: "Test reason",
     });
 
   assert.equal(response.status, 409);
@@ -741,6 +989,7 @@ test("assignment creation rejects a patient profile with a non-patient user role
     .send({
       doctor_id: users.doctorProfile.id,
       patient_id: users.patientProfile.id,
+      assignment_reason: "Test reason",
     });
 
   assert.equal(response.status, 409);
@@ -768,6 +1017,7 @@ test("assignment creation rejects a duplicate active assignment", async () => {
     .send({
       doctor_id: users.doctorProfile.id,
       patient_id: users.patientProfile.id,
+      assignment_reason: "Test reason",
     });
 
   assert.equal(response.status, 409);
@@ -4641,7 +4891,10 @@ test("login safely rejects a wrong password and an unknown account", async () =>
 
 test("login rejects inactive unapproved accounts", async () => {
   const payload = doctorRegistration();
-  await request(app).post("/api/auth/register/doctor").send(payload);
+  const registration = await request(app)
+    .post("/api/auth/register/doctor")
+    .send(payload);
+  const joinRequestId = registration.body.data.join_request.id;
 
   const response = await request(app)
     .post("/api/auth/login")
@@ -4650,6 +4903,58 @@ test("login rejects inactive unapproved accounts", async () => {
   assert.equal(response.status, 403);
   assert.equal(response.body.success, false);
   assert.equal(response.body.message, "Account is not active");
+  assert.deepEqual(response.body.data.application, {
+    request_type: "DOCTOR",
+    status: "PENDING",
+    rejection_reason: null,
+    submitted_at: response.body.data.application.submitted_at,
+    reviewed_at: null,
+  });
+  assert.ok(response.body.data.application.submitted_at);
+  assert.equal("token" in response.body.data, false);
+
+  const wrongPassword = await request(app)
+    .post("/api/auth/login")
+    .send({ email: payload.email, password: "Wrong123" });
+  assert.equal(wrongPassword.status, 401);
+  assert.equal("data" in wrongPassword.body, false);
+
+  const joinRequest = await db("join_requests")
+    .where({ id: joinRequestId })
+    .first();
+  assert.equal(joinRequest.status, "PENDING");
+});
+
+test("login returns the rejection reason to an authenticated inactive applicant", async () => {
+  const payload = ngoRegistration();
+  const registration = await request(app)
+    .post("/api/auth/register/ngo")
+    .send(payload);
+  const joinRequestId = registration.body.data.join_request.id;
+  const rejectionReason = "Organization registration could not be verified.";
+
+  await db("join_requests").where({ id: joinRequestId }).update({
+    status: "REJECTED",
+    rejection_reason: rejectionReason,
+    reviewed_by_admin_id: users.admin.id,
+    reviewed_at: db.fn.now(),
+  });
+
+  const response = await request(app)
+    .post("/api/auth/login")
+    .send({ email: payload.email, password: payload.password });
+
+  assert.equal(response.status, 403);
+  assert.deepEqual(response.body.data.application, {
+    request_type: "NGO",
+    status: "REJECTED",
+    rejection_reason: rejectionReason,
+    submitted_at: response.body.data.application.submitted_at,
+    reviewed_at: response.body.data.application.reviewed_at,
+  });
+  assert.ok(response.body.data.application.submitted_at);
+  assert.ok(response.body.data.application.reviewed_at);
+  assert.equal("token" in response.body.data, false);
 });
 
 test("protected routes reject malformed invalid and expired JWTs", async () => {
@@ -10550,6 +10855,11 @@ test("Role dashboards return 404 when the authenticated role profile is missing"
     ["NGO", "ngos"],
   ]) {
     const currentUser = users[role.toLowerCase()];
+    if (role === "PATIENT") {
+      await db("intake_correction_requests").where({ patient_id: users.patientProfile.id }).del();
+      await db("doctor_diagnoses").where({ patient_id: users.patientProfile.id }).del();
+      await db("patient_intakes").where({ patient_id: users.patientProfile.id }).del();
+    }
     await db(table).where({ user_id: currentUser.id }).del();
     const response = await request(app)
       .get(DASHBOARD_PATHS[role])
@@ -10752,6 +11062,9 @@ test("Reports preserve requested empty-page metadata and create no Activity Logs
 });
 
 test("All reports return the approved zero-total empty state", async () => {
+  await db("intake_correction_requests").del();
+  await db("doctor_diagnoses").del();
+  await db("patient_intakes").del();
   await db("patients").del();
   const authorization = `Bearer ${tokenFor(users.admin)}`;
 

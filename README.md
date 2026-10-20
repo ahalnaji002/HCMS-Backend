@@ -80,6 +80,10 @@ Set `JWT_SECRET` to a strong private random value.
 
 `ADMIN_PASSWORD` must also be configured locally before running the Admin seed.
 
+### Test database isolation
+
+`npm test` creates a uniquely named temporary schema using the `TEST_DB_*` connection settings, applies all migrations to that schema, runs the tests there, and drops only that schema afterward. The configured `TEST_DB_NAME` must be `hcms_test_db`, must differ from `DB_NAME`, and the test MySQL account needs permission to create and drop databases. The test suite is guarded so it cannot clean a shared test database directly.
+
 > Do not commit the `.env` file, real passwords, JWT secrets, or tokens to GitHub.
 
 ## Database Setup
@@ -108,7 +112,7 @@ Rollback the latest migration batch:
 npm run migrate:rollback
 ```
 
-The project includes dependency-ordered Knex migrations for the approved 19-table HCMS schema.
+The project includes dependency-ordered Knex migrations for the HCMS schema and approved intake/care-coordination extensions.
 
 ## Database Access
 
@@ -144,7 +148,7 @@ http://localhost:3000
 
 - Express-based REST API foundation.
 - Reusable Knex runtime database connection.
-- Dependency-ordered migrations for the approved 19-table HCMS schema.
+- Dependency-ordered migrations for the HCMS baseline and approved schema extensions.
 - Data-access modules for users, patients, doctors, NGOs, and Join Requests.
 - Transactional Patient Registration.
 - Transactional Doctor Registration with Join Request creation.
@@ -163,6 +167,18 @@ http://localhost:3000
 - Doctor-owned Medical Notes for actively assigned Patients.
 - Continuing-care Treatment Plans with Patient read-only access.
 - Treatment Medication and Appointment management scoped to Treatment Plans.
+- Patient self-reported intake submission, pre-review editing, and administrator review locking.
+- Admin-managed doctor availability and capacity warnings, with separate assignment and emergency workload counts.
+- Multiple doctor assignments per patient, required internal assignment reasons, and per-doctor diagnoses.
+- Patient correction requests routed to administrators after review begins.
+
+## Patient Intake and Care Coordination
+
+After login, a Patient can submit one self-reported intake using `POST /api/patient/intake`; the Patient can edit it with `PUT` only until an Admin starts review. Admins review submissions through `GET /api/admin/patient-intakes` and lock one with `PATCH /api/admin/patient-intakes/:intakeId/start-review`. Doctors can read an assigned Patient's intake at `GET /api/doctor/patients/:patientId/intake`.
+
+Doctor assignments require the reviewed intake and an internal `assignment_reason`. Routine assignments to unavailable doctors are rejected. Capacity only produces an administrative warning and never blocks an assignment. Emergency alert assignment stays on its separate route and remains possible for unavailable doctors when they meet the existing emergency eligibility rules.
+
+See [API documentation](docs/api/README.md) and [approved intake requirements](docs/requirements/PATIENT_INTAKE_AND_CARE_COORDINATION.md) for authorization and payload details.
 
 ## API
 
@@ -289,7 +305,14 @@ Incorrect credentials return:
 401 Invalid email or password
 ```
 
-Valid credentials for an `INACTIVE` or `SUSPENDED` account return:
+Valid credentials for an `INACTIVE` or `SUSPENDED` account do not create a
+session and return `403`. For an inactive Doctor or NGO applicant with a
+pending or rejected Join Request, the response also returns that application's
+status and (if rejected) its rejection reason, but only after password
+verification. Incorrect credentials still receive the same `401` response.
+The successful-login response remains limited to active accounts.
+
+Other inactive accounts return:
 
 ```text
 403 Account is not active
@@ -455,10 +478,10 @@ assignments in deterministic newest-first order. The details endpoint returns
 one assignment by ID. Responses contain only fields from the approved
 `doctor_patient_assignments` schema.
 
-Creating an assignment requires `doctor_id` and `patient_id`; optional fields
-are `assignment_reason` and `notes`. The referenced Doctor and Patient profiles
-must exist and belong to active users with the matching roles. New assignments
-are created as `ACTIVE` and return `201`.
+Creating an assignment requires `doctor_id`, `patient_id`, and a non-empty
+`assignment_reason`; `notes` are optional. The referenced Doctor and Patient
+profiles must exist and belong to active users with the matching roles. New
+assignments are created as `ACTIVE` and return `201`.
 
 The status endpoint accepts only `ACTIVE` or `INACTIVE`. Deactivation sets
 `ended_at`; reactivation clears it and is rejected when another active

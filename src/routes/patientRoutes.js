@@ -32,6 +32,16 @@ const {
 } = require("../middleware/validateResourceAllocation");
 const reminderController = require("../controllers/reminderController");
 const dashboardReportController = require("../controllers/dashboardReportController");
+const patientIntakeController = require("../controllers/patientIntakeController");
+const intakeCorrectionRequestController = require("../controllers/intakeCorrectionRequestController");
+const doctorDiagnosisController = require("../controllers/doctorDiagnosisController");
+const patientDoctorAssignmentController = require("../controllers/patientDoctorAssignmentController");
+const {
+  validateIntakePayload,
+} = require("../middleware/validatePatientIntake");
+const {
+  validateCreateCorrectionRequest,
+} = require("../middleware/validateIntakeCorrectionRequest");
 const {
   validateCancelReminder,
   validateCreateReminder,
@@ -43,6 +53,31 @@ const router = express.Router();
 router.use(authenticate, authorizeRoles("PATIENT"));
 
 router.get("/dashboard", dashboardReportController.getPatientDashboard);
+
+router.get("/intake", patientIntakeController.getOwn);
+router.post(
+  "/intake",
+  validateIntakePayload,
+  patientIntakeController.createOwn,
+);
+router.put(
+  "/intake",
+  validateIntakePayload,
+  patientIntakeController.updateOwn,
+);
+
+router.get("/doctor-assignments", patientDoctorAssignmentController.listOwn);
+
+router.get("/diagnoses", doctorDiagnosisController.listOwn);
+router.get(
+  "/intake-correction-requests",
+  intakeCorrectionRequestController.listOwn,
+);
+router.post(
+  "/intake-correction-requests",
+  validateCreateCorrectionRequest,
+  intakeCorrectionRequestController.createOwn,
+);
 
 router.post(
   "/emergency-alerts",

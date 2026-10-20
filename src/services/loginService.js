@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const userModel = require("../models/userModel");
+const joinRequestModel = require("../models/joinRequestModel");
 const { signToken } = require("./tokenService");
 
 class InvalidCredentialsError extends Error {
@@ -10,9 +11,10 @@ class InvalidCredentialsError extends Error {
 }
 
 class AccountNotActiveError extends Error {
-  constructor() {
+  constructor(application = null) {
     super("Account is not active");
     this.name = "AccountNotActiveError";
+    this.application = application;
   }
 }
 
@@ -24,6 +26,28 @@ async function login(credentials) {
   }
 
   if (user.account_status !== "ACTIVE") {
+    if (
+      user.account_status === "INACTIVE" &&
+      (user.role === "DOCTOR" || user.role === "NGO")
+    ) {
+      const application = await joinRequestModel.findLatestApplicantStatusByUserId(
+        user.id,
+      );
+
+      if (application && ["PENDING", "REJECTED"].includes(application.status)) {
+        throw new AccountNotActiveError({
+          request_type: application.request_type,
+          status: application.status,
+          rejection_reason:
+            application.status === "REJECTED"
+              ? application.rejection_reason
+              : null,
+          submitted_at: application.created_at,
+          reviewed_at: application.reviewed_at,
+        });
+      }
+    }
+
     throw new AccountNotActiveError();
   }
 
