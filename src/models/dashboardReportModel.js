@@ -11,10 +11,17 @@ const TREATMENT_PLAN_REPORT_COLUMNS = [
   "patient_id",
   "doctor_id",
   "status",
-  "start_date",
-  "end_date",
   "created_at",
 ];
+
+function treatmentPlanReportColumns(connection) {
+  return [
+    ...TREATMENT_PLAN_REPORT_COLUMNS.slice(0, 4),
+    connection.raw("DATE_FORMAT(??, '%Y-%m-%d') AS ??", ["start_date", "start_date"]),
+    connection.raw("DATE_FORMAT(??, '%Y-%m-%d') AS ??", ["end_date", "end_date"]),
+    ...TREATMENT_PLAN_REPORT_COLUMNS.slice(4),
+  ];
+}
 const ASSISTANCE_REQUEST_REPORT_COLUMNS = [
   "id",
   "patient_id",
@@ -186,7 +193,7 @@ function listPatients(page, limit, connection = db) {
 
 function listTreatmentPlans(page, limit, connection = db) {
   return listPaginated(
-    connection("treatment_plans").select(TREATMENT_PLAN_REPORT_COLUMNS),
+    connection("treatment_plans").select(treatmentPlanReportColumns(connection)),
     connection("treatment_plans").count({ total: "id" }),
     page,
     limit,

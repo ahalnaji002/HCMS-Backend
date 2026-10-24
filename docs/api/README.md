@@ -342,9 +342,10 @@ GET   /api/patient/treatment-plans/:planId
 
 Doctor operations require an active assignment. Creation requires `title` and
 `start_date`; `general_instructions` and `end_date` are optional. Status is
-`ACTIVE`, `COMPLETED`, or `CANCELLED`. Dates are strict `YYYY-MM-DD`, and a
-non-null `end_date` must be on or after `start_date`. Patients have read-only
-access to their own plans.
+`ACTIVE`, `COMPLETED`, or `CANCELLED`. `start_date` and `end_date` are
+calendar dates supplied and returned as `YYYY-MM-DD`; an unset `end_date`
+remains `null`, and a non-null `end_date` must be on or after `start_date`.
+Patients have read-only access to their own plans.
 
 Plans support continuing care: a currently assigned Doctor may manage a plan
 created by a previous Doctor, while the original `doctor_id` remains unchanged.
@@ -380,6 +381,9 @@ GET    /api/patient/treatment-plans/:planId/appointments/:appointmentId
 
 Doctor access requires an active assignment to the plan's Patient. Creation
 requires `appointment_date` in `YYYY-MM-DD HH:mm:ss` and non-empty `purpose`.
+The appointment value is a Palestinian local wall-clock time in `Asia/Hebron`
+and is returned in the same format; it is not converted to UTC and carries no
+timezone suffix or offset.
 The appointment calendar date must be within the plan's inclusive date range;
 a null plan end date has no upper bound. Status is `SCHEDULED`, `COMPLETED`, or
 `CANCELLED`. Patients can only read appointments under their own plans.

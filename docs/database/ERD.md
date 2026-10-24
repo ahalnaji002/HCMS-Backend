@@ -182,8 +182,8 @@ Indexes: `(patient_id, documented_at)` and `(doctor_id, patient_id)`.
 | title | VARCHAR(150) | NN |
 | general_instructions | TEXT | NULL |
 | status | ENUM | ACTIVE / COMPLETED / CANCELLED; NN |
-| start_date | DATE | NN |
-| end_date | DATE | NULL; end_date >= start_date |
+| start_date | DATE | NN; calendar date serialized as YYYY-MM-DD |
+| end_date | DATE | NULL; YYYY-MM-DD; end_date >= start_date |
 | created_at | TIMESTAMP | NN |
 | updated_at | TIMESTAMP | NN |
 
@@ -207,7 +207,7 @@ Indexes: `(patient_id, documented_at)` and `(doctor_id, patient_id)`.
 |---|---|---|
 | id | BIGINT UNSIGNED | PK, AI, NN |
 | treatment_plan_id | BIGINT UNSIGNED | FK treatment_plans.id, NN |
-| appointment_date | DATETIME | NN |
+| appointment_date | DATETIME | NN; Asia/Hebron local wall-clock, serialized as YYYY-MM-DD HH:mm:ss |
 | purpose | VARCHAR(255) | NN |
 | location | VARCHAR(255) | NULL |
 | status | ENUM | SCHEDULED / COMPLETED / CANCELLED; NN |

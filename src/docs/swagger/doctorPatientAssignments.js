@@ -238,6 +238,9 @@
  *       Setting the status to INACTIVE records ended_at.
  *       Setting it to ACTIVE clears ended_at, provided another ACTIVE
  *       assignment does not already exist for the same Doctor-Patient pair.
+ *       Reactivation also requires ACTIVE Doctor and Patient accounts, an
+ *       available Doctor, assignable Patient intake, and a non-empty
+ *       internal assignment_reason.
  *       Requires an ACTIVE ADMIN account.
  *     operationId: updateDoctorPatientAssignmentStatus
  *     security:
@@ -310,7 +313,8 @@
  *       '409':
  *         description: >
  *           Assignment already has the requested status or another ACTIVE
- *           assignment exists for the same Doctor-Patient pair.
+ *           assignment exists, or reactivation fails account, availability,
+ *           intake eligibility, or assignment reason validation.
  *         content:
  *           application/json:
  *             schema:

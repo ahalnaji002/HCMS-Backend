@@ -4,7 +4,7 @@
  *   post:
  *     tags: [Doctor Treatment Plans]
  *     summary: Create Treatment Plan
- *     description: Creates a plan for a Patient with an ACTIVE assignment to the authenticated Doctor. If end_date is supplied it must be on or after start_date.
+ *     description: Creates a plan for a Patient with an ACTIVE assignment to the authenticated Doctor. start_date and end_date are calendar dates in YYYY-MM-DD format; if end_date is supplied it must be on or after start_date.
  *     operationId: createAssignedPatientTreatmentPlan
  *     security: [{ bearerAuth: [] }]
  *     parameters:
@@ -137,7 +137,7 @@
  *   patch:
  *     tags: [Doctor Treatment Plans]
  *     summary: Update Treatment Plan
- *     description: Requires an ACTIVE assignment and at least one editable field. If the resulting end_date is set, it must be on or after the resulting start_date.
+ *     description: Requires an ACTIVE assignment and at least one editable field. If the resulting end_date is set, it must be on or after the resulting start_date. The resulting inclusive range must contain every existing appointment; an update that excludes one is rejected without changing the plan.
  *     operationId: updateAssignedPatientTreatmentPlan
  *     security: [{ bearerAuth: [] }]
  *     parameters:

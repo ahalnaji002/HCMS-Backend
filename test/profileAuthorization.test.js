@@ -6,6 +6,9 @@ const request = require("supertest");
 
 const app = require("../src/app");
 const db = require("../src/config/database");
+const doctorRoutes = require("../src/routes/doctorRoutes");
+const treatmentAppointmentModel = require("../src/models/treatmentAppointmentModel");
+const treatmentPlanModel = require("../src/models/treatmentPlanModel");
 const { registerDoctor } = require("../src/services/doctorRegistrationService");
 const { registerNgo } = require("../src/services/ngoRegistrationService");
 const { registerPatient } = require("../src/services/patientRegistrationService");
@@ -17,6 +20,7 @@ const TEST_PASSWORD_HASH = "test-password-hash";
 let users;
 
 let testDatabaseVerified = false;
+let unsafeTestDatabaseState = false;
 
 async function verifyTestDatabase() {
   if (process.env.NODE_ENV !== "test") {
@@ -211,6 +215,11 @@ before(async () => {
 });
 
 beforeEach(async () => {
+  if (unsafeTestDatabaseState) {
+    throw new Error(
+      "Refusing to run another database test because server-side API completion was not established",
+    );
+  }
   assertTestDatabaseVerified();
 
   await db("activity_logs").del();
@@ -253,7 +262,7 @@ beforeEach(async () => {
 
 after(async () => {
   try {
-    if (testDatabaseVerified) {
+    if (testDatabaseVerified && !unsafeTestDatabaseState) {
       await db("activity_logs").del();
       await db("system_settings").del();
       await db("intake_correction_requests").del();
@@ -1429,6 +1438,38 @@ test("admin reactivates a historical assignment and clears ended_at", async () =
   assert.equal(response.body.data.assignment.ended_at, null);
 });
 
+test("reactivation rejects an inactive Doctor and preserves the historical assignment", async () => {
+  const assignment = await insertAssignment({ status: "INACTIVE", ended_at: "2026-09-19 10:00:00" });
+  await db("users").where({ id: users.doctor.id }).update({ account_status: "INACTIVE" });
+
+  const response = await request(app)
+    .patch(`/api/admin/doctor-patient-assignments/${assignment.id}/status`)
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({ status: "ACTIVE" });
+
+  assert.equal(response.status, 409);
+  assert.equal(response.body.message, "Doctor account is not active");
+  const stored = await db("doctor_patient_assignments").where({ id: assignment.id }).first();
+  assert.equal(stored.status, "INACTIVE");
+  assert.ok(stored.ended_at);
+});
+
+test("reactivation rejects an inactive Patient and preserves the historical assignment", async () => {
+  const assignment = await insertAssignment({ status: "INACTIVE", ended_at: "2026-09-19 10:00:00" });
+  await db("users").where({ id: users.patient.id }).update({ account_status: "INACTIVE" });
+
+  const response = await request(app)
+    .patch(`/api/admin/doctor-patient-assignments/${assignment.id}/status`)
+    .set("Authorization", `Bearer ${tokenFor(users.admin)}`)
+    .send({ status: "ACTIVE" });
+
+  assert.equal(response.status, 409);
+  assert.equal(response.body.message, "Patient account is not active");
+  const stored = await db("doctor_patient_assignments").where({ id: assignment.id }).first();
+  assert.equal(stored.status, "INACTIVE");
+  assert.ok(stored.ended_at);
+});
+
 test("reactivation returns 409 when another active pair assignment exists", async () => {
   const historical = await insertAssignment({
     status: "INACTIVE",
@@ -1810,6 +1851,309 @@ async function insertTreatmentPlan(overrides = {}) {
   });
 
   return db("treatment_plans").where({ id }).first();
+}
+
+function databaseDateOnly(value) {
+  if (value instanceof Date) {
+    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+  }
+  return String(value).slice(0, 10);
+}
+
+function databaseDateTime(value) {
+  if (value instanceof Date) {
+    return `${databaseDateOnly(value)} ${String(value.getHours()).padStart(2, "0")}:${String(value.getMinutes()).padStart(2, "0")}:${String(value.getSeconds()).padStart(2, "0")}`;
+  }
+  return String(value).slice(0, 19);
+}
+
+function createDeferred() {
+  let resolve;
+  const promise = new Promise((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+  return { promise, resolve };
+}
+
+async function waitForBounded(promise, timeoutMs, description) {
+  let timeout;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error(`Timed out after ${timeoutMs}ms waiting for ${description}`)),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function captureConnectionBeforeModelLock(model, methodName, connectionArgumentIndex, onCapture) {
+  const original = model[methodName];
+  model[methodName] = async function captureConnection(...args) {
+    const connection = args[connectionArgumentIndex];
+    const result = await connection.raw("SELECT CONNECTION_ID() AS connection_id");
+    onCapture(Number(result[0][0].connection_id));
+    const timeoutResult = await connection.raw(
+      "SELECT @@SESSION.innodb_lock_wait_timeout AS lock_wait_timeout",
+    );
+    const previousLockWaitTimeout = Number(timeoutResult[0][0].lock_wait_timeout);
+    await connection.raw("SET SESSION innodb_lock_wait_timeout = 8");
+    try {
+      return await original.apply(this, args);
+    } finally {
+      await connection.raw(`SET SESSION innodb_lock_wait_timeout = ${previousLockWaitTimeout}`);
+    }
+  };
+  return () => {
+    model[methodName] = original;
+  };
+}
+
+async function getTreatmentPlanRecordLock(connectionId, planId) {
+  const locks = await db("performance_schema.data_locks as held_lock")
+    .join(
+      "performance_schema.threads as holder_thread",
+      "holder_thread.THREAD_ID",
+      "held_lock.THREAD_ID",
+    )
+    .select(
+      "held_lock.ENGINE as engine",
+      "held_lock.ENGINE_LOCK_ID as engine_lock_id",
+      "held_lock.ENGINE_TRANSACTION_ID as engine_transaction_id",
+      "held_lock.INDEX_NAME as index_name",
+      "held_lock.LOCK_DATA as lock_data",
+    )
+    .where("holder_thread.PROCESSLIST_ID", connectionId)
+    .where("held_lock.OBJECT_NAME", "treatment_plans")
+    .where("held_lock.LOCK_TYPE", "RECORD")
+    .where("held_lock.LOCK_STATUS", "GRANTED")
+    .where("held_lock.INDEX_NAME", "PRIMARY")
+    .whereRaw("held_lock.OBJECT_SCHEMA = DATABASE()")
+    .orderBy("held_lock.ENGINE_LOCK_ID", "asc");
+
+  if (locks.length !== 1 || locks[0].lock_data == null) {
+    throw new Error(
+      `Expected exactly one inspectable primary-record lock for treatment plan ${planId} held by MySQL connection ${connectionId}; found ${locks.length}`,
+    );
+  }
+  return locks[0];
+}
+
+async function waitForTreatmentPlanLockWait({
+  blockingConnectionId,
+  requestingConnectionId,
+  expectedLock,
+  planId,
+}) {
+  const timeoutMs = 5000;
+  const pollIntervalMs = 20;
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    const lockWait = await db("performance_schema.data_lock_waits as waits")
+      .join(
+        "performance_schema.threads as blocking_thread",
+        "blocking_thread.THREAD_ID",
+        "waits.BLOCKING_THREAD_ID",
+      )
+      .join(
+        "performance_schema.threads as requesting_thread",
+        "requesting_thread.THREAD_ID",
+        "waits.REQUESTING_THREAD_ID",
+      )
+      .join("performance_schema.data_locks as blocking_lock", function joinBlockingLock() {
+        this.on("blocking_lock.ENGINE", "=", "waits.ENGINE")
+          .andOn(
+            "blocking_lock.ENGINE_LOCK_ID",
+            "=",
+            "waits.BLOCKING_ENGINE_LOCK_ID",
+          )
+          .andOn(
+            "blocking_lock.ENGINE_TRANSACTION_ID",
+            "=",
+            "waits.BLOCKING_ENGINE_TRANSACTION_ID",
+          );
+      })
+      .join("performance_schema.data_locks as requested_lock", function joinRequestedLock() {
+        this.on("requested_lock.ENGINE", "=", "waits.ENGINE")
+          .andOn(
+            "requested_lock.ENGINE_LOCK_ID",
+            "=",
+            "waits.REQUESTING_ENGINE_LOCK_ID",
+          )
+          .andOn(
+            "requested_lock.ENGINE_TRANSACTION_ID",
+            "=",
+            "waits.REQUESTING_ENGINE_TRANSACTION_ID",
+          );
+      })
+      .select(
+        "requesting_thread.PROCESSLIST_ID as requesting_connection_id",
+        "requested_lock.ENGINE as engine",
+        "requested_lock.ENGINE_LOCK_ID as engine_lock_id",
+        "requested_lock.ENGINE_TRANSACTION_ID as engine_transaction_id",
+        "requested_lock.INDEX_NAME as index_name",
+        "requested_lock.LOCK_DATA as lock_data",
+      )
+      .where("blocking_thread.PROCESSLIST_ID", blockingConnectionId)
+      .where("requesting_thread.PROCESSLIST_ID", requestingConnectionId)
+      .where("requested_lock.OBJECT_NAME", "treatment_plans")
+      .where("requested_lock.LOCK_TYPE", "RECORD")
+      .where("requested_lock.LOCK_STATUS", "WAITING")
+      .where("requested_lock.ENGINE", expectedLock.engine)
+      .where("requested_lock.INDEX_NAME", expectedLock.index_name)
+      .where("requested_lock.LOCK_DATA", expectedLock.lock_data)
+      .where("blocking_lock.OBJECT_NAME", "treatment_plans")
+      .where("blocking_lock.LOCK_TYPE", "RECORD")
+      .where("blocking_lock.LOCK_STATUS", "GRANTED")
+      .where("blocking_lock.ENGINE", expectedLock.engine)
+      .where("blocking_lock.INDEX_NAME", expectedLock.index_name)
+      .where("blocking_lock.LOCK_DATA", expectedLock.lock_data)
+      .whereRaw("requested_lock.OBJECT_SCHEMA = DATABASE()")
+      .whereRaw("blocking_lock.OBJECT_SCHEMA = DATABASE()")
+      .first();
+
+    if (lockWait) return lockWait;
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+  }
+
+  throw new Error(
+    `Timed out after ${timeoutMs}ms waiting for API connection ${requestingConnectionId} to request the treatment plan ${planId} primary-record lock held by MySQL connection ${blockingConnectionId}`,
+  );
+}
+
+function observeNextApiOperation(method, routePath) {
+  const routeLayer = doctorRoutes.stack.find(
+    (layer) => layer.route?.path === routePath && layer.route.methods[method],
+  );
+  if (!routeLayer || routeLayer.route.stack.length === 0) {
+    throw new Error(`Could not instrument ${method.toUpperCase()} ${routePath}`);
+  }
+  const controllerLayer = routeLayer.route.stack[routeLayer.route.stack.length - 1];
+  const original = controllerLayer.handle;
+  const queuedOperations = [];
+  controllerLayer.handle = async function observeControllerOperation(...args) {
+    const operation = queuedOperations.shift();
+    if (!operation) return original.apply(this, args);
+    operation.started = true;
+    operation.startedSignal.resolve();
+    try {
+      return await original.apply(this, args);
+    } finally {
+      operation.completed = true;
+      operation.completedSignal.resolve();
+    }
+  };
+
+  return {
+    expectNext() {
+      const operation = {
+        started: false,
+        completed: false,
+        startedSignal: createDeferred(),
+        completedSignal: createDeferred(),
+      };
+      queuedOperations.push(operation);
+      return operation;
+    },
+    restore() {
+      controllerLayer.handle = original;
+    },
+  };
+}
+
+function startBoundedRequest(supertestRequest, serverOperations = [], timeoutMs = 8000) {
+  const requestHandle = supertestRequest.timeout({ response: timeoutMs, deadline: timeoutMs });
+  const promise = requestHandle.then(
+    (response) => response,
+    (error) => { throw error; },
+  );
+  promise.catch(() => {});
+  return { requestHandle, promise, serverOperations };
+}
+
+async function settleStartedRequests(startedRequests, onWaitingForServer = () => {}) {
+  const serverCompletions = startedRequests.flatMap(({ serverOperations }) =>
+    serverOperations.map((operation) => operation.completedSignal.promise),
+  );
+  onWaitingForServer();
+  try {
+    await waitForBounded(
+      Promise.all(serverCompletions),
+      10000,
+      "competing API service operations and their transactions to complete",
+    );
+  } catch (error) {
+    unsafeTestDatabaseState = true;
+    for (const { requestHandle } of startedRequests) requestHandle.abort();
+    throw error;
+  }
+
+  const settleAll = Promise.allSettled(startedRequests.map(({ promise }) => promise));
+  try {
+    await waitForBounded(settleAll, 2000, "API responses after server-side completion");
+  } catch (error) {
+    for (const { requestHandle } of startedRequests) requestHandle.abort();
+    try {
+      await waitForBounded(settleAll, 1000, "aborted API responses after server-side completion");
+    } catch (abortError) {
+      error.abortError = abortError;
+      throw error;
+    }
+  }
+}
+
+async function cleanupConcurrencyTest(
+  { trx, startedRequests, releaseGates, restoreHooks, onWaitingForServer },
+  originalError,
+) {
+  const cleanupErrors = [];
+  for (const release of releaseGates) {
+    try {
+      release();
+    } catch (error) {
+      unsafeTestDatabaseState = true;
+      cleanupErrors.push(error);
+    }
+  }
+
+  if (trx && !trx.isCompleted()) {
+    try {
+      await waitForBounded(trx.rollback(), 5000, "blocking transaction rollback");
+    } catch (error) {
+      unsafeTestDatabaseState = true;
+      cleanupErrors.push(error);
+    }
+  }
+
+  try {
+    await settleStartedRequests(startedRequests, onWaitingForServer);
+  } catch (error) {
+    cleanupErrors.push(error);
+  }
+
+  for (const restore of restoreHooks) {
+    try {
+      restore();
+    } catch (error) {
+      unsafeTestDatabaseState = true;
+      cleanupErrors.push(error);
+    }
+  }
+
+  if (originalError) {
+    if (cleanupErrors.length) originalError.cleanupErrors = cleanupErrors;
+    return originalError;
+  }
+  if (cleanupErrors.length) {
+    throw new AggregateError(cleanupErrors, "Concurrency test cleanup failed");
+  }
+  return null;
 }
 
 async function insertTreatmentMedication(planId, overrides = {}) {
@@ -2900,6 +3244,94 @@ test("assigned doctor gets an empty treatment plans list when no plans exist", a
   assert.deepEqual(response.body.data.treatment_plans, []);
 });
 
+test("treatment calendar dates and Asia/Hebron appointment wall-clock survive API round trips", async () => {
+  await insertActiveAssignment();
+  const token = `Bearer ${tokenFor(users.doctor)}`;
+  const createPlan = await request(app)
+    .post(`/api/doctor/patients/${users.patientProfile.id}/treatment-plans`)
+    .set("Authorization", token)
+    .send({
+      title: "Timezone Contract Plan",
+      start_date: "2026-10-31",
+      end_date: null,
+    });
+
+  assert.equal(createPlan.status, 201);
+  const plan = createPlan.body.data.treatment_plan;
+  assert.equal(plan.start_date, "2026-10-31");
+  assert.equal(plan.end_date, null);
+  const storedPlan = await db.raw(
+    "SELECT DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(end_date, '%Y-%m-%d') AS end_date FROM treatment_plans WHERE id = ?",
+    [plan.id],
+  );
+  assert.deepEqual(storedPlan[0][0], { start_date: "2026-10-31", end_date: null });
+
+  const doctorPlanList = await request(app)
+    .get(`/api/doctor/patients/${users.patientProfile.id}/treatment-plans`)
+    .set("Authorization", token);
+  const doctorPlanDetail = await request(app)
+    .get(`/api/doctor/patients/${users.patientProfile.id}/treatment-plans/${plan.id}`)
+    .set("Authorization", token);
+  const patientPlanList = await request(app)
+    .get("/api/patient/treatment-plans")
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+  const patientPlanDetail = await request(app)
+    .get(`/api/patient/treatment-plans/${plan.id}`)
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  for (const response of [doctorPlanList, doctorPlanDetail, patientPlanList, patientPlanDetail]) {
+    assert.equal(response.status, 200);
+  }
+  for (const item of [
+    doctorPlanList.body.data.treatment_plans[0],
+    doctorPlanDetail.body.data.treatment_plan,
+    patientPlanList.body.data.treatment_plans[0],
+    patientPlanDetail.body.data.treatment_plan,
+  ]) {
+    assert.equal(item.start_date, "2026-10-31");
+    assert.equal(item.end_date, null);
+  }
+
+  const createAppointment = await request(app)
+    .post(`/api/doctor/treatment-plans/${plan.id}/appointments`)
+    .set("Authorization", token)
+    .send({ appointment_date: "2026-10-31 23:59:59", purpose: "Near midnight" });
+  assert.equal(createAppointment.status, 201);
+  const appointment = createAppointment.body.data.appointment;
+  assert.equal(appointment.appointment_date, "2026-10-31 23:59:59");
+
+  const doctorAppointmentList = await request(app)
+    .get(`/api/doctor/treatment-plans/${plan.id}/appointments`)
+    .set("Authorization", token);
+  const doctorAppointmentDetail = await request(app)
+    .get(`/api/doctor/treatment-plans/${plan.id}/appointments/${appointment.id}`)
+    .set("Authorization", token);
+  const patientAppointmentList = await request(app)
+    .get(`/api/patient/treatment-plans/${plan.id}/appointments`)
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+  const patientAppointmentDetail = await request(app)
+    .get(`/api/patient/treatment-plans/${plan.id}/appointments/${appointment.id}`)
+    .set("Authorization", `Bearer ${tokenFor(users.patient)}`);
+
+  for (const response of [doctorAppointmentList, doctorAppointmentDetail, patientAppointmentList, patientAppointmentDetail]) {
+    assert.equal(response.status, 200);
+  }
+  for (const item of [
+    doctorAppointmentList.body.data.appointments[0],
+    doctorAppointmentDetail.body.data.appointment,
+    patientAppointmentList.body.data.appointments[0],
+    patientAppointmentDetail.body.data.appointment,
+  ]) {
+    assert.equal(item.appointment_date, "2026-10-31 23:59:59");
+  }
+
+  const storedAppointment = await db.raw(
+    "SELECT DATE_FORMAT(appointment_date, '%Y-%m-%d %H:%i:%s') AS appointment_date FROM treatment_appointments WHERE id = ?",
+    [appointment.id],
+  );
+  assert.deepEqual(storedAppointment[0][0], { appointment_date: "2026-10-31 23:59:59" });
+});
+
 test("assigned doctor can list all treatment plans for the patient", async () => {
   await insertActiveAssignment();
 
@@ -2953,6 +3385,8 @@ test("assigned doctor can update a treatment plan", async () => {
       title: "Updated Treatment Plan",
       status: "COMPLETED",
       general_instructions: "Updated instructions",
+      start_date: "2026-09-22",
+      end_date: "2026-10-22",
     });
 
   assert.equal(response.status, 200);
@@ -2963,6 +3397,8 @@ test("assigned doctor can update a treatment plan", async () => {
     "Updated Treatment Plan",
   );
   assert.equal(response.body.data.treatment_plan.status, "COMPLETED");
+  assert.equal(response.body.data.treatment_plan.start_date, "2026-09-22");
+  assert.equal(response.body.data.treatment_plan.end_date, "2026-10-22");
   assert.equal(
     Number(response.body.data.treatment_plan.doctor_id),
     users.doctorProfile.id,
@@ -3100,6 +3536,416 @@ test("treatment plan update can clear end_date", async () => {
   assert.equal(response.status, 200);
   assert.equal(response.body.success, true);
   assert.equal(response.body.data.treatment_plan.end_date, null);
+});
+
+test("treatment plan date updates preserve appointments at inclusive boundaries and null end", async () => {
+  await insertActiveAssignment();
+  const plan = await insertTreatmentPlan({ start_date: "2026-10-01", end_date: "2026-10-31" });
+  await insertTreatmentAppointment(plan.id, { appointment_date: "2026-10-01 00:00:00" });
+  await insertTreatmentAppointment(plan.id, { appointment_date: "2026-10-31 23:59:59" });
+  const response = await request(app)
+    .patch(`/api/doctor/patients/${users.patientProfile.id}/treatment-plans/${plan.id}`)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({ start_date: "2026-10-01", end_date: null });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.treatment_plan.end_date, null);
+});
+
+test("treatment plan date update rejects an existing out-of-range appointment and rolls back", async () => {
+  await insertActiveAssignment();
+  const plan = await insertTreatmentPlan({ start_date: "2026-10-01", end_date: "2026-10-31" });
+  await insertTreatmentAppointment(plan.id, { appointment_date: "2026-10-31 23:59:59" });
+  const response = await request(app)
+    .patch(`/api/doctor/patients/${users.patientProfile.id}/treatment-plans/${plan.id}`)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+    .send({ end_date: "2026-10-30", title: "Should roll back" });
+  assert.equal(response.status, 400);
+  const stored = await db("treatment_plans").where({ id: plan.id }).first();
+  const normalizeDatabaseDate = (value) => {
+    if (value instanceof Date) {
+      return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+    }
+    const match = /^(\d{4}-\d{2}-\d{2})/.exec(String(value));
+    assert.ok(match, `Expected a SQL date or datetime, received ${value}`);
+    return match[1];
+  };
+  assert.equal(normalizeDatabaseDate(stored.end_date), "2026-10-31");
+  assert.equal(stored.title, plan.title);
+  const storedAppointment = await db("treatment_appointments")
+    .where({ treatment_plan_id: plan.id })
+    .first();
+  assert.equal(
+    normalizeDatabaseDate(storedAppointment.appointment_date),
+    "2026-10-31",
+  );
+});
+
+test("appointment create and update accept inclusive plan boundaries and reject outside dates", async () => {
+  await insertActiveAssignment();
+  const plan = await insertTreatmentPlan({ start_date: "2026-10-01", end_date: "2026-10-31" });
+  const token = `Bearer ${tokenFor(users.doctor)}`;
+  const create = await request(app).post(`/api/doctor/treatment-plans/${plan.id}/appointments`).set("Authorization", token)
+    .send({ appointment_date: "2026-10-01 00:00:00", purpose: "Boundary" });
+  assert.equal(create.status, 201);
+  assert.equal(create.body.data.appointment.appointment_date, "2026-10-01 00:00:00");
+  const path = `/api/doctor/treatment-plans/${plan.id}/appointments/${create.body.data.appointment.id}`;
+  const update = await request(app).patch(path).set("Authorization", token).send({ appointment_date: "2026-10-31 23:59:59" });
+  assert.equal(update.status, 200);
+  assert.equal(update.body.data.appointment.appointment_date, "2026-10-31 23:59:59");
+  const outside = await request(app).patch(path).set("Authorization", token).send({ appointment_date: "2026-11-01 00:00:00" });
+  assert.equal(outside.status, 400);
+  const stored = await db("treatment_appointments").where({ id: create.body.data.appointment.id }).first();
+  const storedExact = await db.raw(
+    "SELECT DATE_FORMAT(appointment_date, '%Y-%m-%d %H:%i:%s') AS appointment_date FROM treatment_appointments WHERE id = ?",
+    [stored.id],
+  );
+  assert.equal(storedExact[0][0].appointment_date, "2026-10-31 23:59:59");
+});
+
+test("appointment deletion removes the scoped resource", async () => {
+  await insertActiveAssignment();
+  const plan = await insertTreatmentPlan();
+  const appointment = await insertTreatmentAppointment(plan.id);
+  const response = await request(app).delete(`/api/doctor/treatment-plans/${plan.id}/appointments/${appointment.id}`)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`);
+  assert.equal(response.status, 200);
+  assert.equal(await db("treatment_appointments").where({ id: appointment.id }).first(), undefined);
+});
+
+test("concurrency cleanup waits for server transaction after the client times out", async () => {
+  await insertActiveAssignment();
+  const plan = await insertTreatmentPlan({ start_date: "2026-10-01", end_date: "2026-10-31" });
+  const reachedCreate = createDeferred();
+  const insertedInTransaction = createDeferred();
+  const releaseBeforeInsert = createDeferred();
+  const releaseBeforeCommit = createDeferred();
+  const originalCreate = treatmentAppointmentModel.create;
+  const createObserver = observeNextApiOperation(
+    "post",
+    "/treatment-plans/:planId/appointments",
+  );
+  const createOperation = createObserver.expectNext();
+  const restoreHooks = [
+    () => { treatmentAppointmentModel.create = originalCreate; },
+    () => createObserver.restore(),
+  ];
+  treatmentAppointmentModel.create = async function gatedCreate(...args) {
+    reachedCreate.resolve();
+    await waitForBounded(releaseBeforeInsert.promise, 15000, "test insert gate release");
+    const inserted = await originalCreate.apply(this, args);
+    insertedInTransaction.resolve();
+    await waitForBounded(releaseBeforeCommit.promise, 15000, "test pre-commit gate release");
+    return inserted;
+  };
+
+  const clientTimeoutMs = 1000;
+  const pendingCreate = startBoundedRequest(
+    request(app)
+      .post(`/api/doctor/treatment-plans/${plan.id}/appointments`)
+      .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+      .send({ appointment_date: "2026-10-31 10:00:00", purpose: "Timed out client" }),
+    [createOperation],
+    clientTimeoutMs,
+  );
+  const startedRequests = [pendingCreate];
+  const cleanupWaiting = createDeferred();
+  let cleanupPromise;
+  let cleanupReturned = false;
+  let failure;
+
+  try {
+    await waitForBounded(createOperation.startedSignal.promise, 5000, "appointment service start");
+    await waitForBounded(reachedCreate.promise, 5000, "appointment model gate");
+    const clientError = await waitForBounded(
+      pendingCreate.promise.then(
+        () => null,
+        (error) => error,
+      ),
+      3000,
+      "intentional client request timeout",
+    );
+    assert.ok(clientError instanceof Error, "the request must reject at its configured deadline");
+    assert.equal(clientError.code, "ECONNABORTED");
+    assert.equal(clientError.timeout, clientTimeoutMs);
+    assert.equal(pendingCreate.requestHandle.timedout, true);
+    assert.equal(createOperation.started, true);
+    assert.equal(createOperation.completed, false);
+
+    cleanupPromise = cleanupConcurrencyTest(
+      {
+        trx: null,
+        startedRequests,
+        releaseGates: [() => releaseBeforeInsert.resolve()],
+        restoreHooks,
+        onWaitingForServer: () => cleanupWaiting.resolve(),
+      },
+      null,
+    ).then((result) => {
+      cleanupReturned = true;
+      return result;
+    });
+    await waitForBounded(cleanupWaiting.promise, 1000, "cleanup to wait for server operation");
+    await waitForBounded(insertedInTransaction.promise, 5000, "uncommitted appointment insert");
+    assert.equal(createOperation.completed, false);
+    assert.equal(cleanupReturned, false, "cleanup must remain pending until the transaction completes");
+    const visibleBeforeCommit = await db("treatment_appointments")
+      .where({ treatment_plan_id: plan.id })
+      .count("id as count")
+      .first();
+    assert.equal(Number(visibleBeforeCommit.count), 0, "the gated insert must remain uncommitted");
+
+    releaseBeforeCommit.resolve();
+    await waitForBounded(cleanupPromise, 12000, "cleanup after server transaction completion");
+    assert.equal(createOperation.completed, true);
+    assert.equal(cleanupReturned, true);
+    const persistedAfterCleanup = await db("treatment_appointments")
+      .where({ treatment_plan_id: plan.id })
+      .first();
+    assert.ok(persistedAfterCleanup, "the completed transaction should be visible when cleanup returns");
+  } catch (error) {
+    failure = error;
+  } finally {
+    releaseBeforeInsert.resolve();
+    releaseBeforeCommit.resolve();
+    if (!cleanupPromise) {
+      cleanupPromise = cleanupConcurrencyTest(
+        {
+          trx: null,
+          startedRequests,
+          releaseGates: [],
+          restoreHooks,
+        },
+        failure,
+      );
+    }
+    try {
+      await waitForBounded(cleanupPromise, 12000, "failure-path cleanup and server completion");
+    } catch (cleanupError) {
+      unsafeTestDatabaseState = true;
+      if (failure) {
+        failure.cleanupErrors = [...(failure.cleanupErrors || []), cleanupError];
+      } else {
+        failure = cleanupError;
+      }
+    }
+    if (!createOperation.completed) {
+      try {
+        await waitForBounded(
+          createOperation.completedSignal.promise,
+          1000,
+          "server completion after releasing failure-path gates",
+        );
+      } catch (completionError) {
+        unsafeTestDatabaseState = true;
+        if (failure) {
+          failure.cleanupErrors = [...(failure.cleanupErrors || []), completionError];
+        } else {
+          failure = completionError;
+        }
+      }
+    }
+  }
+
+  if (failure) throw failure;
+});
+
+test("plan date reduction serializes against appointment creation using separate connections", async () => {
+  await insertActiveAssignment();
+  const plan = await insertTreatmentPlan({ start_date: "2026-10-01", end_date: "2026-10-31" });
+  const trx = await db.transaction();
+  const requestConnection = createDeferred();
+  const startedRequests = [];
+  const createOperationObserver = observeNextApiOperation(
+    "post",
+    "/treatment-plans/:planId/appointments",
+  );
+  const createOperation = createOperationObserver.expectNext();
+  const restoreHooks = [
+    () => createOperationObserver.restore(),
+    captureConnectionBeforeModelLock(
+      treatmentPlanModel,
+      "findByIdForUpdate",
+      1,
+      (connectionId) => requestConnection.resolve(connectionId),
+    ),
+  ];
+  let failure;
+  try {
+    const blocker = await trx("treatment_plans")
+      .select(db.raw("CONNECTION_ID() AS connection_id"))
+      .where({ id: plan.id })
+      .forUpdate()
+      .first();
+    const blockerConnectionId = Number(blocker.connection_id);
+    const expectedLock = await getTreatmentPlanRecordLock(blockerConnectionId, plan.id);
+    const pendingCreate = startBoundedRequest(request(app).post(`/api/doctor/treatment-plans/${plan.id}/appointments`)
+      .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+      .send({ appointment_date: "2026-10-31 10:00:00", purpose: "Concurrent visit" }),
+    [createOperation]);
+    startedRequests.push(pendingCreate);
+    const requestingConnectionId = await waitForBounded(
+      requestConnection.promise,
+      5000,
+      "appointment API transaction connection",
+    );
+    await waitForTreatmentPlanLockWait({
+      blockingConnectionId: blockerConnectionId,
+      requestingConnectionId,
+      expectedLock,
+      planId: plan.id,
+    });
+    await waitForBounded(
+      trx("treatment_plans").where({ id: plan.id }).update({ end_date: "2026-10-30" }),
+      5000,
+      "blocker plan-date update",
+    );
+    await waitForBounded(trx.commit(), 5000, "blocker transaction commit");
+    const response = await waitForBounded(pendingCreate.promise, 8000, "appointment API response");
+    assert.equal(response.status, 400);
+    assert.equal(await db("treatment_appointments").where({ treatment_plan_id: plan.id }).count("id as count").first().then((row) => Number(row.count)), 0);
+    const finalPlan = await db("treatment_plans").where({ id: plan.id }).first();
+    assert.equal(databaseDateOnly(finalPlan.end_date), "2026-10-30");
+  } catch (error) {
+    failure = error;
+  }
+
+  failure = await cleanupConcurrencyTest(
+    { trx, startedRequests, releaseGates: [], restoreHooks },
+    failure,
+  );
+  if (failure) {
+    try {
+      await waitForBounded(
+        db("treatment_appointments").where({ treatment_plan_id: plan.id }).del(),
+        5000,
+        "failed-test appointment cleanup",
+      );
+    } catch (cleanupError) {
+      failure.cleanupErrors = [...(failure.cleanupErrors || []), cleanupError];
+    }
+    throw failure;
+  }
+});
+
+test("appointment creation committed first makes a concurrent plan date reduction reject", async () => {
+  await insertActiveAssignment();
+  const plan = await insertTreatmentPlan({ start_date: "2026-10-01", end_date: "2026-10-31" });
+  const createConnection = createDeferred();
+  const updateConnection = createDeferred();
+  const createReachedInsert = createDeferred();
+  const releaseCreate = createDeferred();
+  const startedRequests = [];
+  const createOperationObserver = observeNextApiOperation(
+    "post",
+    "/treatment-plans/:planId/appointments",
+  );
+  const updateOperationObserver = observeNextApiOperation(
+    "patch",
+    "/patients/:patientId/treatment-plans/:planId",
+  );
+  const createOperation = createOperationObserver.expectNext();
+  const updateOperation = updateOperationObserver.expectNext();
+  const originalAppointmentCreate = treatmentAppointmentModel.create;
+  treatmentAppointmentModel.create = async function gatedCreate(...args) {
+    createReachedInsert.resolve();
+    await waitForBounded(releaseCreate.promise, 9000, "appointment test gate release");
+    return originalAppointmentCreate.apply(this, args);
+  };
+  const restoreHooks = [
+    () => { treatmentAppointmentModel.create = originalAppointmentCreate; },
+    () => updateOperationObserver.restore(),
+    () => createOperationObserver.restore(),
+    captureConnectionBeforeModelLock(
+      treatmentPlanModel,
+      "findByIdForUpdate",
+      1,
+      (connectionId) => createConnection.resolve(connectionId),
+    ),
+    captureConnectionBeforeModelLock(
+      treatmentPlanModel,
+      "findByIdAndPatientIdForUpdate",
+      2,
+      (connectionId) => updateConnection.resolve(connectionId),
+    ),
+  ];
+  let failure;
+  try {
+    const pendingCreate = startBoundedRequest(request(app).post(`/api/doctor/treatment-plans/${plan.id}/appointments`)
+      .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+      .send({ appointment_date: "2026-10-31 10:00:00", purpose: "Concurrent visit" }),
+    [createOperation]);
+    startedRequests.push(pendingCreate);
+    await waitForBounded(createReachedInsert.promise, 5000, "appointment request to acquire and validate the plan lock");
+    const createConnectionId = await waitForBounded(createConnection.promise, 1000, "appointment API transaction connection");
+    const expectedLock = await getTreatmentPlanRecordLock(createConnectionId, plan.id);
+
+    const pendingReduction = startBoundedRequest(request(app)
+      .patch(`/api/doctor/patients/${users.patientProfile.id}/treatment-plans/${plan.id}`)
+      .set("Authorization", `Bearer ${tokenFor(users.doctor)}`)
+      .send({ end_date: "2026-10-30" }),
+    [updateOperation]);
+    startedRequests.push(pendingReduction);
+    const reductionConnectionId = await waitForBounded(
+      updateConnection.promise,
+      5000,
+      "treatment plan reduction API transaction connection",
+    );
+    await waitForTreatmentPlanLockWait({
+      blockingConnectionId: createConnectionId,
+      requestingConnectionId: reductionConnectionId,
+      expectedLock,
+      planId: plan.id,
+    });
+
+    releaseCreate.resolve();
+    const created = await waitForBounded(pendingCreate.promise, 8000, "appointment API response");
+    const reduced = await waitForBounded(pendingReduction.promise, 8000, "treatment plan reduction API response");
+    assert.equal(created.status, 201);
+    assert.equal(reduced.status, 400);
+    const finalPlan = await db("treatment_plans").where({ id: plan.id }).first();
+    const appointment = await db("treatment_appointments").where({ id: created.body.data.appointment.id }).first();
+    assert.equal(databaseDateOnly(finalPlan.start_date), "2026-10-01");
+    assert.equal(databaseDateOnly(finalPlan.end_date), "2026-10-31");
+    assert.deepEqual(
+      {
+        id: Number(appointment.id),
+        treatment_plan_id: Number(appointment.treatment_plan_id),
+        appointment_date: databaseDateTime(appointment.appointment_date),
+        purpose: appointment.purpose,
+        location: appointment.location,
+        status: appointment.status,
+        notes: appointment.notes,
+      },
+      {
+        id: Number(created.body.data.appointment.id),
+        treatment_plan_id: plan.id,
+        appointment_date: "2026-10-31 10:00:00",
+        purpose: "Concurrent visit",
+        location: null,
+        status: "SCHEDULED",
+        notes: null,
+      },
+    );
+  } catch (error) {
+    failure = error;
+  }
+
+  failure = await cleanupConcurrencyTest(
+    { trx: null, startedRequests, releaseGates: [() => releaseCreate.resolve()], restoreHooks },
+    failure,
+  );
+  if (failure) {
+    try {
+      await waitForBounded(
+        db("treatment_appointments").where({ treatment_plan_id: plan.id }).del(),
+        5000,
+        "failed-test appointment cleanup",
+      );
+    } catch (cleanupError) {
+      failure.cleanupErrors = [...(failure.cleanupErrors || []), cleanupError];
+    }
+    throw failure;
+  }
 });
 
 test("currently assigned doctor can view a treatment plan created by a previous doctor", async () => {
@@ -10927,7 +11773,7 @@ test("Patient report exposes only its approved projection with deterministic pag
 });
 
 test("Treatment Plan report exposes exact fields and deterministic newest-first order", async () => {
-  const older = await insertTreatmentPlan({ created_at: "2026-01-01 00:00:00" });
+  const older = await insertTreatmentPlan({ end_date: null, created_at: "2026-01-01 00:00:00" });
   const newerFirst = await insertTreatmentPlan({ created_at: "2026-01-02 00:00:00" });
   const newerSecond = await insertTreatmentPlan({ created_at: "2026-01-02 00:00:00" });
 
@@ -10951,6 +11797,11 @@ test("Treatment Plan report exposes exact fields and deterministic newest-first 
   ]);
   assert.equal("general_instructions" in response.body.data.items[0], false);
   assert.equal(response.body.data.items[0].start_date, "2026-09-21");
+  const reportItemsById = new Map(response.body.data.items.map((item) => [item.id, item]));
+  assert.equal(reportItemsById.get(older.id).start_date, "2026-09-21");
+  assert.equal(reportItemsById.get(older.id).end_date, null);
+  assert.equal(reportItemsById.get(newerFirst.id).start_date, "2026-09-21");
+  assert.equal(reportItemsById.get(newerFirst.id).end_date, "2026-10-21");
 });
 
 test("Assistance Request report filters items and total using exact safe fields", async () => {
