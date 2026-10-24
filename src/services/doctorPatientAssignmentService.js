@@ -135,8 +135,17 @@ async function updateDoctorPatientAssignmentStatus(id, status) {
         assignment.doctor_id,
         trx,
       );
+      const doctorUser = doctor && await userModel.findById(doctor.user_id, trx);
+      if (!doctorUser || doctorUser.role !== "DOCTOR" || doctorUser.account_status !== "ACTIVE") {
+        throw new DoctorNotActiveError();
+      }
       if (doctor.availability === "UNAVAILABLE") {
         throw new DoctorUnavailableError();
+      }
+      const patient = await patientModel.findByIdForUpdate(assignment.patient_id, trx);
+      const patientUser = patient && await userModel.findById(patient.user_id, trx);
+      if (!patientUser || patientUser.role !== "PATIENT" || patientUser.account_status !== "ACTIVE") {
+        throw new PatientNotActiveError();
       }
       await requireAssignableIntake(assignment.patient_id, trx);
 

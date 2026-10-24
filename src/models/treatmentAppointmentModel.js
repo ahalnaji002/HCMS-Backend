@@ -3,7 +3,6 @@ const db = require("../config/database");
 const TREATMENT_APPOINTMENT_COLUMNS = [
   "id",
   "treatment_plan_id",
-  "appointment_date",
   "purpose",
   "location",
   "status",
@@ -11,6 +10,14 @@ const TREATMENT_APPOINTMENT_COLUMNS = [
   "created_at",
   "updated_at",
 ];
+
+function selectColumns(connection) {
+  return [
+    ...TREATMENT_APPOINTMENT_COLUMNS.slice(0, 2),
+    connection.raw("DATE_FORMAT(??, '%Y-%m-%d %H:%i:%s') AS ??", ["appointment_date", "appointment_date"]),
+    ...TREATMENT_APPOINTMENT_COLUMNS.slice(2),
+  ];
+}
 
 async function create(appointment, connection = db) {
   const [id] = await connection("treatment_appointments").insert({
@@ -26,21 +33,29 @@ async function create(appointment, connection = db) {
 
 function listByPlanId(planId, connection = db) {
   return connection("treatment_appointments")
-    .select(TREATMENT_APPOINTMENT_COLUMNS)
+    .select(selectColumns(connection))
     .where({ treatment_plan_id: planId })
     .orderBy("id", "asc");
 }
 
+function listByPlanIdForUpdate(planId, connection = db) {
+  return connection("treatment_appointments")
+    .select(selectColumns(connection))
+    .where({ treatment_plan_id: planId })
+    .orderBy("id", "asc")
+    .forUpdate();
+}
+
 function findById(appointmentId, connection = db) {
   return connection("treatment_appointments")
-    .select(TREATMENT_APPOINTMENT_COLUMNS)
+    .select(selectColumns(connection))
     .where({ id: appointmentId })
     .first();
 }
 
 function findByIdAndPlanId(appointmentId, planId, connection = db) {
   return connection("treatment_appointments")
-    .select(TREATMENT_APPOINTMENT_COLUMNS)
+    .select(selectColumns(connection))
     .where({ id: appointmentId, treatment_plan_id: planId })
     .first();
 }
@@ -70,5 +85,6 @@ module.exports = {
   findById,
   findByIdAndPlanId,
   listByPlanId,
+  listByPlanIdForUpdate,
   updateByIdAndPlanId,
 };

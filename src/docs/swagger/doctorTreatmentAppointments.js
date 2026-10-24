@@ -4,7 +4,7 @@
  *   post:
  *     tags: [Doctor Treatment Appointments]
  *     summary: Create Treatment Appointment
- *     description: Creates an appointment under an authorized Treatment Plan. appointment_date must use YYYY-MM-DD HH:mm:ss and its calendar date must fall within the plan's inclusive start_date/end_date range (when an end date exists).
+ *     description: Creates an appointment under an authorized Treatment Plan. appointment_date is a Palestinian local wall-clock time in Asia/Hebron, supplied as YYYY-MM-DD HH:mm:ss without a timezone suffix; its calendar date must fall within the plan's inclusive start_date/end_date range (when an end date exists).
  *     operationId: createTreatmentAppointment
  *     security: [{ bearerAuth: [] }]
  *     parameters:
@@ -21,7 +21,7 @@
  *             additionalProperties: false
  *             required: [appointment_date, purpose]
  *             properties:
- *               appointment_date: { type: string, pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$', example: '2026-10-15 10:30:00' }
+ *               appointment_date: { type: string, pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$', example: '2026-10-15 10:30:00', description: 'Palestinian local wall-clock time in Asia/Hebron; YYYY-MM-DD HH:mm:ss with no timezone suffix.' }
  *               purpose: { type: string, minLength: 1, maxLength: 255 }
  *               location: { type: string, nullable: true, maxLength: 255 }
  *               notes: { type: string, nullable: true, description: Maximum 65535 UTF-8 bytes. }
@@ -136,7 +136,7 @@
  *   patch:
  *     tags: [Doctor Treatment Appointments]
  *     summary: Update Treatment Appointment
- *     description: Requires at least one editable field. If appointment_date is changed, its calendar date must remain within the plan's inclusive date range.
+ *     description: Requires at least one editable field. appointment_date uses the Asia/Hebron local wall-clock YYYY-MM-DD HH:mm:ss format without a timezone suffix. If changed, its calendar date must remain within the plan's inclusive date range.
  *     operationId: updateTreatmentAppointment
  *     security: [{ bearerAuth: [] }]
  *     parameters:
@@ -157,7 +157,7 @@
  *             minProperties: 1
  *             additionalProperties: false
  *             properties:
- *               appointment_date: { type: string, pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$' }
+ *               appointment_date: { type: string, pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$', description: 'Palestinian local wall-clock time in Asia/Hebron; YYYY-MM-DD HH:mm:ss with no timezone suffix.' }
  *               purpose: { type: string, minLength: 1, maxLength: 255 }
  *               location: { type: string, nullable: true, maxLength: 255 }
  *               status: { type: string, enum: [SCHEDULED, COMPLETED, CANCELLED] }

@@ -257,7 +257,10 @@
  *         appointment_date:
  *           type: string
  *           pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$'
- *           description: Local datetime formatted as YYYY-MM-DD HH:mm:ss.
+ *           description: >
+ *             Palestinian local wall-clock time in Asia/Hebron, serialized
+ *             exactly as YYYY-MM-DD HH:mm:ss in requests and responses.
+ *             This value is not a UTC instant and has no timezone suffix.
  *         purpose:
  *           type: string
  *         location:

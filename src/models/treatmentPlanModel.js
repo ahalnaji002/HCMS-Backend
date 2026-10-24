@@ -7,11 +7,18 @@ const TREATMENT_PLAN_COLUMNS = [
   "title",
   "general_instructions",
   "status",
-  "start_date",
-  "end_date",
   "created_at",
   "updated_at",
 ];
+
+function selectColumns(connection) {
+  return [
+    ...TREATMENT_PLAN_COLUMNS.slice(0, 6),
+    connection.raw("DATE_FORMAT(??, '%Y-%m-%d') AS ??", ["start_date", "start_date"]),
+    connection.raw("DATE_FORMAT(??, '%Y-%m-%d') AS ??", ["end_date", "end_date"]),
+    ...TREATMENT_PLAN_COLUMNS.slice(6),
+  ];
+}
 
 async function create(treatmentPlan, connection = db) {
   const [id] = await connection("treatment_plans").insert({
@@ -24,14 +31,14 @@ async function create(treatmentPlan, connection = db) {
   });
 
   return connection("treatment_plans")
-    .select(TREATMENT_PLAN_COLUMNS)
+    .select(selectColumns(connection))
     .where({ id })
     .first();
 }
 
 function listByPatientId(patientId, connection = db) {
   return connection("treatment_plans")
-    .select(TREATMENT_PLAN_COLUMNS)
+    .select(selectColumns(connection))
     .where({ patient_id: patientId })
     .orderBy("id", "asc");
 }
@@ -43,13 +50,25 @@ function findById(planId, connection = db) {
     .first();
 }
 
+function findByIdForUpdate(planId, connection) {
+  return connection("treatment_plans").select(selectColumns(connection)).where({ id: planId }).forUpdate().first();
+}
+
 function findByIdAndPatientId(planId, patientId, connection = db) {
   return connection("treatment_plans")
-    .select(TREATMENT_PLAN_COLUMNS)
+    .select(selectColumns(connection))
     .where({
       id: planId,
       patient_id: patientId,
     })
+    .first();
+}
+
+function findByIdAndPatientIdForUpdate(planId, patientId, connection) {
+  return connection("treatment_plans")
+    .select(selectColumns(connection))
+    .where({ id: planId, patient_id: patientId })
+    .forUpdate()
     .first();
 }
 
@@ -75,7 +94,9 @@ async function updateByIdAndPatientId(
 module.exports = {
   create,
   findById,
+  findByIdForUpdate,
   listByPatientId,
   findByIdAndPatientId,
+  findByIdAndPatientIdForUpdate,
   updateByIdAndPatientId,
 };
