@@ -5,22 +5,23 @@ const treatmentPlanModel = require("../models/treatmentPlanModel");
 const treatmentAppointmentModel = require("../models/treatmentAppointmentModel");
 const db = require("../config/database");
 const notificationService = require("./notificationService");
+const { BadRequestError, ForbiddenError, NotFoundError } = require("../utils/apiErrors");
 
-class TreatmentPlanNotFoundError extends Error {
+class TreatmentPlanNotFoundError extends NotFoundError {
   constructor(message) {
     super(message);
     this.name = "TreatmentPlanNotFoundError";
   }
 }
 
-class TreatmentPlanForbiddenError extends Error {
+class TreatmentPlanForbiddenError extends ForbiddenError {
   constructor(message) {
     super(message);
     this.name = "TreatmentPlanForbiddenError";
   }
 }
 
-class TreatmentPlanValidationError extends Error {
+class TreatmentPlanValidationError extends BadRequestError {
   constructor(message) {
     super(message);
     this.name = "TreatmentPlanValidationError";

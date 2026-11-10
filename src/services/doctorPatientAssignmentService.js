@@ -4,71 +4,72 @@ const patientModel = require("../models/patientModel");
 const userModel = require("../models/userModel");
 const doctorPatientAssignmentModel = require("../models/doctorPatientAssignmentModel");
 const patientIntakeModel = require("../models/patientIntakeModel");
+const { ConflictError, NotFoundError } = require("../utils/apiErrors");
 
-class DoctorNotFoundError extends Error {
+class DoctorNotFoundError extends NotFoundError {
   constructor() {
     super("Doctor not found");
     this.name = "DoctorNotFoundError";
   }
 }
 
-class PatientNotFoundError extends Error {
+class PatientNotFoundError extends NotFoundError {
   constructor() {
     super("Patient not found");
     this.name = "PatientNotFoundError";
   }
 }
 
-class DoctorNotActiveError extends Error {
+class DoctorNotActiveError extends ConflictError {
   constructor() {
     super("Doctor account is not active");
     this.name = "DoctorNotActiveError";
   }
 }
 
-class PatientNotActiveError extends Error {
+class PatientNotActiveError extends ConflictError {
   constructor() {
     super("Patient account is not active");
     this.name = "PatientNotActiveError";
   }
 }
 
-class ActiveAssignmentExistsError extends Error {
+class ActiveAssignmentExistsError extends ConflictError {
   constructor() {
     super("An active assignment already exists for this doctor and patient");
     this.name = "ActiveAssignmentExistsError";
   }
 }
 
-class AssignmentNotFoundError extends Error {
+class AssignmentNotFoundError extends NotFoundError {
   constructor() {
     super("Doctor-patient assignment not found");
     this.name = "AssignmentNotFoundError";
   }
 }
 
-class AssignmentStatusConflictError extends Error {
+class AssignmentStatusConflictError extends ConflictError {
   constructor(status) {
     super(`Doctor-patient assignment is already ${status}`);
     this.name = "AssignmentStatusConflictError";
   }
 }
 
-class PatientIntakeRequiredError extends Error {
+class PatientIntakeRequiredError extends ConflictError {
   constructor(message = "Patient intake must be under review before assignment") {
     super(message);
     this.name = "PatientIntakeRequiredError";
   }
 }
 
-class DoctorUnavailableError extends Error {
+class DoctorUnavailableError extends ConflictError {
   constructor() {
     super("Unavailable doctors cannot receive routine assignments");
     this.name = "DoctorUnavailableError";
   }
 }
 
-class AssignmentReasonRequiredError extends Error {
+class AssignmentReasonRequiredError extends ConflictError {
   constructor() {
     super("A non-empty internal assignment reason is required");
     this.name = "AssignmentReasonRequiredError";

@@ -2,22 +2,23 @@ const patientModel = require("../models/patientModel");
 const doctorModel = require("../models/doctorModel");
 const doctorPatientAssignmentModel = require("../models/doctorPatientAssignmentModel");
 const medicalRecordModel = require("../models/medicalRecordModel");
+const { ConflictError, ForbiddenError, NotFoundError } = require("../utils/apiErrors");
 
-class MedicalRecordNotFoundError extends Error {
+class MedicalRecordNotFoundError extends NotFoundError {
   constructor(message) {
     super(message);
     this.name = "MedicalRecordNotFoundError";
   }
 }
 
-class MedicalRecordForbiddenError extends Error {
+class MedicalRecordForbiddenError extends ForbiddenError {
   constructor(message) {
     super(message);
     this.name = "MedicalRecordForbiddenError";
   }
 }
 
-class MedicalRecordConflictError extends Error {
+class MedicalRecordConflictError extends ConflictError {
   constructor(message) {
     super(message);
     this.name = "MedicalRecordConflictError";

@@ -4,22 +4,23 @@ const doctorPatientAssignmentModel = require("../models/doctorPatientAssignmentM
 const treatmentPlanModel = require("../models/treatmentPlanModel");
 const treatmentAppointmentModel = require("../models/treatmentAppointmentModel");
 const db = require("../config/database");
+const { BadRequestError, ForbiddenError, NotFoundError } = require("../utils/apiErrors");
 
-class TreatmentAppointmentNotFoundError extends Error {
+class TreatmentAppointmentNotFoundError extends NotFoundError {
   constructor(message) {
     super(message);
     this.name = "TreatmentAppointmentNotFoundError";
   }
 }
 
-class TreatmentAppointmentForbiddenError extends Error {
+class TreatmentAppointmentForbiddenError extends ForbiddenError {
   constructor(message) {
     super(message);
     this.name = "TreatmentAppointmentForbiddenError";
   }
 }
 
-class TreatmentAppointmentValidationError extends Error {
+class TreatmentAppointmentValidationError extends BadRequestError {
   constructor(errors) {
     super("Validation failed");
     this.name = "TreatmentAppointmentValidationError";

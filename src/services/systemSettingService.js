@@ -2,6 +2,7 @@ const db = require("../config/database");
 const systemSettingModel = require("../models/systemSettingModel");
 const { isValidEmail, isValidPalestinianPhone } = require("../utils/registrationValidation");
 const activityLogService = require("./activityLogService");
+const { BadRequestError, NotFoundError } = require("../utils/apiErrors");
 
 const SETTING_CATALOG = Object.freeze({
   system_name: Object.freeze({ nullable: false }),
@@ -10,17 +11,18 @@ const SETTING_CATALOG = Object.freeze({
 });
 const APPROVED_SETTING_KEYS = Object.freeze(Object.keys(SETTING_CATALOG));
 
-class SystemSettingNotFoundError extends Error {
+class SystemSettingNotFoundError extends NotFoundError {
   constructor() {
     super("System Setting not found");
     this.name = "SystemSettingNotFoundError";
   }
 }
 
-class SystemSettingValidationError extends Error {
+class SystemSettingValidationError extends BadRequestError {
   constructor(message) {
-    super(message);
+    super("Validation failed");
     this.name = "SystemSettingValidationError";
+    this.errors = { setting_value: message };
   }
 }
 

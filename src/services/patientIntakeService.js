@@ -3,36 +3,37 @@ const doctorModel = require("../models/doctorModel");
 const doctorPatientAssignmentModel = require("../models/doctorPatientAssignmentModel");
 const patientIntakeModel = require("../models/patientIntakeModel");
 const patientModel = require("../models/patientModel");
+const { ConflictError, ForbiddenError, NotFoundError } = require("../utils/apiErrors");
 
-class PatientIntakeNotFoundError extends Error {
+class PatientIntakeNotFoundError extends NotFoundError {
   constructor(message = "Patient intake not found") {
     super(message);
     this.name = "PatientIntakeNotFoundError";
   }
 }
 
-class PatientIntakeConflictError extends Error {
+class PatientIntakeConflictError extends ConflictError {
   constructor(message) {
     super(message);
     this.name = "PatientIntakeConflictError";
   }
 }
 
-class PatientProfileNotFoundError extends Error {
+class PatientProfileNotFoundError extends NotFoundError {
   constructor() {
     super("Patient profile not found");
     this.name = "PatientProfileNotFoundError";
   }
 }
 
-class DoctorProfileNotFoundError extends Error {
+class DoctorProfileNotFoundError extends NotFoundError {
   constructor() {
     super("Doctor profile not found");
     this.name = "DoctorProfileNotFoundError";
   }
 }
 
-class PatientIntakeForbiddenError extends Error {
+class PatientIntakeForbiddenError extends ForbiddenError {
   constructor() {
     super("Active Doctor-Patient Assignment required");
     this.name = "PatientIntakeForbiddenError";

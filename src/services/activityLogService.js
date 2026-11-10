@@ -4,6 +4,7 @@ const emergencyAlertModel = require("../models/emergencyAlertModel");
 const joinRequestModel = require("../models/joinRequestModel");
 const resourceAllocationModel = require("../models/resourceAllocationModel");
 const systemSettingModel = require("../models/systemSettingModel");
+const { NotFoundError } = require("../utils/apiErrors");
 
 const UNSIGNED_BIGINT_MAX = 18446744073709551615n;
 
@@ -69,7 +70,7 @@ const ENTITY_MODELS = {
   SYSTEM_SETTING: systemSettingModel,
 };
 
-class ActivityLogNotFoundError extends Error {
+class ActivityLogNotFoundError extends NotFoundError {
   constructor(message) {
     super(message);
     this.name = "ActivityLogNotFoundError";

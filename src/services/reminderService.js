@@ -5,27 +5,28 @@ const treatmentAppointmentModel = require("../models/treatmentAppointmentModel")
 const treatmentMedicationModel = require("../models/treatmentMedicationModel");
 const treatmentPlanModel = require("../models/treatmentPlanModel");
 const notificationService = require("./notificationService");
+const { ConflictError, ForbiddenError, NotFoundError } = require("../utils/apiErrors");
 
 const REFERENCE_TYPES = {
   MEDICATION: "TREATMENT_MEDICATION",
   APPOINTMENT: "TREATMENT_APPOINTMENT",
 };
 
-class ReminderNotFoundError extends Error {
+class ReminderNotFoundError extends NotFoundError {
   constructor(message) {
     super(message);
     this.name = "ReminderNotFoundError";
   }
 }
 
-class ReminderForbiddenError extends Error {
+class ReminderForbiddenError extends ForbiddenError {
   constructor(message) {
     super(message);
     this.name = "ReminderForbiddenError";
   }
 }
 
-class ReminderConflictError extends Error {
+class ReminderConflictError extends ConflictError {
   constructor(message) {
     super(message);
     this.name = "ReminderConflictError";

@@ -4,8 +4,9 @@ const doctorModel = require("../models/doctorModel");
 const ngoModel = require("../models/ngoModel");
 const notificationService = require("./notificationService");
 const patientModel = require("../models/patientModel");
+const { NotFoundError } = require("../utils/apiErrors");
 
-class DashboardProfileNotFoundError extends Error {
+class DashboardProfileNotFoundError extends NotFoundError {
   constructor(message) {
     super(message);
     this.name = "DashboardProfileNotFoundError";

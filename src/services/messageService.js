@@ -4,15 +4,16 @@ const messageModel = require("../models/messageModel");
 const patientModel = require("../models/patientModel");
 const userModel = require("../models/userModel");
 const db = require("../config/database");
+const { ForbiddenError, NotFoundError } = require("../utils/apiErrors");
 
-class MessageNotFoundError extends Error {
+class MessageNotFoundError extends NotFoundError {
   constructor(message) {
     super(message);
     this.name = "MessageNotFoundError";
   }
 }
 
-class MessageForbiddenError extends Error {
+class MessageForbiddenError extends ForbiddenError {
   constructor(message) {
     super(message);
     this.name = "MessageForbiddenError";

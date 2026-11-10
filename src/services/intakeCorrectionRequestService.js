@@ -2,29 +2,30 @@ const db = require("../config/database");
 const intakeCorrectionRequestModel = require("../models/intakeCorrectionRequestModel");
 const patientIntakeModel = require("../models/patientIntakeModel");
 const patientModel = require("../models/patientModel");
+const { ConflictError, ForbiddenError, NotFoundError } = require("../utils/apiErrors");
 
-class IntakeCorrectionRequestNotFoundError extends Error {
+class IntakeCorrectionRequestNotFoundError extends NotFoundError {
   constructor() {
     super("Intake correction request not found");
     this.name = "IntakeCorrectionRequestNotFoundError";
   }
 }
 
-class IntakeCorrectionRequestConflictError extends Error {
+class IntakeCorrectionRequestConflictError extends ConflictError {
   constructor(message) {
     super(message);
     this.name = "IntakeCorrectionRequestConflictError";
   }
 }
 
-class IntakeCorrectionRequestForbiddenError extends Error {
+class IntakeCorrectionRequestForbiddenError extends ForbiddenError {
   constructor(message) {
     super(message);
     this.name = "IntakeCorrectionRequestForbiddenError";
   }
 }
 
-class IntakeCorrectionPatientNotFoundError extends Error {
+class IntakeCorrectionPatientNotFoundError extends NotFoundError {
   constructor() {
     super("Patient profile not found");
     this.name = "IntakeCorrectionPatientNotFoundError";

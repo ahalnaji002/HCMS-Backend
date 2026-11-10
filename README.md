@@ -15,6 +15,8 @@ HCMS Backend provides the database, authentication, authorization, and API found
 - bcryptjs
 - JSON Web Token (JWT)
 - CORS
+- helmet
+- express-rate-limit
 - dotenv
 
 ## Requirements
@@ -84,6 +86,16 @@ Set `JWT_SECRET` to a strong private random value.
 
 `npm test` creates a uniquely named temporary schema using the `TEST_DB_*` connection settings, applies all migrations to that schema, runs the tests there, and drops only that schema afterward. The configured `TEST_DB_NAME` must be `hcms_test_db`, must differ from `DB_NAME`, and the test MySQL account needs permission to create and drop databases. The test suite is guarded so it cannot clean a shared test database directly.
 
+Test layout:
+
+- `test/integration/*.test.js` — API integration tests, one file per module (assignments, treatment plans, emergency alerts, assistance requests, messaging, and so on). Files run one at a time because they share the temporary schema.
+- `test/helpers/integrationHarness.js` — shared fixtures, database safety checks, and the per-file lifecycle hooks (`registerIntegrationHooks()`).
+- `test/*.test.js` — unit and contract tests that need no database (validators, Swagger contract, error handling, security middleware).
+
+Run one file with `npm test -- test/integration/12-emergency-alerts.test.js`.
+
+Coverage: `npm run test:coverage` prints line, branch, and function coverage for `src/` using the Node.js built-in test coverage.
+
 > Do not commit the `.env` file, real passwords, JWT secrets, or tokens to GitHub.
 
 ## Database Setup
@@ -147,6 +159,8 @@ http://localhost:3000
 ## Features
 
 - Express-based REST API foundation.
+- Centralized error handling: service errors extend `ApiError` subclasses (`src/utils/apiErrors.js`) and are translated to HTTP responses by `apiErrorHandler`; controllers contain only the success path.
+- Rate limiting on public emergency alerts, login, and registration; helmet security headers; CORS restricted to configured frontend origins (see [API documentation](docs/api/README.md#rate-limiting-and-http-security)).
 - Reusable Knex runtime database connection.
 - Dependency-ordered migrations for the HCMS baseline and approved schema extensions.
 - Data-access modules for users, patients, doctors, NGOs, and Join Requests.
