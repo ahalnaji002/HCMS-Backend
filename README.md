@@ -1,5 +1,7 @@
 # Healthcare Conflict Management System — Backend
 
+[![Backend CI](https://github.com/ahalnaji002/HCMS-Backend/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/ahalnaji002/HCMS-Backend/actions/workflows/ci.yml)
+
 REST API for the **Healthcare Conflict Management System (HCMS)**, a healthcare coordination platform connecting patients, doctors, non-governmental organizations (NGOs), and administrators.
 
 Built with **Node.js, Express.js, MySQL, and Knex.js**, this repository contains the backend application, database migrations, automated tests, and API documentation.
@@ -12,6 +14,7 @@ Built with **Node.js, Express.js, MySQL, and Knex.js**, this repository contains
 - [System Architecture](#system-architecture)
 - [API Documentation](#api-documentation)
 - [Getting Started](#getting-started)
+- [Demo Data](#demo-data)
 - [Testing & Quality](#testing--quality)
 - [Project Structure](#project-structure)
 - [Related Repository](#related-repository)
@@ -37,6 +40,7 @@ Access is controlled through authentication, role-based permissions, and resourc
 - **Assistance and emergencies:** Emergency alerts, NGO assistance requests, and resource allocations.
 - **Communication:** Patient–Doctor messaging, notifications, and patient reminders.
 - **Administration:** Dashboards, basic reports, activity logs, and system settings.
+- **Security and reliability:** Rate limiting on the public emergency alert, login, and registration endpoints; helmet security headers; CORS restricted to configured frontend origins; centralized error handling; startup stops with a clear message when the database is unreachable.
 
 Detailed behavior, validation rules, and authorization constraints are documented in the [API reference](docs/api/README.md) and relevant [requirements](docs/requirements/PATIENT_INTAKE_AND_CARE_COORDINATION.md).
 
@@ -50,7 +54,9 @@ Detailed behavior, validation rules, and authorization constraints are documente
 | Query builder and migrations | Knex.js, mysql2 |
 | Authentication | JSON Web Tokens (JWT), bcryptjs |
 | API documentation | OpenAPI 3, Swagger UI |
-| Automated testing | Node.js test runner, Supertest |
+| Security | helmet, express-rate-limit, CORS |
+| Automated testing | Node.js test runner, Supertest, built-in coverage |
+| Continuous integration | GitHub Actions (tests, coverage, dependency audit) |
 | Development | Nodemon, dotenv |
 
 ## System Architecture
@@ -84,6 +90,8 @@ Controllers
 This is a **general responsibility map**, not a requirement that every endpoint passes through every layer. Selected multi-step workflows use Knex transactions to maintain consistency. A reminder worker is also started by the server outside the ordinary HTTP request flow.
 
 Key security mechanisms include password hashing, JWT verification, role checks, resource ownership checks, and active doctor–patient assignment requirements for protected clinical operations.
+
+Errors are handled centrally: service errors extend `ApiError` subclasses in `src/utils/apiErrors.js` and carry their HTTP status, and `apiErrorHandler` turns them into the standard `{ success: false, message }` response. Controllers contain only the success path (Express 5 forwards async errors).
 
 ## API Documentation
 
@@ -148,9 +156,14 @@ JWT_EXPIRES_IN=1h
 
 ADMIN_EMAIL=admin@hcms.local
 ADMIN_PASSWORD=replace_with_a_private_password
+
+# Comma-separated frontend origins allowed by CORS (empty = local dev origins)
+CORS_ORIGIN=
+# Reverse-proxy hop count in production, so rate limits use the client IP
+TRUST_PROXY=
 ```
 
-Configure the additional `TEST_DB_*` values from `.env.example` before running tests. Do not commit real secrets, passwords, tokens, or your local `.env` file.
+Configure the additional `TEST_DB_*` values from `.env.example` before running tests. Rate limits can be tuned with the optional `RATE_LIMIT_*` variables (see the [API reference](docs/api/README.md#rate-limiting-and-http-security)). Do not commit real secrets, passwords, tokens, or your local `.env` file.
 
 ### 4. Prepare the development database
 
@@ -166,11 +179,13 @@ Apply migrations:
 npm run migrate
 ```
 
-Run seeds when required by your local setup:
+Run seeds when required by your local setup (creates the administrator and system settings):
 
 ```bash
 npm run seed
 ```
+
+For realistic demo data, see [Demo Data](#demo-data).
 
 **Database safety:** Check your `DB_*` connection settings before running migrations or seeds. These commands operate on the configured development database.
 
@@ -187,6 +202,30 @@ npm start
 ```
 
 The API listens on `http://localhost:3000` by default.
+
+## Demo Data
+
+For presentations, the demo video, and local manual testing, load realistic demo data after the administrator seed:
+
+```bash
+npm run seed
+npm run seed:demo
+```
+
+The script creates every record **through the real API** (running in-process on a local port), so all validation, authorization, and business rules apply, and notifications and activity logs are produced by the services. Dates are relative to the day the script runs, so appointments always include past and upcoming ones.
+
+All demo accounts use the password `Demo@2026` and the `@demo.hcms.test` email domain:
+
+| Role | Accounts | What they show |
+| --- | --- | --- |
+| Doctor | `dr.khaled`, `dr.sara`, `dr.mohammad`, `dr.reem`, `dr.yousef` | General, Emergency, Orthopedics, Rehabilitation; Dr. Khaled at capacity, Dr. Yousef unavailable |
+| Doctor applicants | `dr.ahmad` (pending), `dr.nour` (rejected with reason) | Join-request review and applicant status on login |
+| NGO | `ngo.amal`, `ngo.shifa`; `ngo.sanad` (pending) | Assistance review, approval, and resource allocation |
+| Patient | `mahmoud`, `fatima`, `layla`, `omar`, `heba`, `sami`, `asmaa`, `rami` | Intakes in every state, multi-doctor care, treatment plans, reminders, messages |
+
+Covered states: emergency alerts (pending, assigned, in progress, resolved, cancelled; public and patient), assistance requests (pending, under review, approved, rejected, completed), intakes (submitted, under review, doctor assigned), and intake correction requests (open and resolved).
+
+The script refuses to run twice on the same database and refuses `NODE_ENV=production` unless `HCMS_ALLOW_DEMO_SEED=1` is set. To start again, recreate the database, then run `npm run migrate`, `npm run seed`, and `npm run seed:demo`.
 
 ## Testing & Quality
 
@@ -205,6 +244,18 @@ Important safeguards:
 - The test MySQL account needs permissions to create and drop the temporary schema.
 - Do not point test settings at a shared or development database.
 
+Test layout:
+
+- `test/integration/*.test.js` — API integration tests, one file per module (assignments, treatment plans, emergency alerts, assistance requests, messaging, and so on). Files run one at a time because they share the temporary schema.
+- `test/helpers/integrationHarness.js` — shared fixtures, database safety checks, and the per-file lifecycle hooks (`registerIntegrationHooks()`).
+- `test/*.test.js` — unit and contract tests that need no database (validators, Swagger contract, error handling, security middleware).
+
+Run one file with `npm test -- test/integration/12-emergency-alerts.test.js`.
+
+Coverage: `npm run test:coverage` prints line, branch, and function coverage for `src/` using the Node.js built-in test coverage.
+
+Continuous integration: every push and pull request to `develop` or `main` runs the full suite with coverage against a MySQL service container, plus a production dependency audit (`.github/workflows/ci.yml`).
+
 Backend automated tests do not, by themselves, establish that complete frontend user journeys have been tested end to end.
 
 ## Project Structure
@@ -213,6 +264,8 @@ A concise view of the main directories and entry points:
 
 ```text
 HCMS-Backend/
+├── .github/
+│   └── workflows/ci.yml
 ├── database/
 │   ├── migrations/
 │   └── seeds/
@@ -220,7 +273,8 @@ HCMS-Backend/
 │   ├── api/
 │   └── requirements/
 ├── scripts/
-│   └── runIsolatedTests.js
+│   ├── runIsolatedTests.js
+│   └── seedDemoData.js
 ├── src/
 │   ├── config/
 │   ├── controllers/
@@ -228,11 +282,14 @@ HCMS-Backend/
 │   ├── models/
 │   ├── routes/
 │   ├── services/
+│   ├── utils/
 │   ├── workers/
 │   │   └── reminderWorker.js
 │   ├── app.js
 │   └── server.js
 ├── test/
+│   ├── helpers/
+│   └── integration/
 ├── .env.example
 ├── knexfile.js
 ├── package.json

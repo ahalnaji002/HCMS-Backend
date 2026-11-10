@@ -8,6 +8,10 @@ const validatePatientRegistration = require("../middleware/validatePatientRegist
 const validateLogin = require("../middleware/validateLogin");
 
 const authenticate = require("../middleware/authenticate");
+const {
+  loginLimiter,
+  registrationLimiter,
+} = require("../middleware/rateLimiters");
 
 const router = express.Router();
 
@@ -17,6 +21,7 @@ const router = express.Router();
 
 router.post(
   "/register/patient",
+  registrationLimiter,
   validatePatientRegistration,
   authController.registerPatient
 );
@@ -27,6 +32,7 @@ router.post(
 
 router.post(
   "/register/doctor",
+  registrationLimiter,
   validateDoctorRegistration,
   authController.registerDoctor
 );
@@ -37,6 +43,7 @@ router.post(
 
 router.post(
   "/register/ngo",
+  registrationLimiter,
   validateNgoRegistration,
   authController.registerNgo
 );
@@ -45,7 +52,7 @@ router.post(
 // Login
 // ==============================
 
-router.post("/login", validateLogin, authController.login);
+router.post("/login", loginLimiter, validateLogin, authController.login);
 
 // ==============================
 // Current User

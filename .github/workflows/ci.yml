@@ -1,0 +1,87 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests and coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci_root_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pci_root_password"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      # CI-only values for a throwaway database container; not real secrets.
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ci_root_password
+      DB_NAME: hcms_db
+      JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else
+      JWT_EXPIRES_IN: 1h
+      TEST_DB_HOST: 127.0.0.1
+      TEST_DB_PORT: 3306
+      TEST_DB_USER: root
+      TEST_DB_PASSWORD: ci_root_password
+      TEST_DB_NAME: hcms_test_db
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check syntax
+        run: |
+          for file in $(git ls-files 'src/*.js' 'src/**/*.js' 'scripts/*.js'); do
+            node --check "$file"
+          done
+
+      - name: Run tests with coverage
+        # Creates a temporary schema, applies all migrations, runs every
+        # test file, and drops the schema afterwards.
+        run: npm run test:coverage 2>&1 | tee test-output.txt
+
+      - name: Coverage summary
+        if: always()
+        run: |
+          {
+            echo "## Backend test results"
+            echo '```'
+            grep -E '^# (tests|pass|fail|cancelled|skipped)' test-output.txt || true
+            echo '```'
+            echo "## Coverage"
+            echo '```'
+            grep -E '^# (all files|file  )' test-output.txt || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Dependency audit (production)
+        run: npm audit --omit=dev --audit-level=high

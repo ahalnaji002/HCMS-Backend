@@ -1,5 +1,8 @@
 const db = require("../config/database");
 
+// Resolved and cancelled alerts are closed; every other status is active.
+const CLOSED_EMERGENCY_STATUSES = ["RESOLVED", "CANCELLED"];
+
 const PATIENT_REPORT_COLUMNS = [
   "patients.id",
   "patients.user_id",
@@ -11,10 +14,17 @@ const TREATMENT_PLAN_REPORT_COLUMNS = [
   "patient_id",
   "doctor_id",
   "status",
-  "start_date",
-  "end_date",
   "created_at",
 ];
+
+function treatmentPlanReportColumns(connection) {
+  return [
+    ...TREATMENT_PLAN_REPORT_COLUMNS.slice(0, 4),
+    connection.raw("DATE_FORMAT(??, '%Y-%m-%d') AS ??", ["start_date", "start_date"]),
+    connection.raw("DATE_FORMAT(??, '%Y-%m-%d') AS ??", ["end_date", "end_date"]),
+    ...TREATMENT_PLAN_REPORT_COLUMNS.slice(4),
+  ];
+}
 const ASSISTANCE_REQUEST_REPORT_COLUMNS = [
   "id",
   "patient_id",
@@ -59,7 +69,7 @@ async function getAdminDashboard(connection = db) {
       "ngos.id",
     ),
     count(connection("join_requests").where("status", "PENDING")),
-    count(connection("emergency_alerts").whereNot("status", "RESOLVED")),
+    count(connection("emergency_alerts").whereNotIn("status", CLOSED_EMERGENCY_STATUSES)),
     count(connection("assistance_requests").where("status", "PENDING")),
   ]);
 
@@ -90,7 +100,7 @@ async function getPatientDashboard(patientId, userId, connection = db) {
     count(
       connection("emergency_alerts")
         .where("patient_id", patientId)
-        .whereNot("status", "RESOLVED"),
+        .whereNotIn("status", CLOSED_EMERGENCY_STATUSES),
     ),
     count(
       connection("assistance_requests").where({
@@ -118,7 +128,7 @@ async function getDoctorDashboard(doctorId, connection = db) {
       count(
         connection("emergency_alerts")
           .where("assigned_doctor_id", doctorId)
-          .whereNot("status", "RESOLVED"),
+          .whereNotIn("status", CLOSED_EMERGENCY_STATUSES),
       ),
       count(connection("assistance_requests").where("doctor_id", doctorId)),
     ]);
@@ -186,7 +196,7 @@ function listPatients(page, limit, connection = db) {
 
 function listTreatmentPlans(page, limit, connection = db) {
   return listPaginated(
-    connection("treatment_plans").select(TREATMENT_PLAN_REPORT_COLUMNS),
+    connection("treatment_plans").select(treatmentPlanReportColumns(connection)),
     connection("treatment_plans").count({ total: "id" }),
     page,
     limit,

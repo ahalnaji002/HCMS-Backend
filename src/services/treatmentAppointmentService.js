@@ -3,22 +3,24 @@ const patientModel = require("../models/patientModel");
 const doctorPatientAssignmentModel = require("../models/doctorPatientAssignmentModel");
 const treatmentPlanModel = require("../models/treatmentPlanModel");
 const treatmentAppointmentModel = require("../models/treatmentAppointmentModel");
+const db = require("../config/database");
+const { BadRequestError, ForbiddenError, NotFoundError } = require("../utils/apiErrors");
 
-class TreatmentAppointmentNotFoundError extends Error {
+class TreatmentAppointmentNotFoundError extends NotFoundError {
   constructor(message) {
     super(message);
     this.name = "TreatmentAppointmentNotFoundError";
   }
 }
 
-class TreatmentAppointmentForbiddenError extends Error {
+class TreatmentAppointmentForbiddenError extends ForbiddenError {
   constructor(message) {
     super(message);
     this.name = "TreatmentAppointmentForbiddenError";
   }
 }
 
-class TreatmentAppointmentValidationError extends Error {
+class TreatmentAppointmentValidationError extends BadRequestError {
   constructor(errors) {
     super("Validation failed");
     this.name = "TreatmentAppointmentValidationError";
@@ -126,12 +128,12 @@ function validateAppointmentWithinPlan(appointmentDate, plan) {
 }
 
 async function createForPlan(user, planId, appointmentData) {
-  const plan = await authorizeDoctorForPlan(user, planId);
-  validateAppointmentWithinPlan(appointmentData.appointment_date, plan);
-
-  return treatmentAppointmentModel.create({
-    treatment_plan_id: planId,
-    ...appointmentData,
+  await authorizeDoctorForPlan(user, planId);
+  return db.transaction(async (trx) => {
+    const plan = await treatmentPlanModel.findByIdForUpdate(planId, trx);
+    if (!plan) throw new TreatmentAppointmentNotFoundError("Treatment Plan not found");
+    validateAppointmentWithinPlan(appointmentData.appointment_date, plan);
+    return treatmentAppointmentModel.create({ treatment_plan_id: planId, ...appointmentData }, trx);
   });
 }
 
@@ -146,25 +148,24 @@ async function getForDoctor(user, planId, appointmentId) {
 }
 
 async function updateForDoctor(user, planId, appointmentId, updates) {
-  const plan = await authorizeDoctorForPlan(user, planId);
-  await getAppointmentOrThrow(planId, appointmentId);
-
-  if (updates.appointment_date !== undefined) {
-    validateAppointmentWithinPlan(updates.appointment_date, plan);
-  }
-
-  return treatmentAppointmentModel.updateByIdAndPlanId(
-    appointmentId,
-    planId,
-    updates,
-  );
+  await authorizeDoctorForPlan(user, planId);
+  return db.transaction(async (trx) => {
+    const plan = await treatmentPlanModel.findByIdForUpdate(planId, trx);
+    if (!plan) throw new TreatmentAppointmentNotFoundError("Treatment Plan not found");
+    await getAppointmentOrThrow(planId, appointmentId);
+    if (updates.appointment_date !== undefined) validateAppointmentWithinPlan(updates.appointment_date, plan);
+    return treatmentAppointmentModel.updateByIdAndPlanId(appointmentId, planId, updates, trx);
+  });
 }
 
 async function deleteForDoctor(user, planId, appointmentId) {
   await authorizeDoctorForPlan(user, planId);
-  const appointment = await getAppointmentOrThrow(planId, appointmentId);
-  await treatmentAppointmentModel.deleteByIdAndPlanId(appointmentId, planId);
-  return appointment;
+  return db.transaction(async (trx) => {
+    await treatmentPlanModel.findByIdForUpdate(planId, trx);
+    const appointment = await getAppointmentOrThrow(planId, appointmentId);
+    await treatmentAppointmentModel.deleteByIdAndPlanId(appointmentId, planId, trx);
+    return appointment;
+  });
 }
 
 async function listForPatient(user, planId) {

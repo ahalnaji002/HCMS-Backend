@@ -257,7 +257,10 @@
  *         appointment_date:
  *           type: string
  *           pattern: '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$'
- *           description: Local datetime formatted as YYYY-MM-DD HH:mm:ss.
+ *           description: >
+ *             Palestinian local wall-clock time in Asia/Hebron, serialized
+ *             exactly as YYYY-MM-DD HH:mm:ss in requests and responses.
+ *             This value is not a UTC instant and has no timezone suffix.
  *         purpose:
  *           type: string
  *         location:
@@ -637,6 +640,18 @@
  *           nullable: true
  *           description: Optional notes. Maximum size is 65535 UTF-8 bytes.
  *           example: Follow up with the patient regularly.
+ *         patient_name:
+ *           type: string
+ *           description: Patient full name. Returned by the list and detail endpoints only.
+ *           example: Mahmoud Nasser
+ *         doctor_name:
+ *           type: string
+ *           description: Doctor full name. Returned by the list and detail endpoints only.
+ *           example: Dr. Mohammad Al-Helou
+ *         specialization:
+ *           type: string
+ *           description: Doctor specialization. Returned by the list and detail endpoints only.
+ *           example: Orthopedics
  *         assigned_at:
  *           type: string
  *           format: date-time

@@ -2,24 +2,26 @@ const patientModel = require("../models/patientModel");
 const doctorModel = require("../models/doctorModel");
 const doctorPatientAssignmentModel = require("../models/doctorPatientAssignmentModel");
 const treatmentPlanModel = require("../models/treatmentPlanModel");
+const treatmentAppointmentModel = require("../models/treatmentAppointmentModel");
 const db = require("../config/database");
 const notificationService = require("./notificationService");
+const { BadRequestError, ForbiddenError, NotFoundError } = require("../utils/apiErrors");
 
-class TreatmentPlanNotFoundError extends Error {
+class TreatmentPlanNotFoundError extends NotFoundError {
   constructor(message) {
     super(message);
     this.name = "TreatmentPlanNotFoundError";
   }
 }
 
-class TreatmentPlanForbiddenError extends Error {
+class TreatmentPlanForbiddenError extends ForbiddenError {
   constructor(message) {
     super(message);
     this.name = "TreatmentPlanForbiddenError";
   }
 }
 
-class TreatmentPlanValidationError extends Error {
+class TreatmentPlanValidationError extends BadRequestError {
   constructor(message) {
     super(message);
     this.name = "TreatmentPlanValidationError";
@@ -169,6 +171,27 @@ async function updateForAssignedPatient(
   validateResultingDateRange(resultingStartDate, resultingEndDate);
 
   return db.transaction(async (trx) => {
+    const lockedPlan = await treatmentPlanModel.findByIdAndPatientIdForUpdate(
+      planId,
+      patientId,
+      trx,
+    );
+    if (!lockedPlan) throw new TreatmentPlanNotFoundError("Treatment Plan not found");
+    const lockedAppointments = await treatmentAppointmentModel.listByPlanIdForUpdate(planId, trx);
+    const transactionStartDate = treatmentPlanData.start_date ?? lockedPlan.start_date;
+    const transactionEndDate = Object.prototype.hasOwnProperty.call(treatmentPlanData, "end_date")
+      ? treatmentPlanData.end_date
+      : lockedPlan.end_date;
+    validateResultingDateRange(transactionStartDate, transactionEndDate);
+    for (const appointment of lockedAppointments) {
+      const appointmentDate = dateToComparableNumber(appointment.appointment_date);
+      if (appointmentDate < dateToComparableNumber(transactionStartDate) ||
+        (transactionEndDate != null && appointmentDate > dateToComparableNumber(transactionEndDate))) {
+        throw new TreatmentPlanValidationError(
+          "Treatment Plan dates cannot exclude an existing appointment",
+        );
+      }
+    }
     const updatedPlan = await treatmentPlanModel.updateByIdAndPatientId(
       planId,
       patientId,

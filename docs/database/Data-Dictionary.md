@@ -124,8 +124,8 @@ This maintained Markdown data dictionary defines the fields, data types, keys, c
 | title | VARCHAR(150) | — | No | — | Plan title |
 | general_instructions | TEXT | — | Yes | NULL | General instructions |
 | status | ENUM | ACTIVE, COMPLETED, CANCELLED | No | ACTIVE | Plan status |
-| start_date | DATE | CHECK | No | — | Start date |
-| end_date | DATE | CHECK: end_date ≥ start_date | Yes | NULL | End date |
+| start_date | DATE | CHECK | No | — | Calendar date; API format YYYY-MM-DD |
+| end_date | DATE | CHECK: end_date ≥ start_date | Yes | NULL | Calendar date; API format YYYY-MM-DD |
 | created_at | TIMESTAMP | — | No | CURRENT_TIMESTAMP | Plan creation |
 | updated_at | TIMESTAMP | — | No | CURRENT_TIMESTAMP | Last update |
 
@@ -149,7 +149,7 @@ This maintained Markdown data dictionary defines the fields, data types, keys, c
 |---|---|---|---|---|---|
 | id | BIGINT UNSIGNED | PK, AUTO_INCREMENT | No | — | Unique appointment identifier |
 | treatment_plan_id | BIGINT UNSIGNED | FK → treatment_plans.id | No | — | Treatment plan |
-| appointment_date | DATETIME | — | No | — | Appointment date and time |
+| appointment_date | DATETIME | — | No | — | Palestinian local wall-clock time in Asia/Hebron; API format YYYY-MM-DD HH:mm:ss; no UTC conversion or offset |
 | purpose | VARCHAR(255) | — | No | — | Appointment purpose |
 | location | VARCHAR(255) | — | Yes | NULL | Appointment location |
 | status | ENUM | SCHEDULED, COMPLETED, CANCELLED | No | SCHEDULED | Appointment status |

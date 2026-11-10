@@ -5,22 +5,23 @@ const ngoModel = require("../models/ngoModel");
 const patientModel = require("../models/patientModel");
 const resourceAllocationModel = require("../models/resourceAllocationModel");
 const activityLogService = require("./activityLogService");
+const { ConflictError, ForbiddenError, NotFoundError } = require("../utils/apiErrors");
 
-class ResourceAllocationNotFoundError extends Error {
+class ResourceAllocationNotFoundError extends NotFoundError {
   constructor(message) {
     super(message);
     this.name = "ResourceAllocationNotFoundError";
   }
 }
 
-class ResourceAllocationForbiddenError extends Error {
+class ResourceAllocationForbiddenError extends ForbiddenError {
   constructor(message) {
     super(message);
     this.name = "ResourceAllocationForbiddenError";
   }
 }
 
-class ResourceAllocationConflictError extends Error {
+class ResourceAllocationConflictError extends ConflictError {
   constructor(message) {
     super(message);
     this.name = "ResourceAllocationConflictError";

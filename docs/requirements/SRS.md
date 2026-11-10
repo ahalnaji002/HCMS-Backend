@@ -266,6 +266,13 @@ The NGO Management module enables healthcare organizations to manage humanitaria
 
 The system shall enable doctors to create, manage, and monitor treatment plans for patients while allowing patients to view their assigned treatment plans.
 
+Treatment plan `start_date` and `end_date` are calendar dates represented as
+`YYYY-MM-DD`; an unset end date remains null. Appointment date-time values are
+Palestinian local wall-clock times in `Asia/Hebron`, represented as
+`YYYY-MM-DD HH:mm:ss` without a UTC conversion or timezone suffix. Policy for
+local times in daylight-saving gaps or repeated hours requires a separate
+product decision.
+
 ### Functional Requirements
 
 - **FR-5.1:** The system shall allow doctors to create treatment plans.

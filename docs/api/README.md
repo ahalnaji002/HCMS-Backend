@@ -29,6 +29,35 @@ Validation failures use status `400`, message `Validation failed`, and an
 hashes, JWT secrets, and Bearer tokens are not exposed except that a newly
 issued access token is returned by a successful login.
 
+## Rate limiting and HTTP security
+
+Abuse-prone public endpoints are rate limited per client IP address. When a
+limit is exceeded the API returns status `429` with:
+
+```json
+{
+  "success": false,
+  "message": "Too many requests, please try again later"
+}
+```
+
+| Endpoint | Default limit | Environment variable |
+| --- | --- | --- |
+| `POST /api/emergency-alerts` (public) | 10 requests / 15 minutes | `RATE_LIMIT_EMERGENCY_MAX` |
+| `POST /api/auth/login` | 10 failed attempts / 15 minutes (successful logins are not counted) | `RATE_LIMIT_LOGIN_MAX` |
+| `POST /api/auth/register/patient`, `/doctor`, `/ngo` | 10 requests / hour (shared per endpoint) | `RATE_LIMIT_REGISTER_MAX` |
+
+Responses include the standard `RateLimit` and `RateLimit-Policy` headers.
+Limits are kept in process memory, so they reset when the server restarts and
+are not shared between multiple server instances. Limiters are disabled when
+`NODE_ENV=test`. Behind a reverse proxy, set `TRUST_PROXY` to the proxy hop
+count so limits apply to the real client address.
+
+All responses carry `helmet` security headers. Browser cross-origin access is
+restricted to the comma-separated origins in `CORS_ORIGIN`; when it is unset,
+only the local frontend development origins (`http://localhost:5173`,
+`http://127.0.0.1:5173`, and the Playwright ports `4178`/`4179`) are allowed.
+
 ## Authentication
 
 ### Registration
@@ -285,6 +314,9 @@ Creation requires `doctor_id`, `patient_id`, and a non-empty
 `assignment_reason`; `notes` are optional. References must resolve to active
 accounts with matching roles. New assignments are `ACTIVE`. List results
 include active and inactive history in deterministic newest-first order.
+List and detail responses also include display fields `patient_name`,
+`doctor_name`, and the doctor's `specialization`; create and status-update
+responses return the assignment columns only.
 Status updates accept `ACTIVE` or `INACTIVE`; deactivation sets `ended_at`, and
 reactivation clears it. Reactivation also requires an existing non-empty
 assignment reason.
@@ -342,9 +374,10 @@ GET   /api/patient/treatment-plans/:planId
 
 Doctor operations require an active assignment. Creation requires `title` and
 `start_date`; `general_instructions` and `end_date` are optional. Status is
-`ACTIVE`, `COMPLETED`, or `CANCELLED`. Dates are strict `YYYY-MM-DD`, and a
-non-null `end_date` must be on or after `start_date`. Patients have read-only
-access to their own plans.
+`ACTIVE`, `COMPLETED`, or `CANCELLED`. `start_date` and `end_date` are
+calendar dates supplied and returned as `YYYY-MM-DD`; an unset `end_date`
+remains `null`, and a non-null `end_date` must be on or after `start_date`.
+Patients have read-only access to their own plans.
 
 Plans support continuing care: a currently assigned Doctor may manage a plan
 created by a previous Doctor, while the original `doctor_id` remains unchanged.
@@ -380,6 +413,9 @@ GET    /api/patient/treatment-plans/:planId/appointments/:appointmentId
 
 Doctor access requires an active assignment to the plan's Patient. Creation
 requires `appointment_date` in `YYYY-MM-DD HH:mm:ss` and non-empty `purpose`.
+The appointment value is a Palestinian local wall-clock time in `Asia/Hebron`
+and is returned in the same format; it is not converted to UTC and carries no
+timezone suffix or offset.
 The appointment calendar date must be within the plan's inclusive date range;
 a null plan end date has no upper bound. Status is `SCHEDULED`, `COMPLETED`, or
 `CANCELLED`. Patients can only read appointments under their own plans.
@@ -859,8 +895,8 @@ Requires `ADMIN` and returns exactly:
 - `total_doctors`: Doctor profiles whose joined user is `ACTIVE`.
 - `total_ngos`: NGO profiles whose joined user is `ACTIVE`.
 - `pending_join_requests`: Join Requests with status `PENDING`.
-- `active_emergency_alerts`: all Emergency Alerts whose status is not
-  `RESOLVED`, including Visitor alerts with no Patient.
+- `active_emergency_alerts`: all Emergency Alerts whose status is neither
+  `RESOLVED` nor `CANCELLED`, including Visitor alerts with no Patient.
 - `pending_assistance_requests`: Assistance Requests with status `PENDING`.
 
 Inactive Patient, Doctor, and NGO accounts do not contribute to their profile
@@ -878,8 +914,9 @@ It returns exactly:
 - `active_treatment_plans`: the Patient's Treatment Plans with status `ACTIVE`.
 - `pending_reminders`: the authenticated user's Reminders with status
   `PENDING`.
-- `active_emergency_alerts`: the Patient's Emergency Alerts whose status is not
-  `RESOLVED`; Visitor and other Patients' alerts are excluded.
+- `active_emergency_alerts`: the Patient's Emergency Alerts whose status is
+  neither `RESOLVED` nor `CANCELLED`; Visitor and other Patients' alerts are
+  excluded.
 - `pending_assistance_requests`: the Patient's Assistance Requests with status
   `PENDING`.
 - `unread_notifications`: the authenticated user's Notifications where
@@ -900,7 +937,7 @@ It returns exactly:
   Doctor-Patient Assignments; inactive history and duplicate Patient history do
   not inflate the count.
 - `assigned_emergency_alerts`: alerts assigned to the Doctor whose status is
-  not `RESOLVED`.
+  neither `RESOLVED` nor `CANCELLED`.
 - `submitted_assistance_requests`: all Assistance Requests submitted by the
   Doctor, regardless of status.
 

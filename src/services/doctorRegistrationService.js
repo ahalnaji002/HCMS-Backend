@@ -4,10 +4,11 @@ const db = require("../config/database");
 const doctorModel = require("../models/doctorModel");
 const joinRequestModel = require("../models/joinRequestModel");
 const userModel = require("../models/userModel");
+const { ConflictError } = require("../utils/apiErrors");
 
 const PASSWORD_SALT_ROUNDS = 12;
 
-class DoctorRegistrationConflictError extends Error {
+class DoctorRegistrationConflictError extends ConflictError {
   constructor(message) {
     super(message);
     this.name = "DoctorRegistrationConflictError";
