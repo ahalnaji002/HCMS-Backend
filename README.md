@@ -726,6 +726,30 @@ npm run seed
 
 The seed is idempotent and does not create duplicate Admin users.
 
+## Demo Data
+
+For presentations, the demo video, and local manual testing, load realistic demo data after the administrator seed:
+
+```bash
+npm run seed
+npm run seed:demo
+```
+
+The script creates every record **through the real API** (running in-process on a local port), so all validation, authorization, and business rules apply, and notifications and activity logs are produced by the services. Dates are relative to the day the script runs, so appointments always include past and upcoming ones.
+
+All demo accounts use the password `Demo@2026` and the `@demo.hcms.test` email domain:
+
+| Role | Accounts | What they show |
+| --- | --- | --- |
+| Doctor | `dr.khaled`, `dr.sara`, `dr.mohammad`, `dr.reem`, `dr.yousef` | General, Emergency, Orthopedics, Rehabilitation; Dr. Khaled at capacity, Dr. Yousef unavailable |
+| Doctor applicants | `dr.ahmad` (pending), `dr.nour` (rejected with reason) | Join-request review and applicant status on login |
+| NGO | `ngo.amal`, `ngo.shifa`; `ngo.sanad` (pending) | Assistance review, approval, and resource allocation |
+| Patient | `mahmoud`, `fatima`, `layla`, `omar`, `heba`, `sami`, `asmaa`, `rami` | Intakes in every state, multi-doctor care, treatment plans, reminders, messages |
+
+Covered states: emergency alerts (pending, assigned, in progress, resolved, cancelled; public and patient), assistance requests (pending, under review, approved, rejected, completed), intakes (submitted, under review, doctor assigned), and intake correction requests (open and resolved).
+
+The script refuses to run twice on the same database and refuses `NODE_ENV=production` unless `HCMS_ALLOW_DEMO_SEED=1` is set. To start again, recreate the database, then run `npm run migrate`, `npm run seed`, and `npm run seed:demo`.
+
 ## API Response Format
 
 Successful responses use:
