@@ -10,7 +10,8 @@
     "test:coverage": "node scripts/runIsolatedTests.js --experimental-test-coverage --test-coverage-include=src/**/*.js",
     "migrate": "knex migrate:latest --env development",
     "migrate:rollback": "knex migrate:rollback --env development",
-    "seed": "knex seed:run --env development"
+    "seed": "knex seed:run --env development",
+    "seed:demo": "node scripts/seedDemoData.js"
   },
   "repository": {
     "type": "git",
