@@ -314,6 +314,9 @@ Creation requires `doctor_id`, `patient_id`, and a non-empty
 `assignment_reason`; `notes` are optional. References must resolve to active
 accounts with matching roles. New assignments are `ACTIVE`. List results
 include active and inactive history in deterministic newest-first order.
+List and detail responses also include display fields `patient_name`,
+`doctor_name`, and the doctor's `specialization`; create and status-update
+responses return the assignment columns only.
 Status updates accept `ACTIVE` or `INACTIVE`; deactivation sets `ended_at`, and
 reactivation clears it. Reactivation also requires an existing non-empty
 assignment reason.

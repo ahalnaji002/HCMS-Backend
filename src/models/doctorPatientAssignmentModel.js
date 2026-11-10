@@ -28,6 +28,32 @@ function findByIdForUpdate(id, connection) {
     .first();
 }
 
+// Administrator view: assignment columns plus display names, so the admin
+// interface can show who is assigned to whom without extra requests.
+function adminViewQuery(connection) {
+  return connection("doctor_patient_assignments as assignments")
+    .join("patients", "patients.id", "assignments.patient_id")
+    .join("users as patient_users", "patient_users.id", "patients.user_id")
+    .join("doctors", "doctors.id", "assignments.doctor_id")
+    .join("users as doctor_users", "doctor_users.id", "doctors.user_id")
+    .select(
+      ...ASSIGNMENT_COLUMNS.map((column) => `assignments.${column}`),
+      "patient_users.full_name as patient_name",
+      "doctor_users.full_name as doctor_name",
+      "doctors.specialization as specialization",
+    );
+}
+
+function listAllWithNames(connection = db) {
+  return adminViewQuery(connection)
+    .orderBy("assignments.assigned_at", "desc")
+    .orderBy("assignments.id", "desc");
+}
+
+function findByIdWithNames(id, connection = db) {
+  return adminViewQuery(connection).where("assignments.id", id).first();
+}
+
 function listAll(connection = db) {
   return connection("doctor_patient_assignments")
     .select(ASSIGNMENT_COLUMNS)
@@ -130,6 +156,8 @@ async function updateStatus(id, status, endedAt, connection = db) {
 }
 
 module.exports = {
+  findByIdWithNames,
+  listAllWithNames,
   create,
   findActiveByDoctorAndPatient,
   findActiveByDoctorAndPatientForUpdate,

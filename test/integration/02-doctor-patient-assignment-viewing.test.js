@@ -97,13 +97,46 @@ test("assignment list exposes only approved assignment fields", async () => {
     "assignment_reason",
     "created_at",
     "doctor_id",
+    "doctor_name",
     "ended_at",
     "id",
     "notes",
     "patient_id",
+    "patient_name",
+    "specialization",
     "status",
     "updated_at",
   ]);
+});
+
+test("assignment list and detail include patient and doctor display names", async () => {
+  const assignment = await insertAssignment();
+  const authorization = `Bearer ${tokenFor(users.admin)}`;
+  const expected = {
+    patient_name: users.patient.full_name,
+    doctor_name: users.doctor.full_name,
+    specialization: users.doctorProfile.specialization,
+  };
+
+  const list = await request(app)
+    .get("/api/admin/doctor-patient-assignments")
+    .set("Authorization", authorization);
+  assert.equal(list.status, 200);
+  const listed = list.body.data.assignments[0];
+  assert.deepEqual(
+    { patient_name: listed.patient_name, doctor_name: listed.doctor_name, specialization: listed.specialization },
+    expected,
+  );
+
+  const detail = await request(app)
+    .get(`/api/admin/doctor-patient-assignments/${assignment.id}`)
+    .set("Authorization", authorization);
+  assert.equal(detail.status, 200);
+  const shown = detail.body.data.assignment;
+  assert.deepEqual(
+    { patient_name: shown.patient_name, doctor_name: shown.doctor_name, specialization: shown.specialization },
+    expected,
+  );
 });
 
 test("GET assignment detail rejects unauthenticated requests", async () => {

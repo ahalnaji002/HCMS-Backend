@@ -88,11 +88,11 @@ async function requireAssignableIntake(patientId, connection) {
 }
 
 function listDoctorPatientAssignments() {
-  return doctorPatientAssignmentModel.listAll();
+  return doctorPatientAssignmentModel.listAllWithNames();
 }
 
 async function getDoctorPatientAssignment(id) {
-  const assignment = await doctorPatientAssignmentModel.findById(id);
+  const assignment = await doctorPatientAssignmentModel.findByIdWithNames(id);
 
   if (!assignment) {
     throw new AssignmentNotFoundError();
