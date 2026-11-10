@@ -1,7 +1,8 @@
 const doctorModel = require("../models/doctorModel");
 const userModel = require("../models/userModel");
+const { NotFoundError } = require("../utils/apiErrors");
 
-class DoctorWorkloadNotFoundError extends Error {
+class DoctorWorkloadNotFoundError extends NotFoundError {
   constructor() {
     super("Active Doctor not found");
     this.name = "DoctorWorkloadNotFoundError";

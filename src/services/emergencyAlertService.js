@@ -5,36 +5,37 @@ const doctorModel = require("../models/doctorModel");
 const userModel = require("../models/userModel");
 const notificationService = require("./notificationService");
 const activityLogService = require("./activityLogService");
+const { BadRequestError, ConflictError, NotFoundError } = require("../utils/apiErrors");
 
-class EmergencyAlertNotFoundError extends Error {
+class EmergencyAlertNotFoundError extends NotFoundError {
   constructor(message) {
     super(message);
     this.name = "EmergencyAlertNotFoundError";
   }
 }
 
-class EmergencyAlertValidationError extends Error {
+class EmergencyAlertValidationError extends BadRequestError {
   constructor(message) {
     super(message);
     this.name = "EmergencyAlertValidationError";
   }
 }
 
-class EmergencyAlertConflictError extends Error {
+class EmergencyAlertConflictError extends ConflictError {
   constructor(message) {
     super(message);
     this.name = "EmergencyAlertConflictError";
   }
 }
 
-class EmergencyAlertDoctorNotFoundError extends Error {
+class EmergencyAlertDoctorNotFoundError extends NotFoundError {
   constructor(message) {
     super(message);
     this.name = "EmergencyAlertDoctorNotFoundError";
   }
 }
 
-class EmergencyAlertDoctorNotEligibleError extends Error {
+class EmergencyAlertDoctorNotEligibleError extends BadRequestError {
   constructor(message) {
     super(message);
     this.name = "EmergencyAlertDoctorNotEligibleError";

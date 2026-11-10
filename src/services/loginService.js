@@ -2,17 +2,21 @@ const bcrypt = require("bcryptjs");
 const userModel = require("../models/userModel");
 const joinRequestModel = require("../models/joinRequestModel");
 const { signToken } = require("./tokenService");
+const { ForbiddenError, UnauthorizedError } = require("../utils/apiErrors");
 
-class InvalidCredentialsError extends Error {
+class InvalidCredentialsError extends UnauthorizedError {
   constructor() {
     super("Invalid email or password");
     this.name = "InvalidCredentialsError";
   }
 }
 
-class AccountNotActiveError extends Error {
+class AccountNotActiveError extends ForbiddenError {
   constructor(application = null) {
-    super("Account is not active");
+    super(
+      "Account is not active",
+      application ? { application } : undefined,
+    );
     this.name = "AccountNotActiveError";
     this.application = application;
   }

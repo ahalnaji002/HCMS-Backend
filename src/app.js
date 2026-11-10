@@ -1,8 +1,10 @@
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 const swaggerUi = require("swagger-ui-express");
 
 const swaggerSpec = require("./config/swagger");
+const { buildCorsOptions } = require("./config/cors");
 
 const authRoutes = require("./routes/authRoutes");
 const profileRoutes = require("./routes/profileRoutes");
@@ -21,8 +23,30 @@ const {
 
 const app = express();
 
+// Behind a reverse proxy, set TRUST_PROXY (e.g. 1) so rate limiting keys on
+// the real client address instead of the proxy's.
+if (process.env.TRUST_PROXY) {
+  const trustProxy = Number(process.env.TRUST_PROXY);
+  app.set(
+    "trust proxy",
+    Number.isNaN(trustProxy) ? process.env.TRUST_PROXY : trustProxy,
+  );
+}
+
 // Global middleware
-app.use(cors());
+// upgrade-insecure-requests is only sent in production: it breaks plain-HTTP
+// local development (e.g. Swagger UI on http://localhost) in some browsers.
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        upgradeInsecureRequests:
+          process.env.NODE_ENV === "production" ? [] : null,
+      },
+    },
+  }),
+);
+app.use(cors(buildCorsOptions()));
 app.use(express.json());
 
 // API documentation

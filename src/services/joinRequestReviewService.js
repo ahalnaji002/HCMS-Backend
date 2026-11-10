@@ -2,22 +2,23 @@ const db = require("../config/database");
 const joinRequestModel = require("../models/joinRequestModel");
 const userModel = require("../models/userModel");
 const activityLogService = require("./activityLogService");
+const { ConflictError, NotFoundError } = require("../utils/apiErrors");
 
-class JoinRequestNotFoundError extends Error {
+class JoinRequestNotFoundError extends NotFoundError {
   constructor() {
     super("Join request not found");
     this.name = "JoinRequestNotFoundError";
   }
 }
 
-class JoinRequestAlreadyReviewedError extends Error {
+class JoinRequestAlreadyReviewedError extends ConflictError {
   constructor() {
     super("Join request has already been reviewed");
     this.name = "JoinRequestAlreadyReviewedError";
   }
 }
 
-class InconsistentJoinRequestError extends Error {
+class InconsistentJoinRequestError extends ConflictError {
   constructor() {
     super("Join request data is inconsistent");
     this.name = "InconsistentJoinRequestError";

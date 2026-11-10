@@ -1,15 +1,16 @@
 const doctorModel = require("../models/doctorModel");
 const patientModel = require("../models/patientModel");
 const doctorPatientAssignmentModel = require("../models/doctorPatientAssignmentModel");
+const { ForbiddenError, NotFoundError } = require("../utils/apiErrors");
 
-class DoctorAssignedPatientNotFoundError extends Error {
+class DoctorAssignedPatientNotFoundError extends NotFoundError {
   constructor(message) {
     super(message);
     this.name = "DoctorAssignedPatientNotFoundError";
   }
 }
 
-class DoctorAssignedPatientForbiddenError extends Error {
+class DoctorAssignedPatientForbiddenError extends ForbiddenError {
   constructor(message) {
     super(message);
     this.name = "DoctorAssignedPatientForbiddenError";

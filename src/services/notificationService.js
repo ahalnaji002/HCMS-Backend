@@ -6,6 +6,7 @@ const patientModel = require("../models/patientModel");
 const reminderModel = require("../models/reminderModel");
 const treatmentPlanModel = require("../models/treatmentPlanModel");
 const db = require("../config/database");
+const { BadRequestError, NotFoundError } = require("../utils/apiErrors");
 
 const UNSIGNED_BIGINT_MAX = 18446744073709551615n;
 const ALLOWED_REFERENCE_TYPES = new Set([
@@ -25,14 +26,14 @@ const EMERGENCY_STATUS_TRANSITIONS = new Set([
   "IN_PROGRESS:RESOLVED",
 ]);
 
-class NotificationNotFoundError extends Error {
+class NotificationNotFoundError extends NotFoundError {
   constructor(message) {
     super(message);
     this.name = "NotificationNotFoundError";
   }
 }
 
-class NotificationValidationError extends Error {
+class NotificationValidationError extends BadRequestError {
   constructor(message) {
     super(message);
     this.name = "NotificationValidationError";

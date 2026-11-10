@@ -3,17 +3,18 @@ const bcrypt = require("bcryptjs");
 const db = require("../config/database");
 const patientModel = require("../models/patientModel");
 const userModel = require("../models/userModel");
+const { ConflictError } = require("../utils/apiErrors");
 
 const PASSWORD_SALT_ROUNDS = 12;
 
-class DuplicateEmailError extends Error {
+class DuplicateEmailError extends ConflictError {
   constructor() {
     super("An account with this email already exists");
     this.name = "DuplicateEmailError";
   }
 }
 
-class DuplicateNationalIdError extends Error {
+class DuplicateNationalIdError extends ConflictError {
   constructor() {
     super("A patient with this national ID already exists");
     this.name = "DuplicateNationalIdError";

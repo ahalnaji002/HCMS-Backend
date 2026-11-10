@@ -29,6 +29,35 @@ Validation failures use status `400`, message `Validation failed`, and an
 hashes, JWT secrets, and Bearer tokens are not exposed except that a newly
 issued access token is returned by a successful login.
 
+## Rate limiting and HTTP security
+
+Abuse-prone public endpoints are rate limited per client IP address. When a
+limit is exceeded the API returns status `429` with:
+
+```json
+{
+  "success": false,
+  "message": "Too many requests, please try again later"
+}
+```
+
+| Endpoint | Default limit | Environment variable |
+| --- | --- | --- |
+| `POST /api/emergency-alerts` (public) | 10 requests / 15 minutes | `RATE_LIMIT_EMERGENCY_MAX` |
+| `POST /api/auth/login` | 10 failed attempts / 15 minutes (successful logins are not counted) | `RATE_LIMIT_LOGIN_MAX` |
+| `POST /api/auth/register/patient`, `/doctor`, `/ngo` | 10 requests / hour (shared per endpoint) | `RATE_LIMIT_REGISTER_MAX` |
+
+Responses include the standard `RateLimit` and `RateLimit-Policy` headers.
+Limits are kept in process memory, so they reset when the server restarts and
+are not shared between multiple server instances. Limiters are disabled when
+`NODE_ENV=test`. Behind a reverse proxy, set `TRUST_PROXY` to the proxy hop
+count so limits apply to the real client address.
+
+All responses carry `helmet` security headers. Browser cross-origin access is
+restricted to the comma-separated origins in `CORS_ORIGIN`; when it is unset,
+only the local frontend development origins (`http://localhost:5173`,
+`http://127.0.0.1:5173`, and the Playwright ports `4178`/`4179`) are allowed.
+
 ## Authentication
 
 ### Registration

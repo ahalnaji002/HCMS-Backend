@@ -8,6 +8,7 @@ const patientIntakeModel = require("../models/patientIntakeModel");
 const userModel = require("../models/userModel");
 const notificationService = require("./notificationService");
 const activityLogService = require("./activityLogService");
+const { BadRequestError, ConflictError, ForbiddenError, NotFoundError } = require("../utils/apiErrors");
 
 const ALLOWED_STATUS_TRANSITIONS = {
   PENDING: new Set(["UNDER_REVIEW"]),
@@ -15,28 +16,28 @@ const ALLOWED_STATUS_TRANSITIONS = {
   APPROVED: new Set(["COMPLETED"]),
 };
 
-class AssistanceRequestNotFoundError extends Error {
+class AssistanceRequestNotFoundError extends NotFoundError {
   constructor(message) {
     super(message);
     this.name = "AssistanceRequestNotFoundError";
   }
 }
 
-class AssistanceRequestForbiddenError extends Error {
+class AssistanceRequestForbiddenError extends ForbiddenError {
   constructor(message) {
     super(message);
     this.name = "AssistanceRequestForbiddenError";
   }
 }
 
-class AssistanceRequestConflictError extends Error {
+class AssistanceRequestConflictError extends ConflictError {
   constructor(message) {
     super(message);
     this.name = "AssistanceRequestConflictError";
   }
 }
 
-class AssistanceRequestValidationError extends Error {
+class AssistanceRequestValidationError extends BadRequestError {
   constructor(message) {
     super(message);
     this.name = "AssistanceRequestValidationError";

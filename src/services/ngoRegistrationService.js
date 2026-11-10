@@ -4,10 +4,11 @@ const db = require("../config/database");
 const joinRequestModel = require("../models/joinRequestModel");
 const ngoModel = require("../models/ngoModel");
 const userModel = require("../models/userModel");
+const { ConflictError } = require("../utils/apiErrors");
 
 const PASSWORD_SALT_ROUNDS = 12;
 
-class NgoRegistrationConflictError extends Error {
+class NgoRegistrationConflictError extends ConflictError {
   constructor(message) {
     super(message);
     this.name = "NgoRegistrationConflictError";

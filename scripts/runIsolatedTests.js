@@ -76,7 +76,22 @@ async function main() {
 
     resultCode = runNode([knexCli, "migrate:latest", "--env", "test"], testEnvironment);
     if (resultCode === 0) {
-      resultCode = runNode(["--test", ...process.argv.slice(2)], testEnvironment);
+      // Test files share one temporary database, so they run one at a time.
+      // Without explicit arguments only *.test.js files are run, which keeps
+      // shared helpers under test/helpers from being treated as test files.
+      // Extra "--" flags (e.g. coverage options) are passed to the test runner.
+      const extraArguments = process.argv.slice(2);
+      const runnerFlags = extraArguments.filter((value) => value.startsWith("--"));
+      const testFiles = extraArguments.filter((value) => !value.startsWith("--"));
+      resultCode = runNode(
+        [
+          "--test",
+          "--test-concurrency=1",
+          ...runnerFlags,
+          ...(testFiles.length > 0 ? testFiles : ["test/**/*.test.js"]),
+        ],
+        testEnvironment,
+      );
     }
   } catch (error) {
     const detail = [error.code, error.message].filter(Boolean).join(": ") || String(error);

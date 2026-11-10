@@ -3,8 +3,9 @@ const userModel = require("../models/userModel");
 const patientModel = require("../models/patientModel");
 const doctorModel = require("../models/doctorModel");
 const ngoModel = require("../models/ngoModel");
+const { NotFoundError } = require("../utils/apiErrors");
 
-class ProfileNotFoundError extends Error {
+class ProfileNotFoundError extends NotFoundError {
   constructor(message) {
     super(message);
     this.name = "ProfileNotFoundError";
