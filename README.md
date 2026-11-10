@@ -1,5 +1,7 @@
 # HCMS Backend
 
+[![Backend CI](https://github.com/ahalnaji002/HCMS-Backend/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/ahalnaji002/HCMS-Backend/actions/workflows/ci.yml)
+
 Backend API for the **Healthcare Conflict Management System (HCMS)**.
 
 ## Project Overview
