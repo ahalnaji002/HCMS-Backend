@@ -640,6 +640,18 @@
  *           nullable: true
  *           description: Optional notes. Maximum size is 65535 UTF-8 bytes.
  *           example: Follow up with the patient regularly.
+ *         patient_name:
+ *           type: string
+ *           description: Patient full name. Returned by the list and detail endpoints only.
+ *           example: Mahmoud Nasser
+ *         doctor_name:
+ *           type: string
+ *           description: Doctor full name. Returned by the list and detail endpoints only.
+ *           example: Dr. Mohammad Al-Helou
+ *         specialization:
+ *           type: string
+ *           description: Doctor specialization. Returned by the list and detail endpoints only.
+ *           example: Orthopedics
  *         assigned_at:
  *           type: string
  *           format: date-time
