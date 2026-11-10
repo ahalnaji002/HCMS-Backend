@@ -4,11 +4,13 @@ const emergencyAlertController = require("../controllers/emergencyAlertControlle
 const {
   validateCreateEmergencyAlert,
 } = require("../middleware/validateEmergencyAlert");
+const { publicEmergencyAlertLimiter } = require("../middleware/rateLimiters");
 
 const router = express.Router();
 
 router.post(
   "/",
+  publicEmergencyAlertLimiter,
   validateCreateEmergencyAlert,
   emergencyAlertController.createPublicAlert,
 );
