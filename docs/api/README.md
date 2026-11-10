@@ -895,8 +895,8 @@ Requires `ADMIN` and returns exactly:
 - `total_doctors`: Doctor profiles whose joined user is `ACTIVE`.
 - `total_ngos`: NGO profiles whose joined user is `ACTIVE`.
 - `pending_join_requests`: Join Requests with status `PENDING`.
-- `active_emergency_alerts`: all Emergency Alerts whose status is not
-  `RESOLVED`, including Visitor alerts with no Patient.
+- `active_emergency_alerts`: all Emergency Alerts whose status is neither
+  `RESOLVED` nor `CANCELLED`, including Visitor alerts with no Patient.
 - `pending_assistance_requests`: Assistance Requests with status `PENDING`.
 
 Inactive Patient, Doctor, and NGO accounts do not contribute to their profile
@@ -914,8 +914,9 @@ It returns exactly:
 - `active_treatment_plans`: the Patient's Treatment Plans with status `ACTIVE`.
 - `pending_reminders`: the authenticated user's Reminders with status
   `PENDING`.
-- `active_emergency_alerts`: the Patient's Emergency Alerts whose status is not
-  `RESOLVED`; Visitor and other Patients' alerts are excluded.
+- `active_emergency_alerts`: the Patient's Emergency Alerts whose status is
+  neither `RESOLVED` nor `CANCELLED`; Visitor and other Patients' alerts are
+  excluded.
 - `pending_assistance_requests`: the Patient's Assistance Requests with status
   `PENDING`.
 - `unread_notifications`: the authenticated user's Notifications where
@@ -936,7 +937,7 @@ It returns exactly:
   Doctor-Patient Assignments; inactive history and duplicate Patient history do
   not inflate the count.
 - `assigned_emergency_alerts`: alerts assigned to the Doctor whose status is
-  not `RESOLVED`.
+  neither `RESOLVED` nor `CANCELLED`.
 - `submitted_assistance_requests`: all Assistance Requests submitted by the
   Doctor, regardless of status.
 

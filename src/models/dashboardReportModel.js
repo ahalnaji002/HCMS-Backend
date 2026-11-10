@@ -1,5 +1,8 @@
 const db = require("../config/database");
 
+// Resolved and cancelled alerts are closed; every other status is active.
+const CLOSED_EMERGENCY_STATUSES = ["RESOLVED", "CANCELLED"];
+
 const PATIENT_REPORT_COLUMNS = [
   "patients.id",
   "patients.user_id",
@@ -66,7 +69,7 @@ async function getAdminDashboard(connection = db) {
       "ngos.id",
     ),
     count(connection("join_requests").where("status", "PENDING")),
-    count(connection("emergency_alerts").whereNot("status", "RESOLVED")),
+    count(connection("emergency_alerts").whereNotIn("status", CLOSED_EMERGENCY_STATUSES)),
     count(connection("assistance_requests").where("status", "PENDING")),
   ]);
 
@@ -97,7 +100,7 @@ async function getPatientDashboard(patientId, userId, connection = db) {
     count(
       connection("emergency_alerts")
         .where("patient_id", patientId)
-        .whereNot("status", "RESOLVED"),
+        .whereNotIn("status", CLOSED_EMERGENCY_STATUSES),
     ),
     count(
       connection("assistance_requests").where({
@@ -125,7 +128,7 @@ async function getDoctorDashboard(doctorId, connection = db) {
       count(
         connection("emergency_alerts")
           .where("assigned_doctor_id", doctorId)
-          .whereNot("status", "RESOLVED"),
+          .whereNotIn("status", CLOSED_EMERGENCY_STATUSES),
       ),
       count(connection("assistance_requests").where("doctor_id", doctorId)),
     ]);
