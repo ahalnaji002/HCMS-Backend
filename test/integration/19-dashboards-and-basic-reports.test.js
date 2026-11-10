@@ -107,6 +107,13 @@ test("Admin dashboard applies approved active-account and current-status metrics
     priority: "HIGH",
     status: "PENDING_ASSIGNMENT",
   });
+  // A cancelled alert is closed and must not count as active.
+  await db("emergency_alerts").insert({
+    patient_id: null,
+    phone: "0599999998",
+    priority: "HIGH",
+    status: "CANCELLED",
+  });
   await insertAssistanceRequest({ status: "PENDING" });
   await insertAssistanceRequest({ status: "APPROVED" });
 
@@ -139,6 +146,7 @@ test("Patient dashboard counts only own current data with existing unread semant
   });
   await insertDoctorEmergencyAlert({ status: "PENDING_ASSIGNMENT", assigned_doctor_id: null });
   await insertDoctorEmergencyAlert({ status: "RESOLVED", resolved_at: db.fn.now() });
+  await insertDoctorEmergencyAlert({ status: "CANCELLED", assigned_doctor_id: null });
   await db("emergency_alerts").insert({
     patient_id: null,
     phone: "0598888888",
