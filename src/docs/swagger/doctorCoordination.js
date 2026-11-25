@@ -91,6 +91,79 @@
  *           application/json:
  *             schema: { $ref: '#/components/schemas/ErrorResponse' }
  *       '500': { $ref: '#/components/responses/InternalServerError' }
+ * /api/doctor/emergency-alerts:
+ *   get:
+ *     tags: [Emergency Alerts]
+ *     summary: List Emergency Alerts assigned to the authenticated Doctor
+ *     description: Returns only alerts whose assigned_doctor_id is the authenticated Doctor, newest first (sent_at, then ID).
+ *     operationId: listAssignedEmergencyAlertsForDoctor
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       '200':
+ *         description: Emergency Alerts retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: Emergency Alerts retrieved successfully }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     emergency_alerts:
+ *                       type: array
+ *                       items: { $ref: '#/components/schemas/DoctorEmergencyAlert' }
+ *       '401': { $ref: '#/components/responses/AuthenticationRequired' }
+ *       '403':
+ *         description: Account is inactive or user is not a Doctor
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       '404':
+ *         description: Doctor profile not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       '500': { $ref: '#/components/responses/InternalServerError' }
+ * /api/doctor/emergency-alerts/{alertId}:
+ *   get:
+ *     tags: [Emergency Alerts]
+ *     summary: View an Emergency Alert assigned to the authenticated Doctor
+ *     operationId: getAssignedEmergencyAlertForDoctor
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: alertId
+ *         required: true
+ *         schema: { type: integer, minimum: 1 }
+ *     responses:
+ *       '200':
+ *         description: Emergency Alert retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: Emergency Alert retrieved successfully }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     emergency_alert: { $ref: '#/components/schemas/DoctorEmergencyAlert' }
+ *       '400': { $ref: '#/components/responses/ValidationError' }
+ *       '401': { $ref: '#/components/responses/AuthenticationRequired' }
+ *       '403':
+ *         description: Account is inactive or user is not a Doctor
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       '404':
+ *         description: Emergency Alert not assigned to this Doctor or Doctor profile not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       '500': { $ref: '#/components/responses/InternalServerError' }
  * /api/doctor/emergency-alerts/{alertId}/status:
  *   patch:
  *     tags: [Emergency Alerts]

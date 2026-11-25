@@ -100,6 +100,14 @@ router.get(
   resourceAllocationController.listForDoctor,
 );
 
+router.get("/emergency-alerts", emergencyAlertController.listForDoctor);
+
+router.get(
+  "/emergency-alerts/:alertId",
+  validateAlertId,
+  emergencyAlertController.getForDoctor,
+);
+
 router.patch(
   "/emergency-alerts/:alertId/status",
   validateAlertId,

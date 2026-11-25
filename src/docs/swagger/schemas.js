@@ -740,6 +740,24 @@
  *           type: string
  *           format: date-time
  *
+ *     DoctorEmergencyAlert:
+ *       description: >
+ *         Emergency Alert as seen by its assigned Doctor. patient_name and
+ *         patient_phone come from the registered Patient account and are null
+ *         for Visitor alerts.
+ *       allOf:
+ *         - $ref: '#/components/schemas/EmergencyAlert'
+ *         - type: object
+ *           properties:
+ *             patient_name:
+ *               type: string
+ *               nullable: true
+ *               example: Sara Ahmad
+ *             patient_phone:
+ *               type: string
+ *               nullable: true
+ *               example: '0591234567'
+ *
  *
  *     AssistanceRequest:
  *       type: object

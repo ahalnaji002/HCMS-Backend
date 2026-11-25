@@ -218,6 +218,37 @@ async function assignDoctorToAlert(user, alertId, doctorId, ipAddress) {
   });
 }
 
+async function getDoctorProfileOrThrow(userId) {
+  const doctor = await doctorModel.findByUserId(userId);
+
+  if (!doctor) {
+    throw new EmergencyAlertNotFoundError("Doctor profile not found");
+  }
+
+  return doctor;
+}
+
+async function listAlertsForAssignedDoctor(user) {
+  const doctor = await getDoctorProfileOrThrow(user.id);
+
+  return emergencyAlertModel.listByAssignedDoctorId(doctor.id);
+}
+
+async function getAlertForAssignedDoctor(user, alertId) {
+  const doctor = await getDoctorProfileOrThrow(user.id);
+
+  const alert = await emergencyAlertModel.findByIdAndAssignedDoctorId(
+    alertId,
+    doctor.id,
+  );
+
+  if (!alert) {
+    throw new EmergencyAlertNotFoundError("Emergency Alert not found");
+  }
+
+  return alert;
+}
+
 const DOCTOR_STATUS_TRANSITIONS = {
   ASSIGNED: "IN_PROGRESS",
   IN_PROGRESS: "RESOLVED",
@@ -300,5 +331,7 @@ module.exports = {
   listAlertsForAdmin,
   getAlertForAdmin,
   assignDoctorToAlert,
+  listAlertsForAssignedDoctor,
+  getAlertForAssignedDoctor,
   updateStatusForAssignedDoctor,
 };

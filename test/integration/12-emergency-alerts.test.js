@@ -1021,3 +1021,112 @@ test("concurrent Doctor Emergency Alert transitions allow only one stale-state w
   assert.ok(stored.responded_at);
   assert.equal(stored.resolved_at, null);
 });
+
+test("assigned Doctor lists own Emergency Alerts newest first with Patient contact", async () => {
+  const otherDoctor = await createSecondDoctor();
+  const older = await insertDoctorEmergencyAlert({
+    sent_at: "2026-09-01 08:00:00",
+    location: "31.5, 34.46",
+  });
+  const visitorAlert = await insertDoctorEmergencyAlert({
+    patient_id: null,
+    phone: "0597777777",
+    sent_at: "2026-09-02 08:00:00",
+  });
+  await insertDoctorEmergencyAlert({ assigned_doctor_id: otherDoctor.profile.id });
+  await db("emergency_alerts").insert({
+    patient_id: users.patientProfile.id,
+    phone: "0591111111",
+    priority: "HIGH",
+    status: "PENDING_ASSIGNMENT",
+  });
+
+  const response = await request(app)
+    .get("/api/doctor/emergency-alerts")
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.success, true);
+  const alerts = response.body.data.emergency_alerts;
+  assert.deepEqual(
+    alerts.map((alert) => alert.id),
+    [visitorAlert.id, older.id],
+  );
+
+  const patientUser = await db("users").where({ id: users.patient.id }).first();
+  assert.equal(alerts[1].patient_name, patientUser.full_name);
+  assert.equal(alerts[1].patient_phone, patientUser.phone);
+  assert.equal(alerts[1].location, "31.5, 34.46");
+  assert.equal(alerts[0].patient_name, null);
+  assert.equal(alerts[0].patient_phone, null);
+  assert.equal(alerts[0].phone, "0597777777");
+});
+
+test("Doctor with no assigned Emergency Alerts gets an empty list", async () => {
+  const otherDoctor = await createSecondDoctor();
+  await insertDoctorEmergencyAlert();
+
+  const response = await request(app)
+    .get("/api/doctor/emergency-alerts")
+    .set("Authorization", `Bearer ${tokenFor(otherDoctor.user)}`);
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body.data.emergency_alerts, []);
+});
+
+test("assigned Doctor views own Emergency Alert detail", async () => {
+  const alert = await insertDoctorEmergencyAlert({ description: "Chest pain" });
+
+  const response = await request(app)
+    .get(`/api/doctor/emergency-alerts/${alert.id}`)
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body.data.emergency_alert.id, alert.id);
+  assert.equal(response.body.data.emergency_alert.description, "Chest pain");
+  assert.equal(response.body.data.emergency_alert.status, "ASSIGNED");
+  assert.ok("patient_name" in response.body.data.emergency_alert);
+});
+
+test("Doctor Emergency Alert detail hides alerts of another Doctor and missing alerts", async () => {
+  const otherDoctor = await createSecondDoctor();
+  const alert = await insertDoctorEmergencyAlert();
+
+  const [otherResponse, missingResponse] = await Promise.all([
+    request(app)
+      .get(`/api/doctor/emergency-alerts/${alert.id}`)
+      .set("Authorization", `Bearer ${tokenFor(otherDoctor.user)}`),
+    request(app)
+      .get("/api/doctor/emergency-alerts/999999999")
+      .set("Authorization", `Bearer ${tokenFor(users.doctor)}`),
+  ]);
+
+  assert.equal(otherResponse.status, 404);
+  assert.equal(otherResponse.body.message, "Emergency Alert not found");
+  assert.equal(missingResponse.status, 404);
+});
+
+test("Doctor Emergency Alert list and detail enforce authentication, DOCTOR role, and alertId validation", async () => {
+  const alert = await insertDoctorEmergencyAlert();
+  const paths = ["/api/doctor/emergency-alerts", `/api/doctor/emergency-alerts/${alert.id}`];
+
+  for (const path of paths) {
+    const responses = await Promise.all([
+      request(app).get(path),
+      request(app).get(path).set("Authorization", `Bearer ${tokenFor(users.patient)}`),
+      request(app).get(path).set("Authorization", `Bearer ${tokenFor(users.ngo)}`),
+      request(app).get(path).set("Authorization", `Bearer ${tokenFor(users.admin)}`),
+    ]);
+
+    assert.deepEqual(
+      responses.map((response) => response.status),
+      [401, 403, 403, 403],
+    );
+  }
+
+  const invalid = await request(app)
+    .get("/api/doctor/emergency-alerts/not-an-id")
+    .set("Authorization", `Bearer ${tokenFor(users.doctor)}`);
+  assert.equal(invalid.status, 400);
+  assert.equal(invalid.body.message, "Validation failed");
+});
