@@ -180,6 +180,8 @@ above.
 | `GET` | `/api/admin/emergency-alerts` | `ADMIN` | None | `emergency_alerts` | All registered-Patient and Visitor alerts |
 | `GET` | `/api/admin/emergency-alerts/:alertId` | `ADMIN` | `alertId` | `emergency_alert` | Admin monitoring only |
 | `PATCH` | `/api/admin/emergency-alerts/:alertId/assign` | `ADMIN` | `doctor_id` | `emergency_alert` | Pending alert and eligible active Doctor required |
+| `GET` | `/api/doctor/emergency-alerts` | `DOCTOR` | None | `emergency_alerts` | Alerts assigned to this Doctor only; newest first; adds `patient_name`, `patient_phone` (null for Visitor alerts) |
+| `GET` | `/api/doctor/emergency-alerts/:alertId` | `DOCTOR` | `alertId` | `emergency_alert` | Assigned Doctor only; 404 otherwise |
 | `PATCH` | `/api/doctor/emergency-alerts/:alertId/status` | `DOCTOR` | `status` | `emergency_alert` | Assigned Doctor and approved next state required |
 
 **[Assistance Requests](#assistance-requests)**

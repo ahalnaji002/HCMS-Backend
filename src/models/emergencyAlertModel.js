@@ -86,6 +86,32 @@ function findById(alertId, connection = db) {
     .first();
 }
 
+// Doctor view: alert columns plus the registered Patient's name and account
+// phone. Visitor alerts (patient_id NULL) keep both fields NULL.
+function doctorViewQuery(doctorId, connection) {
+  return connection("emergency_alerts")
+    .leftJoin("patients", "patients.id", "emergency_alerts.patient_id")
+    .leftJoin("users as patient_users", "patient_users.id", "patients.user_id")
+    .select(
+      ...EMERGENCY_ALERT_COLUMNS.map((column) => `emergency_alerts.${column}`),
+      "patient_users.full_name as patient_name",
+      "patient_users.phone as patient_phone",
+    )
+    .where("emergency_alerts.assigned_doctor_id", doctorId);
+}
+
+function listByAssignedDoctorId(doctorId, connection = db) {
+  return doctorViewQuery(doctorId, connection)
+    .orderBy("emergency_alerts.sent_at", "desc")
+    .orderBy("emergency_alerts.id", "desc");
+}
+
+function findByIdAndAssignedDoctorId(alertId, doctorId, connection = db) {
+  return doctorViewQuery(doctorId, connection)
+    .where("emergency_alerts.id", alertId)
+    .first();
+}
+
 function findByIdForUpdate(alertId, connection) {
   return connection("emergency_alerts")
     .select(EMERGENCY_ALERT_COLUMNS)
@@ -162,6 +188,8 @@ module.exports = {
   findByIdAndPatientId,
   listAll,
   listByPatientId,
+  listByAssignedDoctorId,
+  findByIdAndAssignedDoctorId,
   cancelPendingByIdAndPatientId,
   assignPendingToDoctor,
   transitionAssignedDoctorStatus,

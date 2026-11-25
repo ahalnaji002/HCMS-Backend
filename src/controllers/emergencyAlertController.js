@@ -114,6 +114,34 @@ async function assignDoctor(req, res) {
   });
 }
 
+async function listForDoctor(req, res) {
+  const emergencyAlerts =
+    await emergencyAlertService.listAlertsForAssignedDoctor(req.user);
+
+  return res.status(200).json({
+    success: true,
+    message: "Emergency Alerts retrieved successfully",
+    data: {
+      emergency_alerts: emergencyAlerts,
+    },
+  });
+}
+
+async function getForDoctor(req, res) {
+  const emergencyAlert = await emergencyAlertService.getAlertForAssignedDoctor(
+    req.user,
+    req.params.alertId,
+  );
+
+  return res.status(200).json({
+    success: true,
+    message: "Emergency Alert retrieved successfully",
+    data: {
+      emergency_alert: emergencyAlert,
+    },
+  });
+}
+
 async function updateStatusForDoctor(req, res) {
   const emergencyAlert =
     await emergencyAlertService.updateStatusForAssignedDoctor(
@@ -141,5 +169,7 @@ module.exports = {
   listForAdmin,
   getForAdmin,
   assignDoctor,
+  listForDoctor,
+  getForDoctor,
   updateStatusForDoctor,
 };
