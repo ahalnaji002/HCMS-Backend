@@ -10,7 +10,14 @@ const dashboardReportController = require("../controllers/dashboardReportControl
 const patientIntakeController = require("../controllers/patientIntakeController");
 const adminDoctorWorkloadController = require("../controllers/adminDoctorWorkloadController");
 const intakeCorrectionRequestController = require("../controllers/intakeCorrectionRequestController");
+const userManagementController = require("../controllers/userManagementController");
 const authenticate = require("../middleware/authenticate");
+const {
+  validateUserListQuery,
+  validateNgoListQuery,
+  validateUserId,
+  validateAccountStatusUpdate,
+} = require("../middleware/validateUserManagement");
 const authorizeRoles = require("../middleware/authorizeRoles");
 
 const {
@@ -226,5 +233,20 @@ router.get(
   validateResourceRequestId,
   resourceAllocationController.listForAdmin,
 );
+
+// ==============================
+// User and Organization Management (FR-10.1, FR-10.2)
+// ==============================
+
+router.get("/users", validateUserListQuery, userManagementController.listUsers);
+
+router.patch(
+  "/users/:userId/status",
+  validateUserId,
+  validateAccountStatusUpdate,
+  userManagementController.updateUserStatus,
+);
+
+router.get("/ngos", validateNgoListQuery, userManagementController.listNgos);
 
 module.exports = router;

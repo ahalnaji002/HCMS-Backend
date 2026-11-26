@@ -46,6 +46,8 @@
  *             - UPDATE_RESOURCE_ALLOCATION
  *             - DELETE_RESOURCE_ALLOCATION
  *             - UPDATE_SYSTEM_SETTING
+ *             - ACTIVATE_USER
+ *             - DEACTIVATE_USER
  *       - in: query
  *         name: entity_type
  *         schema:
@@ -56,6 +58,7 @@
  *             - ASSISTANCE_REQUEST
  *             - RESOURCE_ALLOCATION
  *             - SYSTEM_SETTING
+ *             - USER
  *       - in: query
  *         name: entity_id
  *         schema:

@@ -552,6 +552,8 @@
  *             - UPDATE_RESOURCE_ALLOCATION
  *             - DELETE_RESOURCE_ALLOCATION
  *             - UPDATE_SYSTEM_SETTING
+ *             - ACTIVATE_USER
+ *             - DEACTIVATE_USER
  *         entity_type:
  *           type: string
  *           enum:
@@ -560,6 +562,7 @@
  *             - ASSISTANCE_REQUEST
  *             - RESOURCE_ALLOCATION
  *             - SYSTEM_SETTING
+ *             - USER
  *         entity_id:
  *           type: integer
  *           example: 12
