@@ -244,6 +244,14 @@ above.
 | `GET` | `/api/admin/activity-logs` | `ADMIN` | Approved filters; `page`, `limit` | `items`, `page`, `limit`, `total`, `total_pages` | Read-only safe projection |
 | `GET` | `/api/admin/activity-logs/:logId` | `ADMIN` | `logId` | `activity_log` | No entity or actor expansion |
 
+**[User and Organization Management](#user-and-organization-management)**
+
+| Method | Route | Access | Request/input | Success `data` | Important restriction |
+|---|---|---|---|---|---|
+| `GET` | `/api/admin/users` | `ADMIN` | Optional `role`, `account_status`, `search`; `page`, `limit` (max 100) | `users`, `page`, `limit`, `total`, `total_pages` | Never returns password hashes |
+| `PATCH` | `/api/admin/users/:userId/status` | `ADMIN` | `account_status`: `SUSPENDED` or `ACTIVE` | `user` | `ACTIVE`↔`SUSPENDED` only; not own account; not the last active Admin; applicants (`INACTIVE`) use Join Requests |
+| `GET` | `/api/admin/ngos` | `ADMIN` | Optional `account_status`, `search` | `ngos` | Adds `assigned_requests`, `open_requests`, `completed_requests` |
+
 **[System Settings](#system-settings)**
 
 | Method | Route | Access | Request/input | Success `data` | Important restriction |
@@ -784,6 +792,8 @@ The approved action and entity mappings are:
 | `UPDATE_RESOURCE_ALLOCATION` | `RESOURCE_ALLOCATION` | Assigned NGO updates an allocation |
 | `DELETE_RESOURCE_ALLOCATION` | `RESOURCE_ALLOCATION` | Assigned NGO deletes an allocation |
 | `UPDATE_SYSTEM_SETTING` | `SYSTEM_SETTING` | Admin changes a predefined System Setting value |
+| `ACTIVATE_USER` | `USER` | Admin re-activates a suspended account |
+| `DEACTIVATE_USER` | `USER` | Admin suspends an active account |
 
 For these events, `user_id` is always the authenticated actor, and
 `ip_address` is the Express-resolved `req.ip` or `NULL` when unavailable. The
@@ -811,6 +821,36 @@ profile changes, Doctor-Patient Assignment changes, medical/treatment data,
 Patient Emergency creation or cancellation, Messages, Notification reads,
 Reminders, GET/read operations, reports, dashboards, visitors, or automatic
 system events.
+
+## User and Organization Management
+
+FR-10.1 and FR-10.2. All routes require an `ACTIVE` `ADMIN` account.
+
+Account statuses keep their existing meaning:
+
+- `ACTIVE`: can sign in and use the API.
+- `INACTIVE`: a Doctor or NGO applicant waiting for (or rejected by) Join
+  Request review. These accounts are activated only through Join Requests, so
+  the approval workflow is unchanged.
+- `SUSPENDED`: deactivated by an Administrator.
+
+`PATCH /api/admin/users/:userId/status` moves an account from `ACTIVE` to
+`SUSPENDED` (deactivate) or from `SUSPENDED` to `ACTIVE` (re-activate). It
+returns `409` when the target is the calling Administrator, when it would
+leave no active Administrator, when the account is an `INACTIVE` applicant, or
+when the account already has the requested status. Because every protected
+request re-checks `account_status`, a suspended user's existing token stops
+working on their next request. Each change writes an `ACTIVATE_USER` or
+`DEACTIVATE_USER` Activity Log in the same transaction.
+
+`GET /api/admin/users` lists accounts newest first. `search` (up to 100
+characters) matches name, email, or phone; `%` and `_` are matched literally.
+
+`GET /api/admin/ngos` lists NGOs by organization name with the account holder,
+`account_status`, and counts of Assistance Requests assigned to the NGO:
+`assigned_requests` (all), `open_requests` (`PENDING`, `UNDER_REVIEW`,
+`APPROVED`), and `completed_requests`. NGO accounts are activated or suspended
+with the user status route using the NGO's `user_id`.
 
 ## System Settings
 

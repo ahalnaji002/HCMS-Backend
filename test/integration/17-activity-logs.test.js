@@ -208,7 +208,7 @@ test("Activity Log list validates and applies every approved filter", async () =
     "entity_id=1.5",
     "entity_id=18446744073709551616",
     "action=UNKNOWN",
-    "entity_type=USER",
+    "entity_type=PATIENT",
     "date_from=2026-02-30T10:00:00",
     "date_to=2026-09-26T10:00:00Z",
     "date_from=2026-09-27T00:00:00&date_to=2026-09-26T00:00:00",

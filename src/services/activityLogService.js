@@ -4,6 +4,7 @@ const emergencyAlertModel = require("../models/emergencyAlertModel");
 const joinRequestModel = require("../models/joinRequestModel");
 const resourceAllocationModel = require("../models/resourceAllocationModel");
 const systemSettingModel = require("../models/systemSettingModel");
+const userModel = require("../models/userModel");
 const { NotFoundError } = require("../utils/apiErrors");
 
 const UNSIGNED_BIGINT_MAX = 18446744073709551615n;
@@ -51,6 +52,14 @@ const EVENT_DEFINITIONS = Object.freeze({
     entityType: "SYSTEM_SETTING",
     description: (id) => `System Setting #${id} updated`,
   },
+  ACTIVATE_USER: {
+    entityType: "USER",
+    description: (id, entity) => `User #${id} (${entity.role}) activated.`,
+  },
+  DEACTIVATE_USER: {
+    entityType: "USER",
+    description: (id, entity) => `User #${id} (${entity.role}) deactivated.`,
+  },
 });
 
 const APPROVED_ACTIONS = Object.freeze(Object.keys(EVENT_DEFINITIONS));
@@ -60,6 +69,7 @@ const APPROVED_ENTITY_TYPES = Object.freeze([
   "ASSISTANCE_REQUEST",
   "RESOURCE_ALLOCATION",
   "SYSTEM_SETTING",
+  "USER",
 ]);
 
 const ENTITY_MODELS = {
@@ -68,6 +78,7 @@ const ENTITY_MODELS = {
   ASSISTANCE_REQUEST: assistanceRequestModel,
   RESOURCE_ALLOCATION: resourceAllocationModel,
   SYSTEM_SETTING: systemSettingModel,
+  USER: userModel,
 };
 
 class ActivityLogNotFoundError extends NotFoundError {

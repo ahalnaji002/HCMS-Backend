@@ -92,7 +92,53 @@ function findByIdForUpdate(id, connection) {
     .first();
 }
 
+// Escapes LIKE wildcards so a search for "50%" matches the literal text.
+function likePattern(search) {
+  return `%${search.replace(/[\\%_]/g, (character) => `\\${character}`)}%`;
+}
+
+function applyAdminFilters(query, filters) {
+  if (filters.role) query.where("role", filters.role);
+  if (filters.account_status) query.where("account_status", filters.account_status);
+  if (filters.search) {
+    const pattern = likePattern(filters.search);
+    query.where((builder) => {
+      builder
+        .where("full_name", "like", pattern)
+        .orWhere("email", "like", pattern)
+        .orWhere("phone", "like", pattern);
+    });
+  }
+  return query;
+}
+
+async function listForAdmin(filters, page, limit, connection = db) {
+  const [items, countRow] = await Promise.all([
+    applyAdminFilters(connection("users").select(PUBLIC_USER_COLUMNS), filters)
+      .orderBy("created_at", "desc")
+      .orderBy("id", "desc")
+      .limit(limit)
+      .offset((page - 1) * limit),
+    applyAdminFilters(connection("users").count({ total: "id" }), filters).first(),
+  ]);
+
+  return { items, total: Number(countRow.total) };
+}
+
+// Locks every active administrator row so two concurrent deactivations
+// cannot both pass the "last active administrator" check.
+async function countActiveAdminsForUpdate(connection) {
+  const rows = await connection("users")
+    .select("id")
+    .where({ role: "ADMIN", account_status: "ACTIVE" })
+    .orderBy("id", "asc")
+    .forUpdate();
+  return rows.length;
+}
+
 module.exports = {
+  listForAdmin,
+  countActiveAdminsForUpdate,
   findById,
   findByEmail,
   findByEmailWithPasswordHash,
