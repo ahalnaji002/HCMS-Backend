@@ -3,6 +3,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const swaggerUi = require("swagger-ui-express");
 
+const healthService = require("./services/healthService");
 const swaggerSpec = require("./config/swagger");
 const { buildCorsOptions } = require("./config/cors");
 
@@ -56,6 +57,19 @@ app.get("/", (req, res) => {
   res.json({
     message: "HCMS Backend API is running",
   });
+});
+
+// Health check for the host: reports whether the API can reach its database.
+app.get("/api/health", async (req, res) => {
+  try {
+    await healthService.checkDatabase();
+    return res.json({ success: true, data: { status: "ok", database: "up" } });
+  } catch (error) {
+    console.error("Health check failed:", error.code || error.message);
+    return res
+      .status(503)
+      .json({ success: false, message: "Database unavailable" });
+  }
 });
 
 // API routes

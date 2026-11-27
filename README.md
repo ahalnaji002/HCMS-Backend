@@ -14,6 +14,7 @@ Built with **Node.js, Express.js, MySQL, and Knex.js**, this repository contains
 - [System Architecture](#system-architecture)
 - [API Documentation](#api-documentation)
 - [Getting Started](#getting-started)
+- [Production Deployment](#production-deployment)
 - [Demo Data](#demo-data)
 - [Testing & Quality](#testing--quality)
 - [Project Structure](#project-structure)
@@ -202,6 +203,24 @@ npm start
 ```
 
 The API listens on `http://localhost:3000` by default.
+
+## Production Deployment
+
+Run with `NODE_ENV=production`, install with `npm ci --omit=dev`, and start with `npm start` (Node 22, see `engines`). The server refuses to start, and lists what is wrong, when any of these is missing:
+
+| Setting | Notes |
+|---|---|
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Production database. |
+| `DB_SSL_CA` or `DB_SSL=true` | TLS to managed MySQL. `DB_SSL_CA` is the provider's CA certificate as PEM text (`
+` escapes allowed). |
+| `JWT_SECRET` | At least 32 characters. Generate a new one for each deployment. |
+| `JWT_EXPIRES_IN` | e.g. `1h`. |
+| `CORS_ORIGIN` | The deployed frontend origin(s). |
+| `TZ` | `Asia/Gaza`. Reminder times are wall-clock times in this zone, and every database session is set to the same UTC offset, so the host's own zone does not matter. |
+
+Optional: `DB_POOL_MAX` (default 5), `TRUST_PROXY` (e.g. `1` behind the host's proxy), `API_PUBLIC_URL` (listed in Swagger UI).
+
+Run `npx knex migrate:latest --env production` before the first start and after each release. The host's health check should use `GET /api/health`, which returns 503 when the database is unreachable. On `SIGTERM` the server stops the reminder worker, finishes in-flight requests and closes the database pool.
 
 ## Demo Data
 
