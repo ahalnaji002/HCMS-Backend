@@ -1,6 +1,7 @@
 const {
   validateCommonRegistrationFields,
 } = require("../utils/registrationValidation");
+const { isKnownSpecialization } = require("../utils/specializations");
 
 const FORBIDDEN_FIELDS = [
   "password_hash",
@@ -34,8 +35,8 @@ function validateDoctorRegistration(req, res, next) {
     input.specialization.trim() === ""
   ) {
     errors.specialization = "specialization must be a non-empty string";
-  } else if (input.specialization.length > 100) {
-    errors.specialization = "specialization must not exceed 100 characters";
+  } else if (!isKnownSpecialization(input.specialization.trim())) {
+    errors.specialization = "specialization must be one of the listed specializations";
   }
 
   if (
@@ -59,7 +60,7 @@ function validateDoctorRegistration(req, res, next) {
     full_name: input.full_name,
     email: input.email,
     password: input.password,
-    specialization: input.specialization,
+    specialization: input.specialization.trim(),
     license_number: input.license_number,
   };
 

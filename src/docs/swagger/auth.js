@@ -145,8 +145,8 @@
  *                 properties:
  *                   specialization:
  *                     type: string
- *                     maxLength: 100
- *                     description: Doctor medical specialization.
+ *                     enum: [General Medicine, Emergency Medicine, Family Medicine, Internal Medicine, General Surgery, Orthopedics, Plastic and Reconstructive Surgery, Pediatrics, Obstetrics and Gynecology, Cardiology, Neurology, Psychiatry, Physical Medicine and Rehabilitation, Dermatology, Ophthalmology, Otolaryngology, Anesthesiology]
+ *                     description: Doctor medical specialization, one of the fixed list. General Medicine and Emergency Medicine Doctors can take Emergency Alerts.
  *                     example: General Medicine
  *                   license_number:
  *                     type: string
