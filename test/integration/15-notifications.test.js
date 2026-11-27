@@ -112,6 +112,8 @@ test("Notification list is deterministic newest-first and exposes safe schema fi
     Object.keys(response.body.data.notifications[0]).sort(),
     [
       "created_at",
+      "event",
+      "event_status",
       "id",
       "is_read",
       "message",

@@ -6,6 +6,7 @@ const userModel = require("../models/userModel");
 const notificationService = require("./notificationService");
 const activityLogService = require("./activityLogService");
 const { BadRequestError, ConflictError, NotFoundError } = require("../utils/apiErrors");
+const { isEmergencyEligibleSpecialization } = require("../utils/specializations");
 
 class EmergencyAlertNotFoundError extends NotFoundError {
   constructor(message) {
@@ -176,12 +177,7 @@ async function assignDoctorToAlert(user, alertId, doctorId, ipAddress) {
       );
     }
 
-    const eligibleSpecializations = new Set([
-      "General Medicine",
-      "Emergency Medicine",
-    ]);
-
-    if (!eligibleSpecializations.has(doctor.specialization)) {
+    if (!isEmergencyEligibleSpecialization(doctor.specialization)) {
       throw new EmergencyAlertDoctorNotEligibleError(
         "Doctor specialization is not eligible for Emergency Alert assignment",
       );

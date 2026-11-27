@@ -77,6 +77,7 @@
  *             specialization:
  *               type: string
  *               maxLength: 100
+ *               description: One of the fixed specialization list. Accounts created before the list may hold an older free-text value.
  *               example: General Medicine
  *             license_number:
  *               type: string
@@ -430,7 +431,7 @@
  *
  *     Notification:
  *       type: object
- *       required: [id, user_id, title, message, type, is_read, reference_type, reference_id, created_at, read_at]
+ *       required: [id, user_id, title, message, type, event, event_status, is_read, reference_type, reference_id, created_at, read_at]
  *       properties:
  *         id:
  *           type: integer
@@ -438,11 +439,22 @@
  *           type: integer
  *         title:
  *           type: string
+ *           description: English title. Clients that show other languages should build the text from event and event_status.
  *         message:
  *           type: string
  *         type:
  *           type: string
  *           enum: [ASSISTANCE_REQUEST, EMERGENCY_ALERT, REMINDER, TREATMENT_PLAN]
+ *         event:
+ *           type: string
+ *           nullable: true
+ *           enum: [EMERGENCY_ALERT_ASSIGNED, EMERGENCY_ALERT_STATUS_CHANGED, TREATMENT_PLAN_UPDATED, ASSISTANCE_REQUEST_STATUS_CHANGED, REMINDER_DUE, null]
+ *           description: What happened. Null only for rows the back-fill could not match.
+ *         event_status:
+ *           type: string
+ *           nullable: true
+ *           description: The new status for the two STATUS_CHANGED events, otherwise null.
+ *           example: IN_PROGRESS
  *         is_read:
  *           type: boolean
  *         reference_type:
