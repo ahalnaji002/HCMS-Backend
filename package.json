@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Backend API for the Healthcare Conflict Management System (HCMS)",
   "main": "index.js",
+  "engines": {
+    "node": ">=22 <23"
+  },
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",

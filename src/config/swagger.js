@@ -12,6 +12,9 @@ const options = {
     },
 
     servers: [
+      ...(process.env.API_PUBLIC_URL
+        ? [{ url: process.env.API_PUBLIC_URL, description: "Deployed server" }]
+        : []),
       {
         url: "http://localhost:3000",
         description: "Local development server",
@@ -139,6 +142,10 @@ const options = {
       {
         name: "Public Emergency Alerts",
         description: "Emergency Alerts submitted without an authenticated account.",
+      },
+      {
+        name: "Health",
+        description: "Service and database availability for the hosting platform.",
       },
     ],
   },
