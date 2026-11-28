@@ -200,4 +200,60 @@
  *
  *       '500':
  *         $ref: '#/components/responses/InternalServerError'
+ *
+ * /api/profile/password:
+ *   patch:
+ *     tags: [Profile]
+ *     summary: Change own password
+ *     description: >
+ *       Changes the signed-in user's password after checking the current one.
+ *       Any active role may call it. The new password follows the
+ *       registration policy (at least 8 characters with an uppercase letter,
+ *       a lowercase letter and a digit, at most 72 UTF-8 bytes) and must
+ *       differ from the current one. A wrong current password returns 400
+ *       with a field error, not 401. Only failed attempts count toward the
+ *       rate limit (5 per 15 minutes by default). Recorded in the activity
+ *       log as CHANGE_PASSWORD. Tokens issued before the change stay valid
+ *       until they expire.
+ *     operationId: changeOwnPassword
+ *     security: [{ bearerAuth: [] }]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             additionalProperties: false
+ *             required: [current_password, new_password, new_password_confirmation]
+ *             properties:
+ *               current_password: { type: string, format: password }
+ *               new_password: { type: string, format: password, minLength: 8 }
+ *               new_password_confirmation: { type: string, format: password }
+ *     responses:
+ *       '200':
+ *         description: Password changed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string, example: Password changed successfully }
+ *       '400':
+ *         description: Validation failed, or the current password is incorrect
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ValidationError' }
+ *       '401': { $ref: '#/components/responses/AuthenticationRequired' }
+ *       '403':
+ *         description: Account is inactive
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       '429':
+ *         description: Too many failed attempts
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ErrorResponse' }
+ *       '500': { $ref: '#/components/responses/InternalServerError' }
  */

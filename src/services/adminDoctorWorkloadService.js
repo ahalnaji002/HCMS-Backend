@@ -1,6 +1,8 @@
 const doctorModel = require("../models/doctorModel");
 const userModel = require("../models/userModel");
 const { NotFoundError } = require("../utils/apiErrors");
+const db = require("../config/database");
+const { recordActorEvent } = require("./activityLogService");
 
 class DoctorWorkloadNotFoundError extends NotFoundError {
   constructor() {
@@ -13,7 +15,7 @@ async function listActiveDoctors() {
   return doctorModel.listActiveWithWorkload();
 }
 
-async function updateDoctorWorkload(doctorId, updates) {
+async function updateDoctorWorkload(doctorId, updates, actor = null) {
   const doctor = await doctorModel.findById(doctorId);
   if (!doctor) throw new DoctorWorkloadNotFoundError();
 
@@ -22,7 +24,11 @@ async function updateDoctorWorkload(doctorId, updates) {
     throw new DoctorWorkloadNotFoundError();
   }
 
-  return doctorModel.updateWorkload(doctor.id, updates);
+  return db.transaction(async (trx) => {
+    const updated = await doctorModel.updateWorkload(doctor.id, updates, trx);
+    await recordActorEvent(actor, "UPDATE_DOCTOR_WORKLOAD", doctor.id, trx);
+    return updated;
+  });
 }
 
 module.exports = {

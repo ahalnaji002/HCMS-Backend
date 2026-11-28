@@ -5,6 +5,7 @@ const patientIntakeModel = require("../models/patientIntakeModel");
 const patientModel = require("../models/patientModel");
 const { ConflictError, ForbiddenError, NotFoundError } = require("../utils/apiErrors");
 const { listWithOptionalPagination } = require("../utils/pagination");
+const { recordActorEvent } = require("./activityLogService");
 
 class PatientIntakeNotFoundError extends NotFoundError {
   constructor(message = "Patient intake not found") {
@@ -102,7 +103,7 @@ function listForAdmin(pagination = null) {
   return listWithOptionalPagination(patientIntakeModel.listForAdmin(), pagination);
 }
 
-async function startReview(intakeId, adminUserId) {
+async function startReview(intakeId, adminUserId, actor = null) {
   return db.transaction(async (trx) => {
     const intake = await patientIntakeModel.findByIdForUpdate(intakeId, trx);
     if (!intake) throw new PatientIntakeNotFoundError();
@@ -111,7 +112,9 @@ async function startReview(intakeId, adminUserId) {
         "Only a submitted intake can enter review",
       );
     }
-    return patientIntakeModel.startReview(intake.id, adminUserId, trx);
+    const reviewed = await patientIntakeModel.startReview(intake.id, adminUserId, trx);
+    await recordActorEvent(actor, "START_INTAKE_REVIEW", intake.id, trx);
+    return reviewed;
   });
 }
 

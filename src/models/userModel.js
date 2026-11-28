@@ -50,6 +50,21 @@ function findByEmailWithPasswordHash(email, connection = db) {
     .first();
 }
 
+function findByIdWithPasswordHashForUpdate(id, connection) {
+  return connection("users")
+    .select(AUTHENTICATION_USER_COLUMNS)
+    .where({ id })
+    .forUpdate()
+    .first();
+}
+
+function updatePasswordHash(id, passwordHash, connection = db) {
+  return connection("users").where({ id }).update({
+    password_hash: passwordHash,
+    updated_at: connection.fn.now(),
+  });
+}
+
 async function create(user, connection = db) {
   const [id] = await connection("users").insert(buildCreatePayload(user));
   return findById(id, connection);
@@ -142,6 +157,8 @@ module.exports = {
   findById,
   findByEmail,
   findByEmailWithPasswordHash,
+  findByIdWithPasswordHashForUpdate,
+  updatePasswordHash,
   create,
   updateAccountStatus,
   findRoleAndAccountStatus,

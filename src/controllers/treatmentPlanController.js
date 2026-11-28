@@ -1,10 +1,12 @@
 const treatmentPlanService = require("../services/treatmentPlanService");
+const requestActor = require("../utils/requestActor");
 
 async function createForAssignedPatient(req, res) {
   const treatmentPlan = await treatmentPlanService.createForAssignedPatient(
     req.user,
     req.params.patientId,
     req.validatedTreatmentPlan,
+    requestActor(req),
   );
 
   return res.status(201).json({
@@ -53,6 +55,7 @@ async function updateForAssignedPatient(req, res) {
     req.params.patientId,
     req.params.planId,
     req.validatedTreatmentPlan,
+    requestActor(req),
   );
 
   return res.status(200).json({
