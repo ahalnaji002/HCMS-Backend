@@ -6,6 +6,7 @@ const treatmentAppointmentModel = require("../models/treatmentAppointmentModel")
 const db = require("../config/database");
 const notificationService = require("./notificationService");
 const { BadRequestError, ForbiddenError, NotFoundError } = require("../utils/apiErrors");
+const { recordActorEvent } = require("./activityLogService");
 
 class TreatmentPlanNotFoundError extends NotFoundError {
   constructor(message) {
@@ -102,7 +103,7 @@ function validateResultingDateRange(startDate, endDate) {
   }
 }
 
-async function createForAssignedPatient(user, patientId, treatmentPlanData) {
+async function createForAssignedPatient(user, patientId, treatmentPlanData, actor = null) {
   await getPatientOrThrow(patientId);
 
   const doctor = await getDoctorOrThrow(user.id);
@@ -114,13 +115,20 @@ async function createForAssignedPatient(user, patientId, treatmentPlanData) {
     treatmentPlanData.end_date ?? null,
   );
 
-  return treatmentPlanModel.create({
-    patient_id: patientId,
-    doctor_id: doctor.id,
-    title: treatmentPlanData.title,
-    general_instructions: treatmentPlanData.general_instructions ?? null,
-    start_date: treatmentPlanData.start_date,
-    end_date: treatmentPlanData.end_date ?? null,
+  return db.transaction(async (trx) => {
+    const treatmentPlan = await treatmentPlanModel.create(
+      {
+        patient_id: patientId,
+        doctor_id: doctor.id,
+        title: treatmentPlanData.title,
+        general_instructions: treatmentPlanData.general_instructions ?? null,
+        start_date: treatmentPlanData.start_date,
+        end_date: treatmentPlanData.end_date ?? null,
+      },
+      trx,
+    );
+    await recordActorEvent(actor, "CREATE_TREATMENT_PLAN", treatmentPlan.id, trx);
+    return treatmentPlan;
   });
 }
 
@@ -149,6 +157,7 @@ async function updateForAssignedPatient(
   patientId,
   planId,
   treatmentPlanData,
+  actor = null,
 ) {
   await getPatientOrThrow(patientId);
 
@@ -200,6 +209,7 @@ async function updateForAssignedPatient(
     );
 
     await notificationService.notifyTreatmentPlanUpdated(updatedPlan.id, trx);
+    await recordActorEvent(actor, "UPDATE_TREATMENT_PLAN", updatedPlan.id, trx);
 
     return updatedPlan;
   });

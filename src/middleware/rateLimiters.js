@@ -70,8 +70,17 @@ const registrationLimiter = createRateLimiter({
   limit: readPositiveInteger("RATE_LIMIT_REGISTER_MAX", 10),
 });
 
+// Password change: like login, only failed attempts count, so a stolen
+// session cannot be used to guess the current password quickly.
+const passwordChangeLimiter = createRateLimiter({
+  windowMs: 15 * MINUTE_MS,
+  limit: readPositiveInteger("RATE_LIMIT_PASSWORD_CHANGE_MAX", 5),
+  skipSuccessfulRequests: true,
+});
+
 module.exports = {
   createRateLimiter,
+  passwordChangeLimiter,
   publicEmergencyAlertLimiter,
   loginLimiter,
   registrationLimiter,

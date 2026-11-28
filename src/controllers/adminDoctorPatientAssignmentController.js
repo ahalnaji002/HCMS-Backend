@@ -4,11 +4,13 @@ const {
   listDoctorPatientAssignments,
   updateDoctorPatientAssignmentStatus,
 } = require("../services/doctorPatientAssignmentService");
+const requestActor = require("../utils/requestActor");
 
 async function updateStatus(req, res) {
   const assignment = await updateDoctorPatientAssignmentStatus(
     req.validatedAssignmentId,
     req.validatedAssignmentStatus,
+    requestActor(req),
   );
 
   return res.status(200).json({
@@ -43,6 +45,7 @@ async function show(req, res) {
 async function create(req, res) {
   const assignment = await createDoctorPatientAssignment(
     req.validatedAssignment,
+    requestActor(req),
   );
 
   return res.status(201).json({

@@ -3,6 +3,8 @@ const doctorModel = require("../models/doctorModel");
 const doctorPatientAssignmentModel = require("../models/doctorPatientAssignmentModel");
 const patientModel = require("../models/patientModel");
 const { ForbiddenError, NotFoundError } = require("../utils/apiErrors");
+const db = require("../config/database");
+const { recordActorEvent } = require("./activityLogService");
 
 class DoctorDiagnosisNotFoundError extends NotFoundError {
   constructor(message) {
@@ -46,14 +48,17 @@ async function listForPatient(user, patientId) {
   return doctorDiagnosisModel.listByPatientId(patientId);
 }
 
-async function createForPatient(user, patientId, diagnosis) {
+async function createForPatient(user, patientId, diagnosis, actor = null) {
   await getPatientOrThrow(patientId);
   const doctor = await getDoctorOrThrow(user.id);
   await requireAssignment(doctor.id, patientId);
-  return doctorDiagnosisModel.create({
-    patient_id: patientId,
-    doctor_id: doctor.id,
-    diagnosis,
+  return db.transaction(async (trx) => {
+    const created = await doctorDiagnosisModel.create(
+      { patient_id: patientId, doctor_id: doctor.id, diagnosis },
+      trx,
+    );
+    await recordActorEvent(actor, "CREATE_DIAGNOSIS", created.id, trx);
+    return created;
   });
 }
 

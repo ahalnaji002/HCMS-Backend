@@ -70,7 +70,7 @@ async function registerNgoHandler(req, res) {
 // ==============================
 
 async function loginHandler(req, res) {
-  const result = await login(req.validatedLogin);
+  const result = await login(req.validatedLogin, req.ip);
   return res.status(200).json({
     success: true,
     message: "Login successful",

@@ -2,7 +2,9 @@ const {
   getOwnProfile,
   updateOwnProfile,
 } = require("../services/profileService");
+const { changeOwnPassword } = require("../services/passwordChangeService");
 const formatDateOnly = require("../utils/formatDateOnly");
+const requestActor = require("../utils/requestActor");
 
 async function getOwnProfileHandler(req, res) {
   const profile = await getOwnProfile(req.user);
@@ -35,7 +37,17 @@ async function updateOwnProfileHandler(req, res) {
   });
 }
 
+async function changeOwnPasswordHandler(req, res) {
+  await changeOwnPassword(req.user, req.validatedPasswordChange, requestActor(req));
+
+  return res.status(200).json({
+    success: true,
+    message: "Password changed successfully",
+  });
+}
+
 module.exports = {
+  changeOwnPassword: changeOwnPasswordHandler,
   getOwnProfile: getOwnProfileHandler,
   updateOwnProfile: updateOwnProfileHandler,
 };

@@ -1,10 +1,12 @@
 const medicalRecordService = require("../services/medicalRecordService");
+const requestActor = require("../utils/requestActor");
 
 async function createForAssignedPatient(req, res) {
   const medicalRecord = await medicalRecordService.createForAssignedPatient(
     req.user,
     req.validatedPatientId,
     req.validatedMedicalRecord,
+    requestActor(req),
   );
 
   return res.status(201).json({
@@ -36,6 +38,7 @@ async function updateForAssignedPatient(req, res) {
     req.user,
     req.validatedPatientId,
     req.validatedMedicalRecordUpdate,
+    requestActor(req),
   );
 
   return res.status(200).json({

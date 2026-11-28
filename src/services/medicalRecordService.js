@@ -3,6 +3,8 @@ const doctorModel = require("../models/doctorModel");
 const doctorPatientAssignmentModel = require("../models/doctorPatientAssignmentModel");
 const medicalRecordModel = require("../models/medicalRecordModel");
 const { ConflictError, ForbiddenError, NotFoundError } = require("../utils/apiErrors");
+const db = require("../config/database");
+const { recordActorEvent } = require("./activityLogService");
 
 class MedicalRecordNotFoundError extends NotFoundError {
   constructor(message) {
@@ -61,7 +63,7 @@ async function requireActiveAssignment(doctorId, patientId) {
   return assignment;
 }
 
-async function createForAssignedPatient(user, patientId, medicalRecordData) {
+async function createForAssignedPatient(user, patientId, medicalRecordData, actor = null) {
   await getPatientOrThrow(patientId);
 
   const doctor = await getDoctorOrThrow(user.id);
@@ -77,9 +79,13 @@ async function createForAssignedPatient(user, patientId, medicalRecordData) {
   }
 
   try {
-    return await medicalRecordModel.create({
-      patient_id: patientId,
-      ...medicalRecordData,
+    return await db.transaction(async (trx) => {
+      const medicalRecord = await medicalRecordModel.create(
+        { patient_id: patientId, ...medicalRecordData },
+        trx,
+      );
+      await recordActorEvent(actor, "CREATE_MEDICAL_RECORD", medicalRecord.id, trx);
+      return medicalRecord;
     });
   } catch (error) {
     if (error.code === "ER_DUP_ENTRY") {
@@ -108,7 +114,7 @@ async function getForAssignedPatient(user, patientId) {
   return medicalRecord;
 }
 
-async function updateForAssignedPatient(user, patientId, medicalRecordUpdates) {
+async function updateForAssignedPatient(user, patientId, medicalRecordUpdates, actor = null) {
   await getPatientOrThrow(patientId);
 
   const doctor = await getDoctorOrThrow(user.id);
@@ -121,7 +127,15 @@ async function updateForAssignedPatient(user, patientId, medicalRecordUpdates) {
     throw new MedicalRecordNotFoundError("Medical Record not found");
   }
 
-  return medicalRecordModel.updateByPatientId(patientId, medicalRecordUpdates);
+  return db.transaction(async (trx) => {
+    const medicalRecord = await medicalRecordModel.updateByPatientId(
+      patientId,
+      medicalRecordUpdates,
+      trx,
+    );
+    await recordActorEvent(actor, "UPDATE_MEDICAL_RECORD", medicalRecord.id, trx);
+    return medicalRecord;
+  });
 }
 
 async function getOwnMedicalRecord(user) {

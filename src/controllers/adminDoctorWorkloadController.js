@@ -1,4 +1,5 @@
 const adminDoctorWorkloadService = require("../services/adminDoctorWorkloadService");
+const requestActor = require("../utils/requestActor");
 
 async function listActive(req, res) {
   const doctors = await adminDoctorWorkloadService.listActiveDoctors();
@@ -13,6 +14,7 @@ async function updateWorkload(req, res) {
   const doctor = await adminDoctorWorkloadService.updateDoctorWorkload(
     req.validatedDoctorId,
     req.validatedDoctorWorkload,
+    requestActor(req),
   );
   return res.status(200).json({
     success: true,

@@ -1,4 +1,5 @@
 const patientIntakeService = require("../services/patientIntakeService");
+const requestActor = require("../utils/requestActor");
 
 async function getOwn(req, res) {
   const intake = await patientIntakeService.getOwnIntake(req.user);
@@ -46,6 +47,7 @@ async function startReview(req, res) {
   const intake = await patientIntakeService.startReview(
     req.validatedIntakeId,
     req.user.id,
+    requestActor(req),
   );
   return res.status(200).json({
     success: true,

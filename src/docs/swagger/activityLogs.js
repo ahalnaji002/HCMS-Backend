@@ -48,6 +48,18 @@
  *             - UPDATE_SYSTEM_SETTING
  *             - ACTIVATE_USER
  *             - DEACTIVATE_USER
+ *             - LOGIN_SUCCESS
+ *             - LOGIN_FAILED
+ *             - CHANGE_PASSWORD
+ *             - CREATE_DOCTOR_PATIENT_ASSIGNMENT
+ *             - UPDATE_DOCTOR_PATIENT_ASSIGNMENT_STATUS
+ *             - START_INTAKE_REVIEW
+ *             - UPDATE_DOCTOR_WORKLOAD
+ *             - CREATE_MEDICAL_RECORD
+ *             - UPDATE_MEDICAL_RECORD
+ *             - CREATE_DIAGNOSIS
+ *             - CREATE_TREATMENT_PLAN
+ *             - UPDATE_TREATMENT_PLAN
  *       - in: query
  *         name: entity_type
  *         schema:
@@ -59,6 +71,12 @@
  *             - RESOURCE_ALLOCATION
  *             - SYSTEM_SETTING
  *             - USER
+ *             - DOCTOR_PATIENT_ASSIGNMENT
+ *             - PATIENT_INTAKE
+ *             - DOCTOR
+ *             - MEDICAL_RECORD
+ *             - DOCTOR_DIAGNOSIS
+ *             - TREATMENT_PLAN
  *       - in: query
  *         name: entity_id
  *         schema:

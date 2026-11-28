@@ -4,6 +4,8 @@ const authenticate = require("../middleware/authenticate");
 const authorizeRoles = require("../middleware/authorizeRoles");
 const profileController = require("../controllers/profileController");
 const validateProfileUpdate = require("../middleware/validateProfileUpdate");
+const validatePasswordChange = require("../middleware/validatePasswordChange");
+const { passwordChangeLimiter } = require("../middleware/rateLimiters");
 
 const router = express.Router();
 
@@ -20,6 +22,15 @@ router.patch(
   authorizeRoles("PATIENT", "DOCTOR"),
   validateProfileUpdate,
   profileController.updateOwnProfile,
+);
+
+router.patch(
+  "/password",
+  authenticate,
+  authorizeRoles("PATIENT", "DOCTOR", "NGO", "ADMIN"),
+  passwordChangeLimiter,
+  validatePasswordChange,
+  profileController.changeOwnPassword,
 );
 
 module.exports = router;

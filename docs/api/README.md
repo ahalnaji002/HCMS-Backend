@@ -46,6 +46,7 @@ limit is exceeded the API returns status `429` with:
 | `POST /api/emergency-alerts` (public) | 10 requests / 15 minutes | `RATE_LIMIT_EMERGENCY_MAX` |
 | `POST /api/auth/login` | 10 failed attempts / 15 minutes (successful logins are not counted) | `RATE_LIMIT_LOGIN_MAX` |
 | `POST /api/auth/register/patient`, `/doctor`, `/ngo` | 10 requests / hour (shared per endpoint) | `RATE_LIMIT_REGISTER_MAX` |
+| `PATCH /api/profile/password` | 5 failed attempts / 15 minutes (successful changes are not counted) | `RATE_LIMIT_PASSWORD_CHANGE_MAX` |
 
 Responses include the standard `RateLimit` and `RateLimit-Policy` headers.
 Limits are kept in process memory, so they reset when the server restarts and

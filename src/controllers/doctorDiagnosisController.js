@@ -1,4 +1,5 @@
 const doctorDiagnosisService = require("../services/doctorDiagnosisService");
+const requestActor = require("../utils/requestActor");
 
 async function listForAssignedPatient(req, res) {
   const diagnoses = await doctorDiagnosisService.listForPatient(
@@ -17,6 +18,7 @@ async function createForAssignedPatient(req, res) {
     req.user,
     req.validatedPatientId,
     req.validatedDoctorDiagnosis,
+    requestActor(req),
   );
   return res.status(201).json({
     success: true,

@@ -550,7 +550,9 @@
  *           example: 1
  *         user_id:
  *           type: integer
+ *           nullable: true
  *           example: 1
+ *           description: Null only for LOGIN_FAILED with an email that has no account.
  *         action:
  *           type: string
  *           enum:
@@ -566,8 +568,21 @@
  *             - UPDATE_SYSTEM_SETTING
  *             - ACTIVATE_USER
  *             - DEACTIVATE_USER
+ *             - LOGIN_SUCCESS
+ *             - LOGIN_FAILED
+ *             - CHANGE_PASSWORD
+ *             - CREATE_DOCTOR_PATIENT_ASSIGNMENT
+ *             - UPDATE_DOCTOR_PATIENT_ASSIGNMENT_STATUS
+ *             - START_INTAKE_REVIEW
+ *             - UPDATE_DOCTOR_WORKLOAD
+ *             - CREATE_MEDICAL_RECORD
+ *             - UPDATE_MEDICAL_RECORD
+ *             - CREATE_DIAGNOSIS
+ *             - CREATE_TREATMENT_PLAN
+ *             - UPDATE_TREATMENT_PLAN
  *         entity_type:
  *           type: string
+ *           nullable: true
  *           enum:
  *             - JOIN_REQUEST
  *             - EMERGENCY_ALERT
@@ -575,8 +590,16 @@
  *             - RESOURCE_ALLOCATION
  *             - SYSTEM_SETTING
  *             - USER
+ *             - DOCTOR_PATIENT_ASSIGNMENT
+ *             - PATIENT_INTAKE
+ *             - DOCTOR
+ *             - MEDICAL_RECORD
+ *             - DOCTOR_DIAGNOSIS
+ *             - TREATMENT_PLAN
+ *             - null
  *         entity_id:
  *           type: integer
+ *           nullable: true
  *           example: 12
  *         description:
  *           type: string

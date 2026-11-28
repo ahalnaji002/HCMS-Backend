@@ -6,6 +6,7 @@ const doctorPatientAssignmentModel = require("../models/doctorPatientAssignmentM
 const patientIntakeModel = require("../models/patientIntakeModel");
 const { ConflictError, NotFoundError } = require("../utils/apiErrors");
 const { listWithOptionalPagination } = require("../utils/pagination");
+const { recordActorEvent } = require("./activityLogService");
 
 class DoctorNotFoundError extends NotFoundError {
   constructor() {
@@ -105,7 +106,7 @@ async function getDoctorPatientAssignment(id) {
   return assignment;
 }
 
-async function updateDoctorPatientAssignmentStatus(id, status) {
+async function updateDoctorPatientAssignmentStatus(id, status, actor = null) {
   const existingAssignment = await doctorPatientAssignmentModel.findById(id);
 
   if (!existingAssignment) {
@@ -175,11 +176,17 @@ async function updateDoctorPatientAssignmentStatus(id, status) {
     if (status === "ACTIVE") {
       await patientIntakeModel.markDoctorAssigned(assignment.patient_id, trx);
     }
+    await recordActorEvent(
+      actor,
+      "UPDATE_DOCTOR_PATIENT_ASSIGNMENT_STATUS",
+      updated.id,
+      trx,
+    );
     return updated;
   });
 }
 
-async function createDoctorPatientAssignment(input) {
+async function createDoctorPatientAssignment(input, actor = null) {
   if (
     typeof input.assignment_reason !== "string" ||
     input.assignment_reason.trim().length === 0
@@ -257,6 +264,12 @@ async function createDoctorPatientAssignment(input) {
     if (intake.status !== "DOCTOR_ASSIGNED") {
       await patientIntakeModel.markDoctorAssigned(patient.id, trx);
     }
+    await recordActorEvent(
+      actor,
+      "CREATE_DOCTOR_PATIENT_ASSIGNMENT",
+      assignment.id,
+      trx,
+    );
     return assignment;
   });
 }

@@ -1,6 +1,8 @@
 const bcrypt = require("bcryptjs");
 const userModel = require("../models/userModel");
 const joinRequestModel = require("../models/joinRequestModel");
+const db = require("../config/database");
+const activityLogService = require("./activityLogService");
 const { signToken } = require("./tokenService");
 const { ForbiddenError, UnauthorizedError } = require("../utils/apiErrors");
 
@@ -22,10 +24,29 @@ class AccountNotActiveError extends ForbiddenError {
   }
 }
 
-async function login(credentials) {
-  const user = await userModel.findByEmailWithPasswordHash(credentials.email);
+// bcrypt hash (cost 12, same as real accounts) of a random value nobody
+// knows. Unknown emails are compared against it so they take as long as a
+// wrong password and response time does not reveal which emails exist.
+const DUMMY_PASSWORD_HASH =
+  "$2b$12$lvPCBEtm2Ouza155b0/K..pw.uaymvpsMcmQBbUZg8u.AhpQtMVsC";
 
-  if (!user || !(await bcrypt.compare(credentials.password, user.password_hash))) {
+async function login(credentials, ipAddress = null) {
+  const user = await userModel.findByEmailWithPasswordHash(credentials.email);
+  const passwordMatches = await bcrypt.compare(
+    credentials.password,
+    user ? user.password_hash : DUMMY_PASSWORD_HASH,
+  );
+
+  if (!user || !passwordMatches) {
+    await activityLogService.recordEvent(
+      {
+        action: "LOGIN_FAILED",
+        actorUserId: null,
+        entityId: user ? user.id : null,
+        ipAddress,
+      },
+      db,
+    );
     throw new InvalidCredentialsError();
   }
 
@@ -56,6 +77,11 @@ async function login(credentials) {
   }
 
   const token = signToken(user);
+
+  await activityLogService.recordEvent(
+    { action: "LOGIN_SUCCESS", actorUserId: user.id, entityId: user.id, ipAddress },
+    db,
+  );
 
   return {
     token,
