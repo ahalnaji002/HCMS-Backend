@@ -1,14 +1,15 @@
 const notificationService = require("../services/notificationService");
 
 async function list(req, res) {
-  const notifications = await notificationService.listOwnNotifications(
+  const result = await notificationService.listOwnNotifications(
     req.user,
+    req.pagination,
   );
 
   return res.status(200).json({
     success: true,
     message: "Notifications retrieved successfully",
-    data: { notifications },
+    data: result,
   });
 }
 

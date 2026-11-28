@@ -1049,6 +1049,22 @@
  *           type: string
  *           example: Internal server error
  *
+ *   parameters:
+ *
+ *     PageQuery:
+ *       in: query
+ *       name: page
+ *       required: false
+ *       schema: { type: integer, minimum: 1, maximum: 1000000, default: 1 }
+ *       description: Page number, starting at 1.
+ *
+ *     LimitQuery:
+ *       in: query
+ *       name: limit
+ *       required: false
+ *       schema: { type: integer, minimum: 1, maximum: 100 }
+ *       description: Items per page (at most 100). The default depends on the endpoint.
+ *
  *   responses:
  *
  *     ValidationError:

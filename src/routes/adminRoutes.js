@@ -12,6 +12,7 @@ const adminDoctorWorkloadController = require("../controllers/adminDoctorWorkloa
 const intakeCorrectionRequestController = require("../controllers/intakeCorrectionRequestController");
 const userManagementController = require("../controllers/userManagementController");
 const authenticate = require("../middleware/authenticate");
+const { validatePagination } = require("../utils/pagination");
 const {
   validateUserListQuery,
   validateNgoListQuery,
@@ -65,6 +66,11 @@ const {
 } = require("../middleware/validateReportQuery");
 
 const router = express.Router();
+
+// Admin lists page only when the client asks (?page / ?limit). Without them
+// the full list is returned as before, because the admin dashboard still
+// counts pending items from these lists in the browser.
+const optionalPagination = validatePagination({ defaultLimit: 20, optional: true });
 
 router.use(authenticate, authorizeRoles("ADMIN"));
 
@@ -143,7 +149,11 @@ router.patch(
 // Doctor-Patient Assignments
 // ==============================
 
-router.get("/patient-intakes", patientIntakeController.listForAdmin);
+router.get(
+  "/patient-intakes",
+  optionalPagination,
+  patientIntakeController.listForAdmin,
+);
 router.patch(
   "/patient-intakes/:intakeId/start-review",
   validateIntakeId,
@@ -169,7 +179,11 @@ router.patch(
   intakeCorrectionRequestController.resolveForAdmin,
 );
 
-router.get("/doctor-patient-assignments", assignmentController.list);
+router.get(
+  "/doctor-patient-assignments",
+  optionalPagination,
+  assignmentController.list,
+);
 router.get(
   "/doctor-patient-assignments/:id",
   validateAssignmentId,
@@ -191,7 +205,11 @@ router.post(
 // Emergency Alerts
 // ==============================
 
-router.get("/emergency-alerts", emergencyAlertController.listForAdmin);
+router.get(
+  "/emergency-alerts",
+  optionalPagination,
+  emergencyAlertController.listForAdmin,
+);
 
 router.get(
   "/emergency-alerts/:alertId",
@@ -212,6 +230,7 @@ router.patch(
 
 router.get(
   "/assistance-requests",
+  optionalPagination,
   assistanceRequestController.listForAdmin,
 );
 

@@ -79,10 +79,12 @@
  *   get:
  *     tags: [Messages]
  *     summary: Get Conversation History
- *     description: Returns messages exchanged between the authenticated user and the specified Patient or Doctor, ordered oldest first. Existing conversation history is required; the ACTIVE assignment requirement governs new messages.
+ *     description: Returns messages exchanged between the authenticated user and the specified Patient or Doctor, ordered oldest first. Existing conversation history is required; the ACTIVE assignment requirement governs new messages. Paged from the newest messages, so page 1 holds the newest 100 by default (`limit` up to 100), and each page is returned oldest first. A page past the end is an empty list.
  *     operationId: getConversationHistory
  *     security: [{ bearerAuth: [] }]
  *     parameters:
+ *       - $ref: '#/components/parameters/PageQuery'
+ *       - $ref: '#/components/parameters/LimitQuery'
  *       - in: path
  *         name: userId
  *         required: true
@@ -104,6 +106,10 @@
  *                     messages:
  *                       type: array
  *                       items: { $ref: '#/components/schemas/Message' }
+ *                     page: { type: integer, example: 1, description: Always present. }
+ *                     limit: { type: integer, example: 20, description: Always present. }
+ *                     total: { type: integer, example: 42, description: Total items across all pages. }
+ *                     total_pages: { type: integer, example: 3, description: Always present. }
  *       '400': { $ref: '#/components/responses/ValidationError' }
  *       '401': { $ref: '#/components/responses/AuthenticationRequired' }
  *       '403':

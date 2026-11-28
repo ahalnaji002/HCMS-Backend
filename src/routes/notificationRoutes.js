@@ -1,6 +1,7 @@
 const express = require("express");
 const notificationController = require("../controllers/notificationController");
 const authenticate = require("../middleware/authenticate");
+const { validatePagination } = require("../utils/pagination");
 const {
   validateEmptyBody,
   validateNotificationId,
@@ -8,9 +9,15 @@ const {
 
 const router = express.Router();
 
+const NOTIFICATION_PAGE_SIZE = 50;
+
 router.use(authenticate);
 
-router.get("/", notificationController.list);
+router.get(
+  "/",
+  validatePagination({ defaultLimit: NOTIFICATION_PAGE_SIZE }),
+  notificationController.list,
+);
 router.get("/unread-count", notificationController.unreadCount);
 router.patch(
   "/read-all",

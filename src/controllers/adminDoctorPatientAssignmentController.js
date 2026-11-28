@@ -19,12 +19,12 @@ async function updateStatus(req, res) {
 }
 
 async function list(req, res) {
-  const assignments = await listDoctorPatientAssignments();
+  const { items, meta } = await listDoctorPatientAssignments(req.pagination);
 
   return res.status(200).json({
     success: true,
     message: "Doctor-patient assignments retrieved successfully",
-    data: { assignments },
+    data: { assignments: items, ...meta },
   });
 }
 

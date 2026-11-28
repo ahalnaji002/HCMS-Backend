@@ -4,6 +4,7 @@ const doctorPatientAssignmentModel = require("../models/doctorPatientAssignmentM
 const patientIntakeModel = require("../models/patientIntakeModel");
 const patientModel = require("../models/patientModel");
 const { ConflictError, ForbiddenError, NotFoundError } = require("../utils/apiErrors");
+const { listWithOptionalPagination } = require("../utils/pagination");
 
 class PatientIntakeNotFoundError extends NotFoundError {
   constructor(message = "Patient intake not found") {
@@ -97,8 +98,8 @@ async function updateOwnIntake(user, intakeData) {
   });
 }
 
-function listForAdmin() {
-  return patientIntakeModel.listForAdmin();
+function listForAdmin(pagination = null) {
+  return listWithOptionalPagination(patientIntakeModel.listForAdmin(), pagination);
 }
 
 async function startReview(intakeId, adminUserId) {

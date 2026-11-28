@@ -24,15 +24,16 @@ async function listConversations(req, res) {
 }
 
 async function getHistory(req, res) {
-  const messages = await messageService.getConversationHistory(
+  const result = await messageService.getConversationHistory(
     req.user,
     req.validatedConversationUserId,
+    req.pagination,
   );
 
   return res.status(200).json({
     success: true,
     message: "Conversation history retrieved successfully",
-    data: { messages },
+    data: result,
   });
 }
 

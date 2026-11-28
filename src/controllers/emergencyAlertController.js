@@ -72,13 +72,16 @@ async function cancelOwnAlert(req, res) {
 }
 
 async function listForAdmin(req, res) {
-  const emergencyAlerts = await emergencyAlertService.listAlertsForAdmin();
+  const { items, meta } = await emergencyAlertService.listAlertsForAdmin(
+    req.pagination,
+  );
 
   return res.status(200).json({
     success: true,
     message: "Emergency Alerts retrieved successfully",
     data: {
-      emergency_alerts: emergencyAlerts,
+      emergency_alerts: items,
+      ...meta,
     },
   });
 }

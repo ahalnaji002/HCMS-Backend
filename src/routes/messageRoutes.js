@@ -8,8 +8,11 @@ const {
   validateMessageId,
   validateSendMessage,
 } = require("../middleware/validateMessage");
+const { validatePagination } = require("../utils/pagination");
 
 const router = express.Router();
+
+const MESSAGE_PAGE_SIZE = 100;
 
 router.use(authenticate, authorizeRoles("PATIENT", "DOCTOR"));
 
@@ -18,6 +21,7 @@ router.get("/conversations", messageController.listConversations);
 router.get(
   "/conversations/:userId",
   validateConversationUserId,
+  validatePagination({ defaultLimit: MESSAGE_PAGE_SIZE }),
   messageController.getHistory,
 );
 router.patch(

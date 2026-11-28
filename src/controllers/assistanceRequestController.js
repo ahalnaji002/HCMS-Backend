@@ -47,13 +47,16 @@ async function getOwnRequest(req, res) {
 }
 
 async function listForAdmin(req, res) {
-  const assistanceRequests = await assistanceRequestService.listForAdmin();
+  const { items, meta } = await assistanceRequestService.listForAdmin(
+    req.pagination,
+  );
 
   return res.status(200).json({
     success: true,
     message: "Assistance Requests retrieved successfully",
     data: {
-      assistance_requests: assistanceRequests,
+      assistance_requests: items,
+      ...meta,
     },
   });
 }

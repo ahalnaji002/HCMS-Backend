@@ -5,6 +5,7 @@ const patientModel = require("../models/patientModel");
 const userModel = require("../models/userModel");
 const db = require("../config/database");
 const { ForbiddenError, NotFoundError } = require("../utils/apiErrors");
+const { paginationMeta } = require("../utils/pagination");
 
 class MessageNotFoundError extends NotFoundError {
   constructor(message) {
@@ -95,16 +96,22 @@ function listConversations(user) {
   return messageModel.listConversationSummaries(user.id);
 }
 
-async function getConversationHistory(user, otherUserId) {
+async function getConversationHistory(user, otherUserId, pagination) {
   await getUserOrThrow(otherUserId);
 
-  const messages = await messageModel.listBetweenUsers(user.id, otherUserId);
+  const { messages, total } = await messageModel.listBetweenUsers(
+    user.id,
+    otherUserId,
+    pagination,
+  );
 
-  if (messages.length === 0) {
+  // No messages at all between the two users means there is no conversation
+  // to read. A page past the end of a real conversation is just empty.
+  if (total === 0) {
     throw new MessageForbiddenError("Conversation access forbidden");
   }
 
-  return messages;
+  return { messages, ...paginationMeta(pagination, total) };
 }
 
 async function markMessageRead(user, messageId) {
