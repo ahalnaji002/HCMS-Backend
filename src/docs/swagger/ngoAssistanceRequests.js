@@ -4,7 +4,7 @@
  *   get:
  *     tags: [NGO Assistance Requests]
  *     summary: List assigned Assistance Requests
- *     description: Returns Assistance Requests assigned to the authenticated NGO, newest submitted first.
+ *     description: Returns Assistance Requests assigned to the authenticated NGO, newest submitted first. NGO responses leave out patient_id and doctor_id; the NGO works with the request id only.
  *     operationId: listNgoAssistanceRequests
  *     security: [{ bearerAuth: [] }]
  *     responses:
@@ -39,7 +39,7 @@
  *   get:
  *     tags: [NGO Assistance Requests]
  *     summary: Get assigned Assistance Request
- *     description: Returns a request assigned to the authenticated NGO. A request assigned to another NGO is forbidden.
+ *     description: Returns a request assigned to the authenticated NGO. A request assigned to another NGO is forbidden. patient_id and doctor_id are left out.
  *     operationId: getNgoAssistanceRequest
  *     security: [{ bearerAuth: [] }]
  *     parameters:

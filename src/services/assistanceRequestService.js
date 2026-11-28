@@ -9,6 +9,7 @@ const userModel = require("../models/userModel");
 const notificationService = require("./notificationService");
 const activityLogService = require("./activityLogService");
 const { BadRequestError, ConflictError, ForbiddenError, NotFoundError } = require("../utils/apiErrors");
+const { listWithOptionalPagination } = require("../utils/pagination");
 
 const ALLOWED_STATUS_TRANSITIONS = {
   PENDING: new Set(["UNDER_REVIEW"]),
@@ -160,8 +161,8 @@ async function getOwnRequest(user, requestId) {
   return assistanceRequest;
 }
 
-function listForAdmin() {
-  return assistanceRequestModel.listAll();
+function listForAdmin(pagination = null) {
+  return listWithOptionalPagination(assistanceRequestModel.listAll(), pagination);
 }
 
 async function getForAdmin(requestId) {
@@ -226,9 +227,19 @@ async function assignNgo(requestId, ngoId) {
   });
 }
 
+// NGOs work with the case number only. The patient and doctor ids identify
+// people the NGO has no need to know, so they are removed from every NGO
+// response (the NGO screens stopped showing them in UX-16).
+function toNgoView(assistanceRequest) {
+  const { patient_id: _patientId, doctor_id: _doctorId, ...ngoView } =
+    assistanceRequest;
+  return ngoView;
+}
+
 async function listForNgo(user) {
   const ngo = await getNgoProfileOrThrow(user.id);
-  return assistanceRequestModel.listByNgoId(ngo.id);
+  const assistanceRequests = await assistanceRequestModel.listByNgoId(ngo.id);
+  return assistanceRequests.map(toNgoView);
 }
 
 async function getForNgo(user, requestId) {
@@ -239,7 +250,7 @@ async function getForNgo(user, requestId) {
   );
 
   if (assistanceRequest) {
-    return assistanceRequest;
+    return toNgoView(assistanceRequest);
   }
 
   const existing = await assistanceRequestModel.findById(requestId);
@@ -318,7 +329,7 @@ async function updateStatusForNgo(user, requestId, nextStatus, ipAddress) {
       trx,
     );
 
-    return updated;
+    return toNgoView(updated);
   });
 }
 

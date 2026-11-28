@@ -34,11 +34,11 @@ async function updateOwn(req, res) {
 }
 
 async function listForAdmin(req, res) {
-  const intakes = await patientIntakeService.listForAdmin();
+  const { items, meta } = await patientIntakeService.listForAdmin(req.pagination);
   return res.status(200).json({
     success: true,
     message: "Patient intakes retrieved successfully",
-    data: { intakes },
+    data: { intakes: items, ...meta },
   });
 }
 

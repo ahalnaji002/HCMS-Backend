@@ -7,6 +7,7 @@ const reminderModel = require("../models/reminderModel");
 const treatmentPlanModel = require("../models/treatmentPlanModel");
 const db = require("../config/database");
 const { BadRequestError, NotFoundError } = require("../utils/apiErrors");
+const { paginateQuery, paginationMeta } = require("../utils/pagination");
 
 const UNSIGNED_BIGINT_MAX = 18446744073709551615n;
 const ALLOWED_REFERENCE_TYPES = new Set([
@@ -350,8 +351,13 @@ async function notifyReminderDue(reminderId, userId, connection) {
   );
 }
 
-function listOwnNotifications(user) {
-  return notificationModel.listByUserId(user.id);
+async function listOwnNotifications(user, pagination) {
+  const { items, total } = await paginateQuery(
+    notificationModel.listByUserId(user.id),
+    pagination,
+  );
+
+  return { notifications: items, ...paginationMeta(pagination, total) };
 }
 
 function getOwnUnreadCount(user, connection = db) {

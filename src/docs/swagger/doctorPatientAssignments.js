@@ -9,9 +9,13 @@
  *       Returns all Doctor-Patient assignments ordered by assigned_at
  *       descending, then by ID descending.
  *       Requires an ACTIVE ADMIN account.
+ *       Paging is optional: without page or limit the full list is returned; with either, 20 per page by default and page metadata next to the list.
  *     operationId: listDoctorPatientAssignments
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - $ref: '#/components/parameters/PageQuery'
+ *       - $ref: '#/components/parameters/LimitQuery'
  *
  *     responses:
  *       '200':
@@ -36,6 +40,10 @@
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/DoctorPatientAssignment'
+ *                     page: { type: integer, example: 1, description: Present when the list is paged. }
+ *                     limit: { type: integer, example: 20, description: Present when the list is paged. }
+ *                     total: { type: integer, example: 42, description: Total items across all pages. Present when the list is paged. }
+ *                     total_pages: { type: integer, example: 3, description: Present when the list is paged. }
  *       '401':
  *         $ref: '#/components/responses/AuthenticationRequired'
  *       '403':

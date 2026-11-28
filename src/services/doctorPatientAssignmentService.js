@@ -5,6 +5,7 @@ const userModel = require("../models/userModel");
 const doctorPatientAssignmentModel = require("../models/doctorPatientAssignmentModel");
 const patientIntakeModel = require("../models/patientIntakeModel");
 const { ConflictError, NotFoundError } = require("../utils/apiErrors");
+const { listWithOptionalPagination } = require("../utils/pagination");
 
 class DoctorNotFoundError extends NotFoundError {
   constructor() {
@@ -87,8 +88,11 @@ async function requireAssignableIntake(patientId, connection) {
   return intake;
 }
 
-function listDoctorPatientAssignments() {
-  return doctorPatientAssignmentModel.listAllWithNames();
+function listDoctorPatientAssignments(pagination = null) {
+  return listWithOptionalPagination(
+    doctorPatientAssignmentModel.listAllWithNames(),
+    pagination,
+  );
 }
 
 async function getDoctorPatientAssignment(id) {

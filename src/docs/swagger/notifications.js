@@ -4,9 +4,12 @@
  *   get:
  *     tags: [Notifications]
  *     summary: List own Notifications
- *     description: Returns notifications belonging only to the authenticated user, newest first. Any active authenticated role may call this endpoint.
+ *     description: Returns notifications belonging only to the authenticated user, newest first. Any active authenticated role may call this endpoint. The list is paged, 50 per page by default (`limit` up to 100), with page, limit, total and total_pages next to it.
  *     operationId: listOwnNotifications
  *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - $ref: '#/components/parameters/PageQuery'
+ *       - $ref: '#/components/parameters/LimitQuery'
  *     responses:
  *       '200':
  *         description: Notifications retrieved successfully
@@ -23,6 +26,10 @@
  *                     notifications:
  *                       type: array
  *                       items: { $ref: '#/components/schemas/Notification' }
+ *                     page: { type: integer, example: 1, description: Always present. }
+ *                     limit: { type: integer, example: 20, description: Always present. }
+ *                     total: { type: integer, example: 42, description: Total items across all pages. }
+ *                     total_pages: { type: integer, example: 3, description: Always present. }
  *       '401': { $ref: '#/components/responses/AuthenticationRequired' }
  *       '403':
  *         description: Authenticated account is inactive

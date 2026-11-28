@@ -40,7 +40,11 @@
  *   get:
  *     tags: [Patient Intake and Care Coordination]
  *     summary: List Patient intakes for administrative review
+ *     description: Paging is optional. Without page or limit the full list is returned; with either, 20 per page by default and page, limit, total and total_pages are added next to the list.
  *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - $ref: '#/components/parameters/PageQuery'
+ *       - $ref: '#/components/parameters/LimitQuery'
  *     responses:
  *       '200': { description: Intakes with patient name and email }
  * /api/admin/patient-intakes/{intakeId}/start-review:

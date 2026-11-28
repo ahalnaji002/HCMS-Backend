@@ -7,6 +7,7 @@ const notificationService = require("./notificationService");
 const activityLogService = require("./activityLogService");
 const { BadRequestError, ConflictError, NotFoundError } = require("../utils/apiErrors");
 const { isEmergencyEligibleSpecialization } = require("../utils/specializations");
+const { listWithOptionalPagination } = require("../utils/pagination");
 
 class EmergencyAlertNotFoundError extends NotFoundError {
   constructor(message) {
@@ -131,8 +132,8 @@ async function cancelOwnAlert(user, alertId) {
   return cancelledAlert;
 }
 
-function listAlertsForAdmin() {
-  return emergencyAlertModel.listAll();
+function listAlertsForAdmin(pagination = null) {
+  return listWithOptionalPagination(emergencyAlertModel.listAll(), pagination);
 }
 
 async function getAlertForAdmin(alertId) {
