@@ -98,8 +98,11 @@ Errors are handled centrally: service errors extend `ApiError` subclasses in `sr
 
 - **Interactive Swagger UI:** [http://localhost:3000/api-docs](http://localhost:3000/api-docs) (when the backend is running locally)
 - **Detailed endpoint and workflow reference:** [docs/api/README.md](docs/api/README.md)
+- **Postman collection:** [docs/api/postman/](docs/api/postman/) — import `HCMS.postman_collection.json` with `HCMS.postman_environment.json`, set `adminPassword` and `demoPassword`, run the **0. Sign in** folder, then any request. Every endpoint is grouped by role and checks its documented success status.
 - **Frontend integration guide:** [FRONTEND_INTEGRATION.md](FRONTEND_INTEGRATION.md)
 - **Patient intake and care coordination requirements:** [docs/requirements/PATIENT_INTAKE_AND_CARE_COORDINATION.md](docs/requirements/PATIENT_INTAKE_AND_CARE_COORDINATION.md)
+
+The OpenAPI document is written as JSDoc in `src/docs/swagger/` and built into `src/docs/openapi.json`; the Postman files are built from that JSON. After changing the docs run `npm run docs:build` and commit the result. `npm run docs:check`, a contract test, and CI fail while the generated files are out of date.
 
 ### Main API Groups
 
@@ -218,7 +221,7 @@ Run with `NODE_ENV=production`, install with `npm ci --omit=dev`, and start with
 | `CORS_ORIGIN` | The deployed frontend origin(s). |
 | `TZ` | `Asia/Gaza`. Reminder times are wall-clock times in this zone, and every database session is set to the same UTC offset, so the host's own zone does not matter. |
 
-Optional: `DB_POOL_MAX` (default 5), `TRUST_PROXY` (e.g. `1` behind the host's proxy), `API_PUBLIC_URL` (listed in Swagger UI).
+Optional: `DB_POOL_MAX` (default 5), `TRUST_PROXY` (e.g. `1` behind the host's proxy), `API_PUBLIC_URL` (listed in Swagger UI), `ACCESS_LOG=off` (turns off the one-line request log: method, path without query, status, duration, user id).
 
 Run `npx knex migrate:latest --env production` before the first start and after each release. The host's health check should use `GET /api/health`, which returns 503 when the database is unreachable. On `SIGTERM` the server stops the reminder worker, finishes in-flight requests and closes the database pool.
 
@@ -271,9 +274,11 @@ Test layout:
 
 Run one file with `npm test -- test/integration/12-emergency-alerts.test.js`.
 
-Coverage: `npm run test:coverage` prints line, branch, and function coverage for `src/` using the Node.js built-in test coverage.
+Coverage: `npm run test:coverage` prints line, branch, and function coverage for `src/` using the Node.js built-in test coverage, and fails below 90% lines, 85% branches, or 90% functions.
 
-Continuous integration: every push and pull request to `develop` or `main` runs the full suite with coverage against a MySQL service container, plus a production dependency audit (`.github/workflows/ci.yml`).
+Continuous integration: every push and pull request to `develop` or `main` runs the full suite with coverage against a MySQL service container, plus a generated-docs check and a production dependency audit (`.github/workflows/ci.yml`).
+
+Dependencies: `npm audit --omit=dev` reports no vulnerabilities. `swagger-jsdoc` (which pulls in older `glob`/`minimatch`) is a dev dependency used only by `npm run docs:build`, and the remaining moderate advisories (`swagger-jsdoc`'s chain, `nodemon`) are in dev tools that never run in production.
 
 Backend automated tests do not, by themselves, establish that complete frontend user journeys have been tested end to end.
 

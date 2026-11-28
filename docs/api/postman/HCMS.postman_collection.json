@@ -1,0 +1,5560 @@
+{
+  "info": {
+    "name": "HCMS API",
+    "description": "Generated from src/docs/openapi.json by scripts/buildPostmanCollection.js (npm run docs:build). Import with HCMS.postman_environment.json, run '0. Sign in', then any request. Path ids such as {{alertId}} are environment variables; set them to real ids from your data.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "0. Sign in",
+      "description": "Run these first. Each saves its role token and also sets {{token}} for the shared folder.",
+      "auth": {
+        "type": "noauth"
+      },
+      "item": [
+        {
+          "name": "Sign in as Admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const token = pm.response.json().data && pm.response.json().data.token;",
+                  "if (token) {",
+                  "  pm.environment.set(\"adminToken\", token);",
+                  "  pm.environment.set(\"token\", token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sign in as Doctor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{doctorEmail}}\",\n  \"password\": \"{{demoPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const token = pm.response.json().data && pm.response.json().data.token;",
+                  "if (token) {",
+                  "  pm.environment.set(\"doctorToken\", token);",
+                  "  pm.environment.set(\"token\", token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sign in as Patient",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{patientEmail}}\",\n  \"password\": \"{{demoPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const token = pm.response.json().data && pm.response.json().data.token;",
+                  "if (token) {",
+                  "  pm.environment.set(\"patientToken\", token);",
+                  "  pm.environment.set(\"token\", token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sign in as NGO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{ngoEmail}}\",\n  \"password\": \"{{demoPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "});",
+                  "const token = pm.response.json().data && pm.response.json().data.token;",
+                  "if (token) {",
+                  "  pm.environment.set(\"ngoToken\", token);",
+                  "  pm.environment.set(\"token\", token);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1. Public",
+      "auth": {
+        "type": "noauth"
+      },
+      "item": [
+        {
+          "name": "Public Emergency Alerts",
+          "item": [
+            {
+              "name": "Create public Emergency Alert",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/emergency-alerts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "emergency-alerts"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"0591234567\",\n  \"location\": \"Gaza\",\n  \"description\": \"Urgent medical assistance is needed.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Creates an Emergency Alert for a visitor without requiring authentication. The visitor's phone is required; patient_id remains null, priority is HIGH, and initial status is PENDING_ASSIGNMENT.\n\noperationId: createPublicEmergencyAlert"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 201\", function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Health",
+          "item": [
+            {
+              "name": "Check API and database availability",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/health",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "health"
+                  ]
+                },
+                "description": "Public. Runs a trivial database query so a hosting platform can tell when the API has lost its database. Returns no configuration or version details.\n\noperationId: getHealth"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Authentication",
+          "item": [
+            {
+              "name": "Register a new patient",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/register/patient",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "register",
+                    "patient"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"full_name\": \"Ahmed Alnaji\",\n  \"email\": \"ahmed@example.com\",\n  \"password\": \"Password1\",\n  \"password_confirmation\": \"Password1\",\n  \"phone\": \"0591234567\",\n  \"national_id\": \"123456789\",\n  \"date_of_birth\": \"2002-05-15\",\n  \"gender\": \"MALE\",\n  \"address\": \"Gaza, Palestine\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Creates a new patient account. Patient accounts are activated immediately after successful registration.\n\n\noperationId: registerPatient"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 201\", function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Register a new doctor",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/register/doctor",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "register",
+                    "doctor"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"full_name\": \"Ahmed Alnaji\",\n  \"email\": \"ahmed@example.com\",\n  \"password\": \"Password1\",\n  \"password_confirmation\": \"Password1\",\n  \"phone\": \"0591234567\",\n  \"specialization\": \"General Medicine\",\n  \"license_number\": \"MED-2026-001\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Creates a new doctor account. Doctor accounts are created with INACTIVE status and require approval before they can authenticate as an active user.\n\n\noperationId: registerDoctor"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 201\", function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Register a new NGO",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/register/ngo",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "register",
+                    "ngo"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"full_name\": \"Ahmed Alnaji\",\n  \"email\": \"ahmed@example.com\",\n  \"password\": \"Password1\",\n  \"password_confirmation\": \"Password1\",\n  \"phone\": \"0591234567\",\n  \"organization_name\": \"Gaza Medical Relief\",\n  \"registration_number\": \"NGO-2026-001\",\n  \"address\": \"Gaza, Palestine\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Creates a new NGO account. NGO accounts are created with INACTIVE status and require approval before they can authenticate as an active user.\n\n\noperationId: registerNgo"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 201\", function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Login",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/login",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "login"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"ahmed@example.com\",\n  \"password\": \"Password1\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Authenticates a user using email and password and returns a JWT access token.\n\noperationId: login"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Admin",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{adminToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "User Management",
+          "item": [
+            {
+              "name": "List user accounts (FR-10.1)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/users",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "users"
+                  ],
+                  "query": [
+                    {
+                      "key": "role",
+                      "value": "PATIENT",
+                      "disabled": true
+                    },
+                    {
+                      "key": "account_status",
+                      "value": "ACTIVE",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "text",
+                      "description": "Matches name, email, or phone (up to 100 characters).",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Newest accounts first. Requires an ACTIVE ADMIN account.\n\noperationId: listUsersForAdmin"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Activate or deactivate a user account (FR-10.1)",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/users/:userId/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "users",
+                    ":userId",
+                    "status"
+                  ],
+                  "variable": [
+                    {
+                      "key": "userId",
+                      "value": "{{userId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"account_status\": \"ACTIVE\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "SUSPENDED deactivates an ACTIVE account and ACTIVE re-activates a SUSPENDED one. Applicants (INACTIVE) are activated through Join Requests only. An Administrator cannot change their own account or deactivate the last active Administrator. The change applies from the user's next request and is recorded in the Activity Log as ACTIVATE_USER or DEACTIVATE_USER.\n\n\noperationId: updateUserAccountStatus"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List NGOs with account status and assigned request counts (FR-10.2)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/ngos",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "ngos"
+                  ],
+                  "query": [
+                    {
+                      "key": "account_status",
+                      "value": "ACTIVE",
+                      "disabled": true
+                    },
+                    {
+                      "key": "search",
+                      "value": "text",
+                      "description": "Matches organization name, registration number, or email.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "operationId: listNgosForAdmin"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "System Settings",
+          "item": [
+            {
+              "name": "List System Settings",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/settings",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "settings"
+                  ]
+                },
+                "description": "Returns all approved System Settings. Requires an ACTIVE ADMIN account.\n\noperationId: listSystemSettings"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get System Setting by key",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/settings/:key",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "settings",
+                    ":key"
+                  ],
+                  "variable": [
+                    {
+                      "key": "key",
+                      "value": "{{key}}",
+                      "description": "Approved System Setting key."
+                    }
+                  ]
+                },
+                "description": "Returns a single approved System Setting. Requires an ACTIVE ADMIN account.\n\noperationId: getSystemSetting"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update System Setting",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/settings/:key",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "settings",
+                    ":key"
+                  ],
+                  "variable": [
+                    {
+                      "key": "key",
+                      "value": "{{key}}",
+                      "description": "Approved System Setting key."
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"setting_value\": \"Healthcare Conflict Management System\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Updates an approved System Setting. Requires an ACTIVE ADMIN account. system_name requires a non-empty string up to 100 characters. support_email accepts null or a valid email address up to 255 characters. support_phone accepts null or a Palestinian mobile number containing exactly 10 digits and starting with 059 or 056.\n\n\noperationId: updateSystemSetting"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Resource Allocations",
+          "item": [
+            {
+              "name": "List Resource Allocations for Assistance Request",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/assistance-requests/:requestId/resources",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "assistance-requests",
+                    ":requestId",
+                    "resources"
+                  ],
+                  "variable": [
+                    {
+                      "key": "requestId",
+                      "value": "{{requestId}}",
+                      "description": "Assistance Request ID."
+                    }
+                  ]
+                },
+                "description": "Returns all Resource Allocations belonging to the specified Assistance Request, ordered by created_at ascending and then by ID ascending. Requires an ACTIVE ADMIN account.\n\n\noperationId: listResourceAllocationsForAdmin"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Patient Intake and Care Coordination",
+          "item": [
+            {
+              "name": "List Patient intakes for administrative review",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/patient-intakes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "patient-intakes"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Page number, starting at 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "1",
+                      "description": "Items per page (at most 100). The default depends on the endpoint.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Paging is optional. Without page or limit the full list is returned; with either, 20 per page by default and page, limit, total and total_pages are added next to the list."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Explicitly start review and lock Patient edits",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/patient-intakes/:intakeId/start-review",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "patient-intakes",
+                    ":intakeId",
+                    "start-review"
+                  ],
+                  "variable": [
+                    {
+                      "key": "intakeId",
+                      "value": "{{intakeId}}"
+                    }
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List correction requests for administration",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/intake-correction-requests",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "intake-correction-requests"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Resolve a correction request as an Admin",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/intake-correction-requests/:requestId/resolve",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "intake-correction-requests",
+                    ":requestId",
+                    "resolve"
+                  ],
+                  "variable": [
+                    {
+                      "key": "requestId",
+                      "value": "{{requestId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"admin_response\": \"text\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List active Doctors with separate workload counts",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/active-doctors",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "active-doctors"
+                  ]
+                },
+                "description": "Capacity warning is informational and never blocks assignment."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update Doctor availability and capacity",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/doctors/:doctorId/workload",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "doctors",
+                    ":doctorId",
+                    "workload"
+                  ],
+                  "variable": [
+                    {
+                      "key": "doctorId",
+                      "value": "{{doctorId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"availability\": \"AVAILABLE\",\n  \"capacity_limit\": 0\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Join Requests",
+          "item": [
+            {
+              "name": "List pending Join Requests",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/join-requests",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "join-requests"
+                  ]
+                },
+                "description": "Returns all pending Doctor and NGO Join Requests. Requires an ACTIVE ADMIN account.\n\n\noperationId: listPendingJoinRequests"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Join Request by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/join-requests/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "join-requests",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{id}}",
+                      "description": "Join Request ID."
+                    }
+                  ]
+                },
+                "description": "Returns a single Doctor or NGO Join Request by ID. Requires an ACTIVE ADMIN account.\n\n\noperationId: getJoinRequest"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Approve Join Request",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/join-requests/:id/approve",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "join-requests",
+                    ":id",
+                    "approve"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{id}}",
+                      "description": "Join Request ID."
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Approves a pending Doctor or NGO Join Request and activates the associated user account. The request must still be PENDING and its user data must be consistent with the request type. No request body fields are accepted. Requires an ACTIVE ADMIN account.\n\n\noperationId: approveJoinRequest"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Reject Join Request",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/join-requests/:id/reject",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "join-requests",
+                    ":id",
+                    "reject"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{id}}",
+                      "description": "Join Request ID."
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rejection_reason\": \"Registration information could not be verified.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Rejects a pending Doctor or NGO Join Request. A non-empty rejection_reason is required and may contain up to 500 characters. The request must still be PENDING and its user data must be consistent with the request type. Requires an ACTIVE ADMIN account.\n\n\noperationId: rejectJoinRequest"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Emergency Alerts",
+          "item": [
+            {
+              "name": "List Emergency Alerts",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/emergency-alerts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "emergency-alerts"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Page number, starting at 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "1",
+                      "description": "Items per page (at most 100). The default depends on the endpoint.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Returns all Emergency Alerts ordered by sent_at descending, then by ID descending. Requires an ACTIVE ADMIN account. Paging is optional: without page or limit the full list is returned; with either, 20 per page by default and page metadata next to the list.\n\n\noperationId: listEmergencyAlertsForAdmin"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Emergency Alert by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/emergency-alerts/:alertId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "emergency-alerts",
+                    ":alertId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "alertId",
+                      "value": "{{alertId}}",
+                      "description": "Emergency Alert ID."
+                    }
+                  ]
+                },
+                "description": "Returns a single Emergency Alert by ID. Requires an ACTIVE ADMIN account.\n\n\noperationId: getEmergencyAlertForAdmin"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Assign Doctor to Emergency Alert",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/emergency-alerts/:alertId/assign",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "emergency-alerts",
+                    ":alertId",
+                    "assign"
+                  ],
+                  "variable": [
+                    {
+                      "key": "alertId",
+                      "value": "{{alertId}}",
+                      "description": "Emergency Alert ID."
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"doctor_id\": 3\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Assigns an eligible active Doctor to an Emergency Alert that is currently PENDING_ASSIGNMENT. Eligible Doctor specializations are General Medicine and Emergency Medicine. On success, the Emergency Alert status becomes ASSIGNED. The assignment also records the assigning Admin and assignment time. Requires an ACTIVE ADMIN account.\n\n\noperationId: assignDoctorToEmergencyAlert"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Doctor-Patient Assignments",
+          "item": [
+            {
+              "name": "List Doctor-Patient Assignments",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/doctor-patient-assignments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "doctor-patient-assignments"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Page number, starting at 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "1",
+                      "description": "Items per page (at most 100). The default depends on the endpoint.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Returns all Doctor-Patient assignments ordered by assigned_at descending, then by ID descending. Requires an ACTIVE ADMIN account. Paging is optional: without page or limit the full list is returned; with either, 20 per page by default and page metadata next to the list.\n\n\noperationId: listDoctorPatientAssignments"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create Doctor-Patient Assignment",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/doctor-patient-assignments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "doctor-patient-assignments"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"doctor_id\": 3,\n  \"patient_id\": 27,\n  \"assignment_reason\": \"Patient requires follow-up care.\",\n  \"notes\": \"Follow up with the patient regularly.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Creates an ACTIVE assignment between an existing active Doctor and an existing active Patient. Only one ACTIVE assignment may exist for the same Doctor-Patient pair. Requires an ACTIVE ADMIN account.\n\n\noperationId: createDoctorPatientAssignment"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 201\", function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Doctor-Patient Assignment by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/doctor-patient-assignments/:id",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "doctor-patient-assignments",
+                    ":id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{id}}",
+                      "description": "Doctor-Patient Assignment ID."
+                    }
+                  ]
+                },
+                "description": "Returns a single Doctor-Patient assignment by ID. Requires an ACTIVE ADMIN account.\n\n\noperationId: getDoctorPatientAssignment"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update Doctor-Patient Assignment Status",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/doctor-patient-assignments/:id/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "doctor-patient-assignments",
+                    ":id",
+                    "status"
+                  ],
+                  "variable": [
+                    {
+                      "key": "id",
+                      "value": "{{id}}",
+                      "description": "Doctor-Patient Assignment ID."
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"INACTIVE\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Updates an assignment status to ACTIVE or INACTIVE. Setting the status to INACTIVE records ended_at. Setting it to ACTIVE clears ended_at, provided another ACTIVE assignment does not already exist for the same Doctor-Patient pair. Reactivation also requires ACTIVE Doctor and Patient accounts, an available Doctor, assignable Patient intake, and a non-empty internal assignment_reason. Requires an ACTIVE ADMIN account.\n\n\noperationId: updateDoctorPatientAssignmentStatus"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Assistance Requests",
+          "item": [
+            {
+              "name": "List Assistance Requests",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/assistance-requests",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "assistance-requests"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Page number, starting at 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "1",
+                      "description": "Items per page (at most 100). The default depends on the endpoint.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Returns all Assistance Requests ordered by submitted_at descending, then by ID descending. Requires an ACTIVE ADMIN account. Paging is optional: without page or limit the full list is returned; with either, 20 per page by default and page metadata next to the list.\n\n\noperationId: listAssistanceRequestsForAdmin"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Assistance Request by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/assistance-requests/:requestId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "assistance-requests",
+                    ":requestId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "requestId",
+                      "value": "{{requestId}}",
+                      "description": "Assistance Request ID."
+                    }
+                  ]
+                },
+                "description": "Returns a single Assistance Request by ID. Requires an ACTIVE ADMIN account.\n\n\noperationId: getAssistanceRequestForAdmin"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Assign NGO to Assistance Request",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/assistance-requests/:requestId/assign",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "assistance-requests",
+                    ":requestId",
+                    "assign"
+                  ],
+                  "variable": [
+                    {
+                      "key": "requestId",
+                      "value": "{{requestId}}",
+                      "description": "Assistance Request ID."
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"ngo_id\": 2\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Assigns an active NGO to a PENDING Assistance Request that has not already been assigned to an NGO. Requires an ACTIVE ADMIN account.\n\n\noperationId: assignNgoToAssistanceRequest"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Admin Dashboard & Reports",
+          "item": [
+            {
+              "name": "Get Admin dashboard",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/dashboard",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "dashboard"
+                  ]
+                },
+                "description": "Returns administrative dashboard metrics. Requires an ACTIVE ADMIN account.\n\noperationId: getAdminDashboard"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Patient report",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/reports/patients",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "reports",
+                    "patients"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Page number.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20",
+                      "description": "Number of records per page.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Returns a paginated Patient report. Requires an ACTIVE ADMIN account.\n\noperationId: getAdminPatientReport"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Treatment Plan report",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/reports/treatment-plans",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "reports",
+                    "treatment-plans"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Returns a paginated Treatment Plan report. Requires an ACTIVE ADMIN account.\n\noperationId: getAdminTreatmentPlanReport"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Assistance Request report",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/reports/assistance-requests",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "reports",
+                    "assistance-requests"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "PENDING",
+                      "description": "Optional Assistance Request status filter.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Returns a paginated Assistance Request report. Requires an ACTIVE ADMIN account.\n\noperationId: getAdminAssistanceRequestReport"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Activity Logs",
+          "item": [
+            {
+              "name": "List Activity Logs",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/activity-logs",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "activity-logs"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "20",
+                      "disabled": true
+                    },
+                    {
+                      "key": "user_id",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "action",
+                      "value": "APPROVE_JOIN_REQUEST",
+                      "disabled": true
+                    },
+                    {
+                      "key": "entity_type",
+                      "value": "JOIN_REQUEST",
+                      "disabled": true
+                    },
+                    {
+                      "key": "entity_id",
+                      "value": "1",
+                      "disabled": true
+                    },
+                    {
+                      "key": "date_from",
+                      "value": "2026-09-01T00:00:00",
+                      "description": "Must use YYYY-MM-DDTHH:mm:ss format.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "date_to",
+                      "value": "2026-10-02T23:59:59",
+                      "description": "Must use YYYY-MM-DDTHH:mm:ss format and must not be before date_from.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Returns paginated Activity Logs with optional filtering. Requires an ACTIVE ADMIN account.\n\n\noperationId: listActivityLogs"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Activity Log by ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/admin/activity-logs/:logId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "admin",
+                    "activity-logs",
+                    ":logId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "logId",
+                      "value": "{{logId}}",
+                      "description": "Activity Log ID."
+                    }
+                  ]
+                },
+                "description": "Returns a single Activity Log. Requires an ACTIVE ADMIN account.\n\noperationId: getActivityLog"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Doctor",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{doctorToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Patient Intake and Care Coordination",
+          "item": [
+            {
+              "name": "Read intake for an actively assigned Patient",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/patients/:patientId/intake",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "patients",
+                    ":patientId",
+                    "intake"
+                  ],
+                  "variable": [
+                    {
+                      "key": "patientId",
+                      "value": "{{patientId}}"
+                    }
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List diagnoses for an actively assigned Patient",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/patients/:patientId/diagnoses",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "patients",
+                    ":patientId",
+                    "diagnoses"
+                  ],
+                  "variable": [
+                    {
+                      "key": "patientId",
+                      "value": "{{patientId}}"
+                    }
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Record a diagnosis for an actively assigned Patient",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/patients/:patientId/diagnoses",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "patients",
+                    ":patientId",
+                    "diagnoses"
+                  ],
+                  "variable": [
+                    {
+                      "key": "patientId",
+                      "value": "{{patientId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"diagnosis\": \"text\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 201\", function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Doctor Treatment Plans",
+          "item": [
+            {
+              "name": "List Treatment Plans for assigned Patient",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/patients/:patientId/treatment-plans",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "patients",
+                    ":patientId",
+                    "treatment-plans"
+                  ],
+                  "variable": [
+                    {
+                      "key": "patientId",
+                      "value": "{{patientId}}"
+                    }
+                  ]
+                },
+                "description": "operationId: listAssignedPatientTreatmentPlans"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create Treatment Plan",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/patients/:patientId/treatment-plans",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "patients",
+                    ":patientId",
+                    "treatment-plans"
+                  ],
+                  "variable": [
+                    {
+                      "key": "patientId",
+                      "value": "{{patientId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"text\",\n  \"general_instructions\": \"text\",\n  \"start_date\": \"2026-10-01\",\n  \"end_date\": \"2026-10-31\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Creates a plan for a Patient with an ACTIVE assignment to the authenticated Doctor. start_date and end_date are calendar dates in YYYY-MM-DD format; if end_date is supplied it must be on or after start_date.\n\noperationId: createAssignedPatientTreatmentPlan"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 201\", function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Treatment Plan",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/patients/:patientId/treatment-plans/:planId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "patients",
+                    ":patientId",
+                    "treatment-plans",
+                    ":planId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "patientId",
+                      "value": "{{patientId}}"
+                    },
+                    {
+                      "key": "planId",
+                      "value": "{{planId}}"
+                    }
+                  ]
+                },
+                "description": "Returns a Treatment Plan for the Patient only when the authenticated Doctor has an ACTIVE assignment.\n\noperationId: getAssignedPatientTreatmentPlan"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update Treatment Plan",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/patients/:patientId/treatment-plans/:planId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "patients",
+                    ":patientId",
+                    "treatment-plans",
+                    ":planId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "patientId",
+                      "value": "{{patientId}}"
+                    },
+                    {
+                      "key": "planId",
+                      "value": "{{planId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"text\",\n  \"general_instructions\": \"text\",\n  \"status\": \"ACTIVE\",\n  \"start_date\": \"2026-12-01\",\n  \"end_date\": \"2026-12-01\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Requires an ACTIVE assignment and at least one editable field. If the resulting end_date is set, it must be on or after the resulting start_date. The resulting inclusive range must contain every existing appointment; an update that excludes one is rejected without changing the plan.\n\noperationId: updateAssignedPatientTreatmentPlan"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Doctor Treatment Medications",
+          "item": [
+            {
+              "name": "List Treatment Medications",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/treatment-plans/:planId/medications",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "treatment-plans",
+                    ":planId",
+                    "medications"
+                  ],
+                  "variable": [
+                    {
+                      "key": "planId",
+                      "value": "{{planId}}"
+                    }
+                  ]
+                },
+                "description": "operationId: listTreatmentMedications"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Add Treatment Medication",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/treatment-plans/:planId/medications",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "treatment-plans",
+                    ":planId",
+                    "medications"
+                  ],
+                  "variable": [
+                    {
+                      "key": "planId",
+                      "value": "{{planId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"medication_name\": \"text\",\n  \"dosage\": \"text\",\n  \"frequency\": \"text\",\n  \"duration\": \"text\",\n  \"instructions\": \"text\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Adds a medication to an authorized Treatment Plan. Doctor access requires an ACTIVE assignment to the Patient.\n\noperationId: createTreatmentMedication"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 201\", function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Treatment Medication",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/treatment-plans/:planId/medications/:medicationId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "treatment-plans",
+                    ":planId",
+                    "medications",
+                    ":medicationId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "planId",
+                      "value": "{{planId}}"
+                    },
+                    {
+                      "key": "medicationId",
+                      "value": "{{medicationId}}"
+                    }
+                  ]
+                },
+                "description": "operationId: getTreatmentMedication"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update Treatment Medication",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/treatment-plans/:planId/medications/:medicationId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "treatment-plans",
+                    ":planId",
+                    "medications",
+                    ":medicationId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "planId",
+                      "value": "{{planId}}"
+                    },
+                    {
+                      "key": "medicationId",
+                      "value": "{{medicationId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"medication_name\": \"text\",\n  \"dosage\": \"text\",\n  \"frequency\": \"text\",\n  \"duration\": \"text\",\n  \"instructions\": \"text\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Updates one or more supplied fields on a medication belonging to the authorized plan. An empty update is rejected.\n\noperationId: updateTreatmentMedication"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete Treatment Medication",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/treatment-plans/:planId/medications/:medicationId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "treatment-plans",
+                    ":planId",
+                    "medications",
+                    ":medicationId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "planId",
+                      "value": "{{planId}}"
+                    },
+                    {
+                      "key": "medicationId",
+                      "value": "{{medicationId}}"
+                    }
+                  ]
+                },
+                "description": "Deletes a medication belonging to the authorized Treatment Plan and returns the deleted record.\n\noperationId: deleteTreatmentMedication"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Doctor Treatment Appointments",
+          "item": [
+            {
+              "name": "List Treatment Appointments",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/treatment-plans/:planId/appointments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "treatment-plans",
+                    ":planId",
+                    "appointments"
+                  ],
+                  "variable": [
+                    {
+                      "key": "planId",
+                      "value": "{{planId}}"
+                    }
+                  ]
+                },
+                "description": "operationId: listTreatmentAppointments"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create Treatment Appointment",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/treatment-plans/:planId/appointments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "treatment-plans",
+                    ":planId",
+                    "appointments"
+                  ],
+                  "variable": [
+                    {
+                      "key": "planId",
+                      "value": "{{planId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"appointment_date\": \"2026-10-15 10:30:00\",\n  \"purpose\": \"text\",\n  \"location\": \"text\",\n  \"notes\": \"text\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Creates an appointment under an authorized Treatment Plan. appointment_date is a Palestinian local wall-clock time in Asia/Hebron, supplied as YYYY-MM-DD HH:mm:ss without a timezone suffix; its calendar date must fall within the plan's inclusive start_date/end_date range (when an end date exists).\n\noperationId: createTreatmentAppointment"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 201\", function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Treatment Appointment",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/treatment-plans/:planId/appointments/:appointmentId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "treatment-plans",
+                    ":planId",
+                    "appointments",
+                    ":appointmentId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "planId",
+                      "value": "{{planId}}"
+                    },
+                    {
+                      "key": "appointmentId",
+                      "value": "{{appointmentId}}"
+                    }
+                  ]
+                },
+                "description": "operationId: getTreatmentAppointment"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update Treatment Appointment",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/treatment-plans/:planId/appointments/:appointmentId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "treatment-plans",
+                    ":planId",
+                    "appointments",
+                    ":appointmentId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "planId",
+                      "value": "{{planId}}"
+                    },
+                    {
+                      "key": "appointmentId",
+                      "value": "{{appointmentId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"appointment_date\": \"text\",\n  \"purpose\": \"text\",\n  \"location\": \"text\",\n  \"status\": \"SCHEDULED\",\n  \"notes\": \"text\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Requires at least one editable field. appointment_date uses the Asia/Hebron local wall-clock YYYY-MM-DD HH:mm:ss format without a timezone suffix. If changed, its calendar date must remain within the plan's inclusive date range.\n\noperationId: updateTreatmentAppointment"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete Treatment Appointment",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/treatment-plans/:planId/appointments/:appointmentId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "treatment-plans",
+                    ":planId",
+                    "appointments",
+                    ":appointmentId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "planId",
+                      "value": "{{planId}}"
+                    },
+                    {
+                      "key": "appointmentId",
+                      "value": "{{appointmentId}}"
+                    }
+                  ]
+                },
+                "description": "Deletes an appointment belonging to the authorized Treatment Plan and returns the deleted record.\n\noperationId: deleteTreatmentAppointment"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Assigned Patients",
+          "item": [
+            {
+              "name": "List assigned Patients",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/patients",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "patients"
+                  ]
+                },
+                "description": "Lists Patients with an ACTIVE Doctor-Patient Assignment to the authenticated Doctor, ordered by Patient name and ID. The response does not include national_id.\n\noperationId: listAssignedPatients"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get assigned Patient",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/patients/:patientId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "patients",
+                    ":patientId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "patientId",
+                      "value": "{{patientId}}"
+                    }
+                  ]
+                },
+                "description": "Returns safe profile fields only if the Patient has an ACTIVE assignment to the authenticated Doctor. The response does not include national_id.\n\noperationId: getAssignedPatient"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Doctor Dashboard",
+          "item": [
+            {
+              "name": "Get Doctor dashboard",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/dashboard",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "dashboard"
+                  ]
+                },
+                "description": "Returns metrics for the authenticated Doctor. Requires an ACTIVE DOCTOR account.\n\noperationId: getDoctorDashboard"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Assistance Requests",
+          "item": [
+            {
+              "name": "Create Assistance Request for assigned Patient",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/patients/:patientId/assistance-requests",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "patients",
+                    ":patientId",
+                    "assistance-requests"
+                  ],
+                  "variable": [
+                    {
+                      "key": "patientId",
+                      "value": "{{patientId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"request_type\": \"text\",\n  \"description\": \"text\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Submits an Assistance Request for a Patient with an ACTIVE assignment to the authenticated Doctor.\n\noperationId: createAssistanceRequestForPatient"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 201\", function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Resource Allocations",
+          "item": [
+            {
+              "name": "List resources for Assistance Request",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/assistance-requests/:requestId/resources",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "assistance-requests",
+                    ":requestId",
+                    "resources"
+                  ],
+                  "variable": [
+                    {
+                      "key": "requestId",
+                      "value": "{{requestId}}"
+                    }
+                  ]
+                },
+                "description": "Returns resource allocations when the authenticated Doctor submitted the Assistance Request.\n\noperationId: listDoctorAssistanceRequestResources"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Emergency Alerts",
+          "item": [
+            {
+              "name": "List Emergency Alerts assigned to the authenticated Doctor",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/emergency-alerts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "emergency-alerts"
+                  ]
+                },
+                "description": "Returns only alerts whose assigned_doctor_id is the authenticated Doctor, newest first (sent_at, then ID).\n\noperationId: listAssignedEmergencyAlertsForDoctor"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "View an Emergency Alert assigned to the authenticated Doctor",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/emergency-alerts/:alertId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "emergency-alerts",
+                    ":alertId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "alertId",
+                      "value": "{{alertId}}"
+                    }
+                  ]
+                },
+                "description": "operationId: getAssignedEmergencyAlertForDoctor"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update assigned Emergency Alert status",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/emergency-alerts/:alertId/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "emergency-alerts",
+                    ":alertId",
+                    "status"
+                  ],
+                  "variable": [
+                    {
+                      "key": "alertId",
+                      "value": "{{alertId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"IN_PROGRESS\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "The assigned Doctor can transition an alert from ASSIGNED to IN_PROGRESS, then from IN_PROGRESS to RESOLVED.\n\noperationId: updateAssignedEmergencyAlertStatus"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Doctor Medical Records",
+          "item": [
+            {
+              "name": "Get assigned Patient Medical Record",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/patients/:patientId/medical-record",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "patients",
+                    ":patientId",
+                    "medical-record"
+                  ],
+                  "variable": [
+                    {
+                      "key": "patientId",
+                      "value": "{{patientId}}"
+                    }
+                  ]
+                },
+                "description": "Requires an ACTIVE Doctor-Patient Assignment.\n\noperationId: getAssignedPatientMedicalRecord"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create Medical Record",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/patients/:patientId/medical-record",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "patients",
+                    ":patientId",
+                    "medical-record"
+                  ],
+                  "variable": [
+                    {
+                      "key": "patientId",
+                      "value": "{{patientId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"blood_type\": \"text\",\n  \"allergies\": \"text\",\n  \"chronic_diseases\": \"text\",\n  \"medical_history\": \"text\",\n  \"previous_surgeries\": \"text\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Creates the Patient's Medical Record. Requires an ACTIVE assignment. Only the listed clinical fields are accepted; all are optional and may be null.\n\noperationId: createAssignedPatientMedicalRecord"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 201\", function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update assigned Patient Medical Record",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/patients/:patientId/medical-record",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "patients",
+                    ":patientId",
+                    "medical-record"
+                  ],
+                  "variable": [
+                    {
+                      "key": "patientId",
+                      "value": "{{patientId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"blood_type\": \"text\",\n  \"allergies\": \"text\",\n  \"chronic_diseases\": \"text\",\n  \"medical_history\": \"text\",\n  \"previous_surgeries\": \"text\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Requires an ACTIVE assignment and at least one editable field. Supplied fields may be null; unknown fields are rejected.\n\noperationId: updateAssignedPatientMedicalRecord"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List Medical Notes written by the Doctor",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/patients/:patientId/medical-notes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "patients",
+                    ":patientId",
+                    "medical-notes"
+                  ],
+                  "variable": [
+                    {
+                      "key": "patientId",
+                      "value": "{{patientId}}"
+                    }
+                  ]
+                },
+                "description": "Returns notes authored by the authenticated Doctor for the Patient's record. Requires an ACTIVE assignment and an existing Medical Record.\n\noperationId: listAssignedPatientMedicalNotes"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Add Medical Note",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/doctor/patients/:patientId/medical-notes",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "doctor",
+                    "patients",
+                    ":patientId",
+                    "medical-notes"
+                  ],
+                  "variable": [
+                    {
+                      "key": "patientId",
+                      "value": "{{patientId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"note\": \"text\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Adds a note to the Patient's Medical Record. Requires an ACTIVE assignment and an existing Medical Record. Notes are listed only to their author Doctor.\n\noperationId: createAssignedPatientMedicalNote"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 201\", function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Patient",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{patientToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Patient Reminders",
+          "item": [
+            {
+              "name": "List own Reminders",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/reminders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "reminders"
+                  ]
+                },
+                "description": "Returns reminders belonging to the authenticated Patient, ordered by remind_at and then ID ascending.\n\noperationId: listOwnReminders"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create a Reminder",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/reminders",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "reminders"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"type\": \"MEDICATION\",\n  \"reference_id\": 12,\n  \"remind_at\": \"2026-10-15T09:30:00\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Creates a reminder for one of the authenticated Patient's own Treatment Medications or Appointments.\n\noperationId: createReminder"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 201\", function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get own Reminder",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/reminders/:reminderId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "reminders",
+                    ":reminderId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "reminderId",
+                      "value": "{{reminderId}}"
+                    }
+                  ]
+                },
+                "description": "Returns a Reminder belonging to the authenticated Patient.\n\noperationId: getOwnReminder"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Cancel own Reminder",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/reminders/:reminderId/cancel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "reminders",
+                    ":reminderId",
+                    "cancel"
+                  ],
+                  "variable": [
+                    {
+                      "key": "reminderId",
+                      "value": "{{reminderId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Cancels a Reminder only while its status is PENDING. The request body must be an empty JSON object.\n\noperationId: cancelOwnReminder"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Patient Medical Records",
+          "item": [
+            {
+              "name": "Get own Medical Record",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/medical-record",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "medical-record"
+                  ]
+                },
+                "description": "Returns the Medical Record for the authenticated Patient.\n\noperationId: getOwnMedicalRecord"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List own Treatment Plans",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/treatment-plans",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "treatment-plans"
+                  ]
+                },
+                "description": "Returns Treatment Plans belonging to the authenticated Patient in ascending ID order. Patient access is read-only.\n\noperationId: listOwnTreatmentPlans"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get own Treatment Plan",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/treatment-plans/:planId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "treatment-plans",
+                    ":planId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "planId",
+                      "value": "{{planId}}"
+                    }
+                  ]
+                },
+                "description": "Returns the Treatment Plan only when it belongs to the authenticated Patient.\n\noperationId: getOwnTreatmentPlan"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List medications for own Treatment Plan",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/treatment-plans/:planId/medications",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "treatment-plans",
+                    ":planId",
+                    "medications"
+                  ],
+                  "variable": [
+                    {
+                      "key": "planId",
+                      "value": "{{planId}}"
+                    }
+                  ]
+                },
+                "description": "Returns medications belonging to the Patient's Treatment Plan. Patient access is read-only.\n\noperationId: listOwnTreatmentMedications"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get medication for own Treatment Plan",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/treatment-plans/:planId/medications/:medicationId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "treatment-plans",
+                    ":planId",
+                    "medications",
+                    ":medicationId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "planId",
+                      "value": "{{planId}}"
+                    },
+                    {
+                      "key": "medicationId",
+                      "value": "{{medicationId}}"
+                    }
+                  ]
+                },
+                "description": "Returns a medication only when it belongs to the Patient's Treatment Plan.\n\noperationId: getOwnTreatmentMedication"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List appointments for own Treatment Plan",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/treatment-plans/:planId/appointments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "treatment-plans",
+                    ":planId",
+                    "appointments"
+                  ],
+                  "variable": [
+                    {
+                      "key": "planId",
+                      "value": "{{planId}}"
+                    }
+                  ]
+                },
+                "description": "Returns appointments belonging to the Patient's Treatment Plan. Patient access is read-only.\n\noperationId: listOwnTreatmentAppointments"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get appointment for own Treatment Plan",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/treatment-plans/:planId/appointments/:appointmentId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "treatment-plans",
+                    ":planId",
+                    "appointments",
+                    ":appointmentId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "planId",
+                      "value": "{{planId}}"
+                    },
+                    {
+                      "key": "appointmentId",
+                      "value": "{{appointmentId}}"
+                    }
+                  ]
+                },
+                "description": "Returns an appointment only when it belongs to the Patient's Treatment Plan.\n\noperationId: getOwnTreatmentAppointment"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Patient Intake and Care Coordination",
+          "item": [
+            {
+              "name": "Get the authenticated Patient's intake",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/intake",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "intake"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Submit the Patient's one self-reported intake",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/intake",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "intake"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"current_problem\": \"text\",\n  \"symptoms\": \"text\",\n  \"symptom_onset\": \"text\",\n  \"chronic_conditions_answer\": \"YES\",\n  \"chronic_conditions_details\": \"text\",\n  \"medications_answer\": \"YES\",\n  \"medications_details\": \"text\",\n  \"allergies_answer\": \"YES\",\n  \"allergies_details\": \"text\",\n  \"additional_information\": \"text\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "This self-report is not a diagnosis. Status and patient identity are server-managed."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 201\", function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Edit the Patient's intake before review starts",
+              "request": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/intake",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "intake"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"current_problem\": \"text\",\n  \"symptoms\": \"text\",\n  \"symptom_onset\": \"text\",\n  \"chronic_conditions_answer\": \"YES\",\n  \"chronic_conditions_details\": \"text\",\n  \"medications_answer\": \"YES\",\n  \"medications_details\": \"text\",\n  \"allergies_answer\": \"YES\",\n  \"allergies_details\": \"text\",\n  \"additional_information\": \"text\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List diagnoses for the authenticated Patient",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/diagnoses",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "diagnoses"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List own correction requests",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/intake-correction-requests",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "intake-correction-requests"
+                  ]
+                },
+                "description": ""
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Send an intake correction request to administration",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/intake-correction-requests",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "intake-correction-requests"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"message\": \"text\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Available after review starts; requests are submitted directly to administration, with no separate technical-support intermediary."
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 201\", function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List the authenticated Patient's active Doctor assignments",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/doctor-assignments",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "doctor-assignments"
+                  ]
+                },
+                "description": "Returns only the authenticated Patient's ACTIVE assignments, ordered by assigned_at descending and then ID descending. Requires an ACTIVE PATIENT account.\n\n\noperationId: listOwnPatientDoctorAssignments"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Patient Emergency Alerts",
+          "item": [
+            {
+              "name": "List own Emergency Alerts",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/emergency-alerts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "emergency-alerts"
+                  ]
+                },
+                "description": "Returns all Emergency Alerts belonging to the authenticated Patient.\n\noperationId: listOwnEmergencyAlerts"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create an Emergency Alert",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/emergency-alerts",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "emergency-alerts"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"phone\": \"0591234567\",\n  \"location\": \"Gaza\",\n  \"description\": \"Urgent medical assistance is needed.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Creates a HIGH priority alert for the authenticated Patient with status PENDING_ASSIGNMENT. The Patient identity is derived from the access token.\n\noperationId: createPatientEmergencyAlert"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 201\", function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get own Emergency Alert",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/emergency-alerts/:alertId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "emergency-alerts",
+                    ":alertId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "alertId",
+                      "value": "{{alertId}}"
+                    }
+                  ]
+                },
+                "description": "Returns an Emergency Alert only when it belongs to the authenticated Patient.\n\noperationId: getOwnEmergencyAlert"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Cancel own Emergency Alert",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/emergency-alerts/:alertId/cancel",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "emergency-alerts",
+                    ":alertId",
+                    "cancel"
+                  ],
+                  "variable": [
+                    {
+                      "key": "alertId",
+                      "value": "{{alertId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Cancels the Patient's alert only while its status is PENDING_ASSIGNMENT. Send an empty JSON object or omit the body.\n\noperationId: cancelOwnEmergencyAlert"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Patient Dashboard",
+          "item": [
+            {
+              "name": "Get Patient dashboard",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/dashboard",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "dashboard"
+                  ]
+                },
+                "description": "Returns dashboard counts for the authenticated Patient. Requires an ACTIVE PATIENT account.\n\noperationId: getPatientDashboard"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Assistance Requests",
+          "item": [
+            {
+              "name": "List own Assistance Requests",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/assistance-requests",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "assistance-requests"
+                  ]
+                },
+                "description": "Returns Assistance Requests submitted for the authenticated Patient.\n\noperationId: listOwnAssistanceRequests"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get own Assistance Request",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/assistance-requests/:requestId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "assistance-requests",
+                    ":requestId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "requestId",
+                      "value": "{{requestId}}"
+                    }
+                  ]
+                },
+                "description": "Returns an Assistance Request only when it belongs to the authenticated Patient.\n\noperationId: getOwnAssistanceRequest"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Resource Allocations",
+          "item": [
+            {
+              "name": "List resources for own Assistance Request",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/patient/assistance-requests/:requestId/resources",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "patient",
+                    "assistance-requests",
+                    ":requestId",
+                    "resources"
+                  ],
+                  "variable": [
+                    {
+                      "key": "requestId",
+                      "value": "{{requestId}}"
+                    }
+                  ]
+                },
+                "description": "Returns resource allocations for an Assistance Request owned by the authenticated Patient.\n\noperationId: listPatientAssistanceRequestResources"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. NGO",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{ngoToken}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "NGO Resource Allocations",
+          "item": [
+            {
+              "name": "List Resource Allocations",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/ngo/assistance-requests/:requestId/resources",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "ngo",
+                    "assistance-requests",
+                    ":requestId",
+                    "resources"
+                  ],
+                  "variable": [
+                    {
+                      "key": "requestId",
+                      "value": "{{requestId}}"
+                    }
+                  ]
+                },
+                "description": "Lists resources for an Assistance Request assigned to the authenticated NGO.\n\noperationId: listNgoResourceAllocations"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create Resource Allocation",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/ngo/assistance-requests/:requestId/resources",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "ngo",
+                    "assistance-requests",
+                    ":requestId",
+                    "resources"
+                  ],
+                  "variable": [
+                    {
+                      "key": "requestId",
+                      "value": "{{requestId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"resource_name\": \"text\",\n  \"quantity\": 1,\n  \"delivery_date\": \"2026-12-01\",\n  \"notes\": \"text\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Creates an allocation for a request assigned to this NGO. Creation is allowed only while request status is APPROVED; quantity must be a positive integer.\n\noperationId: createNgoResourceAllocation"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 201\", function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update Resource Allocation",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/ngo/assistance-requests/:requestId/resources/:resourceId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "ngo",
+                    "assistance-requests",
+                    ":requestId",
+                    "resources",
+                    ":resourceId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "requestId",
+                      "value": "{{requestId}}"
+                    },
+                    {
+                      "key": "resourceId",
+                      "value": "{{resourceId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"resource_name\": \"text\",\n  \"quantity\": 1,\n  \"delivery_date\": \"2026-12-01\",\n  \"notes\": \"text\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Updates one or more supplied fields on a resource owned by the request. At least one editable field is required. Allocations are read-only after request completion.\n\noperationId: updateNgoResourceAllocation"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Delete Resource Allocation",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/ngo/assistance-requests/:requestId/resources/:resourceId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "ngo",
+                    "assistance-requests",
+                    ":requestId",
+                    "resources",
+                    ":resourceId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "requestId",
+                      "value": "{{requestId}}"
+                    },
+                    {
+                      "key": "resourceId",
+                      "value": "{{resourceId}}"
+                    }
+                  ]
+                },
+                "description": "Deletes a resource belonging to the specified request. Allocations cannot be modified after the request is completed.\n\noperationId: deleteNgoResourceAllocation"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "NGO Dashboard",
+          "item": [
+            {
+              "name": "Get NGO dashboard",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/ngo/dashboard",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "ngo",
+                    "dashboard"
+                  ]
+                },
+                "description": "Returns counts of requests assigned to the authenticated NGO and resource allocation records on those requests.\n\noperationId: getNgoDashboard"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "NGO Assistance Requests",
+          "item": [
+            {
+              "name": "List assigned Assistance Requests",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/ngo/assistance-requests",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "ngo",
+                    "assistance-requests"
+                  ]
+                },
+                "description": "Returns Assistance Requests assigned to the authenticated NGO, newest submitted first. NGO responses leave out patient_id and doctor_id; the NGO works with the request id only.\n\noperationId: listNgoAssistanceRequests"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get assigned Assistance Request",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/ngo/assistance-requests/:requestId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "ngo",
+                    "assistance-requests",
+                    ":requestId"
+                  ],
+                  "variable": [
+                    {
+                      "key": "requestId",
+                      "value": "{{requestId}}"
+                    }
+                  ]
+                },
+                "description": "Returns a request assigned to the authenticated NGO. A request assigned to another NGO is forbidden. patient_id and doctor_id are left out.\n\noperationId: getNgoAssistanceRequest"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update Assistance Request status",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/ngo/assistance-requests/:requestId/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "ngo",
+                    "assistance-requests",
+                    ":requestId",
+                    "status"
+                  ],
+                  "variable": [
+                    {
+                      "key": "requestId",
+                      "value": "{{requestId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"PENDING\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Updates the assigned request using the implemented workflow transitions PENDING to UNDER_REVIEW, UNDER_REVIEW to APPROVED or REJECTED, and APPROVED to COMPLETED. Completing a request requires at least one Resource Allocation.\n\noperationId: updateNgoAssistanceRequestStatus"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. Shared (any signed-in role)",
+      "auth": {
+        "type": "bearer",
+        "bearer": [
+          {
+            "key": "token",
+            "value": "{{token}}",
+            "type": "string"
+          }
+        ]
+      },
+      "item": [
+        {
+          "name": "Profile",
+          "item": [
+            {
+              "name": "Get own profile",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/profile",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "profile"
+                  ]
+                },
+                "description": "Returns the authenticated user's profile. The returned profile shape depends on whether the current user is a Patient, Doctor, NGO, or Admin.\n\n\noperationId: getOwnProfile"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update own profile",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/profile",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "profile"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"full_name\": \"Ahmed Alnaji\",\n  \"phone\": \"0591234567\",\n  \"date_of_birth\": \"2002-05-15\",\n  \"gender\": \"MALE\",\n  \"address\": \"Gaza, Palestine\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Updates approved self-service profile fields. Patients may update full_name, phone, date_of_birth, gender, and address. Doctors may update only full_name and phone. NGO and Admin accounts cannot use this endpoint.\n\n\noperationId: updateOwnProfile"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Change own password",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/profile/password",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "profile",
+                    "password"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"current_password\": \"text\",\n  \"new_password\": \"text\",\n  \"new_password_confirmation\": \"text\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Changes the signed-in user's password after checking the current one. Any active role may call it. The new password follows the registration policy (at least 8 characters with an uppercase letter, a lowercase letter and a digit, at most 72 UTF-8 bytes) and must differ from the current one. A wrong current password returns 400 with a field error, not 401. Only failed attempts count toward the rate limit (5 per 15 minutes by default). Recorded in the activity log as CHANGE_PASSWORD. Tokens issued before the change stay valid until they expire.\n\n\noperationId: changeOwnPassword"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Notifications",
+          "item": [
+            {
+              "name": "List own Notifications",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/notifications",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "notifications"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Page number, starting at 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "1",
+                      "description": "Items per page (at most 100). The default depends on the endpoint.",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Returns notifications belonging only to the authenticated user, newest first. Any active authenticated role may call this endpoint. The list is paged, 50 per page by default (`limit` up to 100), with page, limit, total and total_pages next to it.\n\noperationId: listOwnNotifications"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get unread Notification count",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/notifications/unread-count",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "notifications",
+                    "unread-count"
+                  ]
+                },
+                "description": "Returns the authenticated user's unread notification count. Any active authenticated role may call this endpoint.\n\noperationId: getUnreadNotificationCount"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Mark all own Notifications as read",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/notifications/read-all",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "notifications",
+                    "read-all"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Marks all unread notifications belonging to the authenticated user as read and returns the number of rows updated. Requires an empty JSON object body; no role restriction is applied.\n\noperationId: markAllOwnNotificationsRead"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Mark own Notification as read",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/notifications/:notificationId/read",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "notifications",
+                    ":notificationId",
+                    "read"
+                  ],
+                  "variable": [
+                    {
+                      "key": "notificationId",
+                      "value": "{{notificationId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Marks a notification belonging to the authenticated user as read. Repeating the operation is idempotent. Requires an empty JSON object body; no role restriction is applied.\n\noperationId: markOwnNotificationRead"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Messages",
+          "item": [
+            {
+              "name": "Send Message",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/messages",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "messages"
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"receiver_id\": 1,\n  \"message_text\": \"text\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Sends a message between one Patient and one Doctor. The pair must have an ACTIVE Doctor-Patient Assignment. Message text is trimmed and limited to 65535 UTF-8 bytes; client sender IDs and read fields are not accepted.\n\noperationId: sendMessage"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 201\", function () {",
+                      "  pm.response.to.have.status(201);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List Conversations",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/messages/conversations",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "messages",
+                    "conversations"
+                  ]
+                },
+                "description": "Returns one summary per conversation involving the authenticated user, newest message first. No conversation is returned until at least one message exists.\n\noperationId: listConversations"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Conversation History",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/messages/conversations/:userId",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "messages",
+                    "conversations",
+                    ":userId"
+                  ],
+                  "query": [
+                    {
+                      "key": "page",
+                      "value": "1",
+                      "description": "Page number, starting at 1.",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "1",
+                      "description": "Items per page (at most 100). The default depends on the endpoint.",
+                      "disabled": true
+                    }
+                  ],
+                  "variable": [
+                    {
+                      "key": "userId",
+                      "value": "{{userId}}",
+                      "description": "Other conversation participant's user ID."
+                    }
+                  ]
+                },
+                "description": "Returns messages exchanged between the authenticated user and the specified Patient or Doctor, ordered oldest first. Existing conversation history is required; the ACTIVE assignment requirement governs new messages. Paged from the newest messages, so page 1 holds the newest 100 by default (`limit` up to 100), and each page is returned oldest first. A page past the end is an empty list.\n\noperationId: getConversationHistory"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Mark Message as Read",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/messages/:messageId/read",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "messages",
+                    ":messageId",
+                    "read"
+                  ],
+                  "variable": [
+                    {
+                      "key": "messageId",
+                      "value": "{{messageId}}"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "description": "Only the message receiver may mark it as read. Repeating the operation for an already-read message succeeds and returns its current record. The request body must be an empty JSON object.\n\noperationId: markMessageRead"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Authentication",
+          "item": [
+            {
+              "name": "Get current authenticated user",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/me",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "auth",
+                    "me"
+                  ]
+                },
+                "description": "Returns the currently authenticated user's public account information. Requires a valid JWT access token and an ACTIVE account.\n\n\noperationId: getCurrentUser"
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "pm.test(\"status is 200\", function () {",
+                      "  pm.response.to.have.status(200);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

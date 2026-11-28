@@ -64,6 +64,9 @@ jobs:
             node --check "$file"
           done
 
+      - name: Check the generated OpenAPI document is up to date
+        run: npm run docs:check
+
       - name: Run tests with coverage
         # Creates a temporary schema, applies all migrations, runs every
         # test file, and drops the schema afterwards.
