@@ -113,3 +113,76 @@ test("symptom_onset accepts 255 characters and rejects 256", () => {
   assert.equal(tooLong.statusCode, 400);
   assert.ok(tooLong.responseBody.errors.symptom_onset);
 });
+
+test("committed openapi.json matches the JSDoc sources", () => {
+  const {
+    generateOpenApiJson,
+    readCommittedOpenApiJson,
+  } = require("../scripts/buildOpenApi");
+
+  assert.equal(
+    readCommittedOpenApiJson(),
+    generateOpenApiJson(),
+    "src/docs/openapi.json is out of date. Run: npm run docs:build",
+  );
+});
+
+test("the served spec adds API_PUBLIC_URL as the first server", () => {
+  const { buildServers } = require("../src/config/swagger");
+
+  assert.deepEqual(buildServers({}).map((server) => server.url), ["http://localhost:3000"]);
+  assert.deepEqual(
+    buildServers({ API_PUBLIC_URL: "https://api.example.test" }).map((server) => server.url),
+    ["https://api.example.test", "http://localhost:3000"],
+  );
+});
+
+test("committed Postman files match the OpenAPI document", () => {
+  const {
+    COLLECTION_PATH,
+    ENVIRONMENT_PATH,
+    generatePostmanFiles,
+    readCommitted,
+  } = require("../scripts/buildPostmanCollection");
+  const { collection, environment } = generatePostmanFiles();
+
+  assert.equal(readCommitted(COLLECTION_PATH), collection, "Run: npm run docs:build");
+  assert.equal(readCommitted(ENVIRONMENT_PATH), environment, "Run: npm run docs:build");
+});
+
+test("the Postman collection has every documented operation and a status check on each", () => {
+  const { generatePostmanFiles } = require("../scripts/buildPostmanCollection");
+  const collection = JSON.parse(generatePostmanFiles().collection);
+  const environment = JSON.parse(generatePostmanFiles().environment);
+
+  const requests = [];
+  const walk = (items) => {
+    for (const item of items) {
+      if (item.item) walk(item.item);
+      else requests.push(item);
+    }
+  };
+  walk(collection.item);
+
+  const documented = Object.entries(swaggerSpec.paths).flatMap(([path, item]) =>
+    ["get", "post", "put", "patch", "delete"]
+      .filter((method) => item[method])
+      .map((method) => `${method.toUpperCase()} ${path.replace(/\{([^}]+)\}/g, ":$1")}`),
+  );
+  const generated = requests
+    .filter((item) => !item.name.startsWith("Sign in as "))
+    .map((item) => `${item.request.method} ${item.request.url.raw.replace("{{baseUrl}}", "")}`);
+
+  assert.deepEqual([...generated].sort(), [...documented].sort());
+  for (const item of requests) {
+    assert.ok(
+      item.event.some((event) => event.listen === "test" && event.script.exec.join("\n").includes("to.have.status")),
+      item.name,
+    );
+  }
+
+  // Secrets are never committed: passwords and tokens start empty.
+  for (const variable of environment.values.filter((value) => value.type === "secret")) {
+    assert.equal(variable.value, "", variable.key);
+  }
+});

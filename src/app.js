@@ -21,6 +21,7 @@ const {
   apiErrorHandler,
   apiNotFound,
 } = require("./middleware/apiErrorHandler");
+const { createAccessLog } = require("./middleware/accessLog");
 
 const app = express();
 
@@ -35,6 +36,9 @@ if (process.env.TRUST_PROXY) {
 }
 
 // Global middleware
+// Access log first so it also times requests rejected by later middleware.
+app.use(createAccessLog());
+
 // upgrade-insecure-requests is only sent in production: it breaks plain-HTTP
 // local development (e.g. Swagger UI on http://localhost) in some browsers.
 app.use(
